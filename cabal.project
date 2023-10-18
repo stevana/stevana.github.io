@@ -1,0 +1,13 @@
+packages: .
+
+with-compiler: ghc-9.4.4
+
+reject-unconstrained-dependencies: all
+
+constraints: QuickCheck +old-random
+constraints: digest -pkg-config
+
+package stevana-github-io
+
+allow-older: *
+allow-newer: *

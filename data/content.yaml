@@ -1,0 +1,116 @@
+name: Stevan's notes
+author: Stevan Andjelkovic
+synopsis: Collection of notes on distributed systems.
+url: https://stevana.github.io
+topics:
+
+# ----------------------------------------------------------------------
+- topic: Development
+  posts:
+  - title: Erlang's not about lightweight processes and message passing...
+    date: 2023-01-18T00:00:00Z
+    content: https://raw.githubusercontent.com/stevana/armstrong-distributed-systems/main/docs/erlang-is-not-about.md
+    status: Done
+
+  - title: Implementing behaviours
+    content: https://raw.githubusercontent.com/stevana/armstrong-distributed-systems/implementing-behaviours/docs/implementing-behaviours.md
+    status: FirstDraft
+
+  - title: Working with binary data
+    content: https://raw.githubusercontent.com/stevana/bits-and-bobs/main/README.md
+    date: 2023-01-11T00:00:00Z
+    status: Done
+
+  - title: On the role of practice in programming
+    content: https://raw.githubusercontent.com/stevana/armstrong-distributed-systems/main/docs/practice-in-programming.md
+    status: Research
+
+  - title: Pipelined state machines
+    date: 2023-03-01T00:00:00Z
+    content: https://raw.githubusercontent.com/stevana/pipelined-state-machines/main/README.md
+    status: Done
+
+  - title: Parallel stream processing with zero-copy fan-out and sharding
+    date: 2023-10-11T00:00:00Z
+    content: https://raw.githubusercontent.com/stevana/pipelining-with-disruptor/main/README.md
+    status: Done
+
+  - title: State machines with of async I/O
+    date: 2023-01-07T00:00:00Z
+    content: https://raw.githubusercontent.com/stevana/coroutine-state-machines/main/README.md
+    status: Done
+
+  - title: Modular state machines
+    status: Research
+    content: https://raw.githubusercontent.com/stevana/armstrong-distributed-systems/main/docs/modular-state-machines.md
+
+# ----------------------------------------------------------------------
+- topic: Documentation
+  posts:
+  - title: Specification language
+    content: https://raw.githubusercontent.com/stevana/armstrong-distributed-systems/main/docs/specification-language.md
+    status: Research
+
+  - title: Joe's idea of ["the bigger picture"](https://youtu.be/h8nmzPh5Npg?t=1220) in
+           particular the "research" part, not just the end result (code) but how you got
+           to the result.
+    status: Planned
+
+# ----------------------------------------------------------------------
+- topic: Testing
+  posts:
+    - title: Simulation testing using state machines
+      date: 2023-02-07T00:00:00Z
+      content: https://raw.githubusercontent.com/stevana/property-based-testing-stateful-systems-tutorial/main/README.md
+      status: Done
+
+    - title: Usage model or operational profile
+      status: Planned
+
+    - title: Load/soak testing
+      status: Planned
+
+# ----------------------------------------------------------------------
+- topic: Deployment
+  posts:
+  - title: Deploying and restarting state machines using supervisor trees
+    date: 2023-02-13T00:00:00Z
+    content: https://raw.githubusercontent.com/stevana/supervised-state-machines/main/README.md
+    status: Done
+
+  - title: Elastically scalable thread pools
+    date: 2023-03-14T00:00:00Z
+    content: https://raw.githubusercontent.com/stevana/elastically-scalable-thread-pools/main/README.md
+    status: Done
+
+# ----------------------------------------------------------------------
+- topic: Observability
+  posts:
+  - title: Visualising datastructures over time using SVG
+    content: https://raw.githubusercontent.com/stevana/svg-viewer-in-svg/main/README.md
+    date: 2023-09-09T00:00:00Z
+    status: Done
+
+# ----------------------------------------------------------------------
+- topic: Debugging
+  posts:
+    - title: Domain-specific debuggers
+      content: https://raw.githubusercontent.com/stevana/armstrong-distributed-systems/main/docs/domain-specific-debuggers.md
+      status: Research
+
+# ----------------------------------------------------------------------
+- topic: Upgrading
+  posts:
+    - title: Hot-code swapping à la Erlang with Arrow-based state machines
+      date: 2023-02-21T00:00:00Z
+      content: https://raw.githubusercontent.com/stevana/hot-swapping-state-machines/main/README.md
+      status: Done
+    - title: |
+        `smarrow-lang` an experimental programming language where programs
+        are state machines expressed in arrow notation to allow easy hot-code
+        swapping
+      content: https://raw.githubusercontent.com/stevana/smarrow-lang/main/README.md
+      status: Research
+
+    - title: Version everything
+      status: Planned
