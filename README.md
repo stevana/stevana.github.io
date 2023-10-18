@@ -1,5 +1,11 @@
 # stevana.github.io
 
+My static web site generator that uses markdown/pandoc source scattered across
+multiple repositories.
+
+The output is hosted on Github pages over at
+[https://stevana.github.io](https://stevana.github.io).
+
 ## Highlighting
 
 Use the following script to get the CSS from `pandoc`:

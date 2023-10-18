@@ -23,7 +23,7 @@ libMain inputFile outputDir skipDownload = do
   mapM_ (markdownToHtml (_name site) (_author site)) markdowns
   installCssAndSvg outputDir
   installRssFeed site outputDir
-  -- cleanUp outputDir
+  cleanUp outputDir
 
 cleanUp :: FilePath -> IO ()
 cleanUp outputDir = do
