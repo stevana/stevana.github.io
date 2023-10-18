@@ -14,7 +14,7 @@ category:        Web
 build-type:      Simple
 extra-doc-files:
   CHANGELOG.md
-  README.md
+  NOTES.md
 
 data-files:
   data/content.yaml

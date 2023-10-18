@@ -27,9 +27,7 @@ for details.
 ## RSS
 
 * https://validator.w3.org/feed/
-* guid?
 * Just use atom instead? https://validator.w3.org/feed/docs/atom.html
-
 
 ## CI
 

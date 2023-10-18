@@ -29,5 +29,5 @@ cleanUp :: FilePath -> IO ()
 cleanUp outputDir = do
   files <- getDirectoryContents outputDir
   forM_ files $ \file ->
-    when (takeExtension file == ".md" || takeExtension file == ".txt") $
+    when (takeExtension file == ".md") $
       removeFile (outputDir </> file)

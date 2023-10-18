@@ -116,10 +116,6 @@ markdownToHtml titlePrefix author (markdownFile, mDate) = do
   let htmlFile = replaceExtensions markdownFile "html"
   T.writeFile htmlFile html
 
-  txt <- runIOorExplode $ writePlain def pandoc
-  let txtFile = replaceExtensions markdownFile "txt"
-  T.writeFile txtFile txt
-
 ------------------------------------------------------------------------
 
 generatePage :: Site -> Text -> IO Text

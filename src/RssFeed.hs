@@ -40,20 +40,28 @@ readDescriptions s outputDir = do
   foldM go Map.empty topics
   where
     go ih topic = do
-      txt <- T.readFile (outputDir </> T.unpack topic <.> "txt")
-      return (Map.insert topic txt ih)
+      html <- T.readFile (outputDir </> T.unpack topic <.> "html")
+      let main
+            = T.unlines
+            . takeWhile (/= "</main>")
+            . drop 1
+            . dropWhile (/= "<main>")
+            . T.lines
+            $ html
+      return (Map.insert topic main ih)
 
 ------------------------------------------------------------------------
 
 rssFeed :: Site -> Map Text Text -> Text
 rssFeed s descs = T.unlines
   [ "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-  , "<rss version=\"2.0\">"
+  , "<rss version=\"2.0\" xmlns:atom=\"http://www.w3.org/2005/Atom\">"
   , "  <channel>"
   , "    <title>" <> _name s <> "</title>"
   , "    <description>" <> _synopsis s <> "</description>"
   , "    <language>en</language>"
-  , "    <link>" <> _url s <> "</link>"
+  , "    <link>" <> _url s <> "/rss.xml" <> "</link>"
+  , "    <atom:link href=\"" <> _url s <> "/rss.xml\" rel=\"self\" type=\"application/rss+xml\" />"
   ,      items s descs
   , "  </channel>"
   , "</rss>"
@@ -76,14 +84,21 @@ item :: Text -> Map Text Text -> (Text, Post) -> Text
 item url descs (topic, p) = T.unlines
   [ "    <item>"
   , "      <title>" <> _title p <> "</title>"
-  , "      <link>" <> url <> "/" <> titleToFileName (_title p) <> ".html" <> "</link>"
+  , "      <link>" <> link <> "</link>"
+  , "      <guid>" <> link <> "</guid>"
   , "      <pubDate>" <> date <> "</pubDate>"
   , "      <description><![CDATA[" <> escapeCDataEndTag (descs Map.! titleToFileName (_title p)) <> "]]></description>"
   , "      <category>" <> topic <> "</category>"
   , "    </item>"
   ]
   where
-    date = T.pack (formatTime defaultTimeLocale rfc822DateFormat (fromMaybe (error "item: expected a date") (_date p)))
+    link = url <> "/" <> titleToFileName (_title p) <> ".html"
+    date
+      = T.replace "  " " " -- Remove excessive spaces.
+      . T.replace "UTC" "GMT" -- For some reason rfc822DateFormat outputs "UTC" which isn't valid.
+      . T.pack . formatTime defaultTimeLocale rfc822DateFormat
+      . fromMaybe (error "item: expected a date")
+      $ _date p
 
     -- Since there's an end of CDATA tag ("]]>") in one of my code examples, we
     -- need to escape it.
