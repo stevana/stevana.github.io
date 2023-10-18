@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Stevan Andjelkovic" />
+  <title>Stevan's notes – SVG viewer written in SVG</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="alternate" type="application/rss+xml"
+        title="RSS feed"
+        href="rss.xml" />
+  <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+  <nav id="nav">
+    <span class="title">Stevan's notes...</span>
+    <a href="index.html">sorted by topic,</a>
+    <a href="chronological.html">by time,</a>
+    <a href="rss.xml">or as a feed <img height="10px" src="rss.svg" />!</a>
+    <a href="about.html">What's this about?</a>
+  </nav>
+</header>
+<hr />
+<main>
+<h1>SVG viewer written in SVG</h1>
+<nav id="TOC" class="sidenote" role="doc-toc">
+<h2 id="toc-title">Table of contents</h2>
+<ul>
+<li><a href="#motivation" id="toc-motivation">Motivation</a></li>
+<li><a href="#demo" id="toc-demo">Demo</a></li>
+<li><a href="#the-code" id="toc-the-code">The code</a></li>
+<li><a href="#usage" id="toc-usage">Usage</a></li>
+<li><a href="#contributing" id="toc-contributing">Contributing</a></li>
+<li><a href="#see-also" id="toc-see-also">See also</a></li>
+</ul>
+</nav>
+<div class="date">Posted on Sep  9, 2023</div>
+<p>This post is about how to write an <a
+href="https://en.wikipedia.org/wiki/SVG">SVG</a> viewer / browser /
+“slideshow” which is itself a self-contained SVG.</p>
+<h2 id="motivation">Motivation</h2>
+<p>I’ve been working on a parallel processing pipeline. Each stage of
+the pipeline is running on a separate thread, and it takes some work
+items from a queue in front of it, processes them and then puts them in
+the queue in front of the next stage in the pipeline.</p>
+<p>In order to better understand what exactly is going on I thought I’d
+visualise the pipeline including the length and contents of all queues
+as well as the position each worker/stage is at in the queue it’s
+processing.</p>
+<p>For now lets just imagine that an SVG image is created every time
+interval. So after a run of the pipeline we’ll have a bunch of SVGs
+showing us how it evolved over time.</p>
+<p>Initially I was using the <a
+href="https://feh.finalrewind.org/"><code>feh</code></a> image viewer,
+which if you pass it several images lets you navigate through them using
+the arrow keys.</p>
+<p>But then I wondered: how can I show these SVGs to somebody else over
+the web?</p>
+<h2 id="demo">Demo</h2>
+<p>Before I show you how I did it, let’s have a look at the resulting
+pipeline visualisation (you need to click on the image):</p>
+<p><a
+href="https://stevana.github.io/svg-viewer-in-svg/wordcount-pipeline.svg"><img
+src="https://stevana.github.io/svg-viewer-in-svg/wordcount-pipeline.svg"
+alt="Demo" /></a></p>
+<p>The arrows in the top left corner are clickable and will take you to
+the first, next, previous and last SVG respectively.</p>
+<p>What you are seeing is a run of a parallel word count pipeline, where
+lines are coming in from stdin and the counts are being written to
+stdout at the end.</p>
+<h2 id="the-code">The code</h2>
+<p>Let’s start by having a look at the SVG itself.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode xml"><code class="sourceCode xml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>&lt;<span class="kw">svg</span><span class="ot"> version=</span><span class="st">&quot;1.1&quot;</span><span class="ot"> xmlns=</span><span class="st">&quot;http://www.w3.org/2000/svg&quot;</span>&gt;</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  // The navigation menu for going to the first, previous, next and last</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  // slide/image. There&#39;s also a progress bar here which shows which slide</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  // we are currently on and how many there are in total.</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">g</span><span class="ot"> font-family=</span><span class="st">&quot;Times,serif&quot;</span><span class="ot"> font-size=</span><span class="st">&quot;14.00&quot;</span>&gt;</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">text</span><span class="ot"> id=</span><span class="st">&quot;first&quot;</span><span class="ot">    x=</span><span class="st">&quot;20&quot;</span><span class="ot">  y=</span><span class="st">&quot;30&quot;</span>&gt;⇤&lt;/<span class="kw">text</span>&gt;</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">text</span><span class="ot"> id=</span><span class="st">&quot;previous&quot;</span><span class="ot"> x=</span><span class="st">&quot;50&quot;</span><span class="ot">  y=</span><span class="st">&quot;30&quot;</span>&gt;←&lt;/<span class="kw">text</span>&gt;</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">text</span><span class="ot"> id=</span><span class="st">&quot;progress&quot;</span><span class="ot"> x=</span><span class="st">&quot;80&quot;</span><span class="ot">  y=</span><span class="st">&quot;30&quot;</span>&gt;&lt;/<span class="kw">text</span>&gt;</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">text</span><span class="ot"> id=</span><span class="st">&quot;next&quot;</span><span class="ot">     x=</span><span class="st">&quot;120&quot;</span><span class="ot"> y=</span><span class="st">&quot;30&quot;</span>&gt;→&lt;/<span class="kw">text</span>&gt;</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">text</span><span class="ot"> id=</span><span class="st">&quot;last&quot;</span><span class="ot">     x=</span><span class="st">&quot;150&quot;</span><span class="ot"> y=</span><span class="st">&quot;30&quot;</span>&gt;⇥&lt;/<span class="kw">text</span>&gt;</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  &lt;/<span class="kw">g</span>&gt;</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  // Placeholder for the image.</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">g</span><span class="ot"> id=</span><span class="st">&quot;image&quot;</span>&gt;&lt;/<span class="kw">g</span>&gt;</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  // The index of the currently viewed image.</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">desc</span><span class="ot"> id=</span><span class="st">&quot;0&quot;</span>&gt;&lt;/<span class="kw">desc</span>&gt;</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  // The fact that we can embedd JavaScript into SVGs is what makes this</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  // whole thing work.</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">script</span>&gt;</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  // <span class="bn">&lt;![CDATA[</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    // Let me move this out to its own code block, so we get syntax</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    // highlighting.</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  // <span class="bn">]]&gt;</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>  &lt;/<span class="kw">script</span>&gt;</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">svg</span>&gt;</span></code></pre></div>
+<p>The following goes into the script tag above:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Array holding the SVG images.</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> imgs <span class="op">=</span> <span class="kw">new</span> <span class="bu">Array</span>(</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;&lt;svg&gt;...&lt;/svg&gt;&quot;</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;&lt;svg&gt;...&lt;/svg&gt;&quot;</span><span class="op">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;&lt;svg&gt;...&lt;/svg&gt;&quot;</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>      )<span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Helper for registering onclick handlers.</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span> <span class="fu">registerClick</span>(selector<span class="op">,</span> f) {</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        <span class="bu">document</span><span class="op">.</span><span class="fu">querySelector</span>(selector)<span class="op">.</span><span class="fu">addEventListener</span>(<span class="st">&quot;click&quot;</span><span class="op">,</span> (e) <span class="kw">=&gt;</span> {</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>            <span class="fu">f</span>(e)<span class="op">;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        })<span class="op">;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Set and return the value of our counter, this is abusing the id</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="co">// of the desc tag...</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span> <span class="fu">setCounter</span>(f) {</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>        <span class="kw">const</span> counter <span class="op">=</span> <span class="bu">document</span><span class="op">.</span><span class="fu">querySelector</span>(<span class="st">&quot;desc&quot;</span>)<span class="op">;</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>        counter<span class="op">.</span><span class="at">id</span> <span class="op">=</span> <span class="fu">f</span>(<span class="pp">parseInt</span>(counter<span class="op">.</span><span class="at">id</span>))<span class="op">;</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> counter<span class="op">.</span><span class="at">id</span><span class="op">;</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Updates our image placeholder by injecting the SVG into the</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    <span class="co">// image tag. Also updates the progress bar.</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span> <span class="fu">setImage</span>(i) {</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>        <span class="kw">const</span> img <span class="op">=</span> <span class="bu">document</span><span class="op">.</span><span class="fu">querySelector</span>(<span class="st">&quot;#image&quot;</span>)<span class="op">;</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>        img<span class="op">.</span><span class="fu">setAttribute</span>(<span class="st">&quot;href&quot;</span><span class="op">,</span> imgs[i])<span class="op">;</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>        <span class="fu">updateProgress</span>()<span class="op">;</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Update the progress bar in the menu.</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span> <span class="fu">updateProgress</span>() {</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>        <span class="bu">document</span><span class="op">.</span><span class="fu">querySelector</span>(<span class="st">&quot;#progress&quot;</span>)<span class="op">.</span><span class="at">innerHTML</span> <span class="op">=</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>            <span class="bu">document</span><span class="op">.</span><span class="fu">querySelector</span>(<span class="st">&quot;desc&quot;</span>)<span class="op">.</span><span class="at">id</span> <span class="op">+</span> <span class="st">&quot;/&quot;</span> <span class="op">+</span> (imgs<span class="op">.</span><span class="at">length</span> <span class="op">-</span> <span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>    <span class="co">// We can now define our navigation functions in terms of setting</span></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>    <span class="co">// the counter and the image.</span></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span> <span class="fu">first</span>() {</span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>        <span class="fu">setImage</span>(<span class="fu">setCounter</span>((_) <span class="kw">=&gt;</span> <span class="dv">0</span>))<span class="op">;</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span> <span class="fu">previous</span>() {</span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>        <span class="fu">setImage</span>(<span class="fu">setCounter</span>((i) <span class="kw">=&gt;</span> i <span class="op">&lt;=</span> <span class="dv">0</span> <span class="op">?</span> <span class="dv">0</span> <span class="op">:</span> <span class="op">--</span>i))<span class="op">;</span></span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span> <span class="fu">next</span>() {</span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a>        <span class="fu">setImage</span>(<span class="fu">setCounter</span>((i) <span class="kw">=&gt;</span> i <span class="op">&gt;=</span> imgs<span class="op">.</span><span class="at">length</span> <span class="op">-</span> <span class="dv">1</span> <span class="op">?</span> imgs<span class="op">.</span><span class="at">length</span> <span class="op">-</span> <span class="dv">1</span> <span class="op">:</span> <span class="op">++</span>i))<span class="op">;</span></span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span> <span class="fu">last</span>() {</span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a>        <span class="fu">setImage</span>(<span class="fu">setCounter</span>((_) <span class="kw">=&gt;</span> imgs<span class="op">.</span><span class="at">length</span> <span class="op">-</span> <span class="dv">1</span>))<span class="op">;</span></span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Finally, to kick things off: register onclick handlers for the</span></span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a>    <span class="co">// navigation buttons and set the image to the first image in the array.</span></span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a>    <span class="fu">registerClick</span>(<span class="st">&quot;#first&quot;</span><span class="op">,</span>    (_) <span class="kw">=&gt;</span> <span class="fu">first</span>())<span class="op">;</span></span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a>    <span class="fu">registerClick</span>(<span class="st">&quot;#next&quot;</span><span class="op">,</span>     (_) <span class="kw">=&gt;</span> <span class="fu">next</span>())<span class="op">;</span></span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a>    <span class="fu">registerClick</span>(<span class="st">&quot;#previous&quot;</span><span class="op">,</span> (_) <span class="kw">=&gt;</span> <span class="fu">previous</span>())<span class="op">;</span></span>
+<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a>    <span class="fu">registerClick</span>(<span class="st">&quot;#last&quot;</span><span class="op">,</span>     (_) <span class="kw">=&gt;</span> <span class="fu">last</span>())<span class="op">;</span></span>
+<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a>    <span class="fu">setImage</span>(<span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a>    <span class="co">// We could even add keyboard support...</span></span>
+<span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a>    <span class="bu">window</span><span class="op">.</span><span class="fu">addEventListener</span>(<span class="st">&quot;keydown&quot;</span><span class="op">,</span> (e) <span class="kw">=&gt;</span> {</span>
+<span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Left arrow or k.</span></span>
+<span id="cb2-67"><a href="#cb2-67" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> (e<span class="op">.</span><span class="at">keyCode</span> <span class="op">===</span> <span class="dv">37</span> <span class="op">||</span> e<span class="op">.</span><span class="at">keyCode</span> <span class="op">===</span> <span class="dv">75</span>) {</span>
+<span id="cb2-68"><a href="#cb2-68" aria-hidden="true" tabindex="-1"></a>            <span class="fu">previous</span>()<span class="op">;</span></span>
+<span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Right arrow or j.</span></span>
+<span id="cb2-71"><a href="#cb2-71" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span> <span class="cf">if</span> (e<span class="op">.</span><span class="at">keyCode</span> <span class="op">===</span> <span class="dv">39</span> <span class="op">||</span> e<span class="op">.</span><span class="at">keyCode</span> <span class="op">===</span> <span class="dv">74</span>) {</span>
+<span id="cb2-72"><a href="#cb2-72" aria-hidden="true" tabindex="-1"></a>            <span class="fu">next</span>()<span class="op">;</span></span>
+<span id="cb2-73"><a href="#cb2-73" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb2-74"><a href="#cb2-74" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span></code></pre></div>
+<p>Another thing worth mentioning is that in my application the thread
+that collects the metrics runs about 1000 times per second. If there’s
+no change in the metrics then we probably don’t want to display an image
+that’s the same as the previous one. So I keep a CRC32 checksum of the
+metrics that the last image is generated from and if the next metrics
+data has the same checksum, I skip generating that image (as it will be
+the same as the previous one).</p>
+<p>The (inner) SVGs themselves are generated with graphviz via the <a
+href="https://graphviz.org/doc/info/lang.html">dot</a> language, the <a
+href="https://graphviz.org/doc/info/shapes.html#record">record-based</a>
+node shapes turned out to be useful for visualing data structures.</p>
+<p>It’s quite annoying to populate the <code>imgs</code> array by hand,
+so I wrote a small bash <a href="src/svg-viewer-in-svg">script</a> which
+takes a bunch of SVGs and outputs a single SVG which can be used to view
+the original images.</p>
+<h2 id="usage">Usage</h2>
+<p>The easiest way to get started is probably to clone the
+repository.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/stevana/svg-viewer-in-svg</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> svg-viewer-in-svg</span></code></pre></div>
+<p>In the <code>img/</code> directory there are three simple SVGs:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> img/</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="ex">circle.svg</span>  ellipse.svg  rectangle.svg</span></code></pre></div>
+<p>We can combine them all into one a single SVG that is a “slideshow”
+of the shapes as follows:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./src/svg-viewer-in-svg</span> img/<span class="pp">*</span>.svg <span class="op">&gt;</span> /tmp/combined-shapes.svg</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ex">firefox</span> /tmp/combined-shapes.svg</span></code></pre></div>
+<p>If you want to “install” the script, simply copy it to any directory
+that is in your <code>$PATH</code>.</p>
+<p>One last thing worth noting is that hosting these combined SVGs on
+GitHub is a bit of a pain. Merely checking them into a repository and
+trying to include them in markdown won’t work, because GitHub appears to
+be doing some SVG script tag sanitising for security reasons. Uploading
+them to gh-pages and linking to those seems to work though<a href="#fn1"
+class="footnote-ref" id="fnref1"
+role="doc-noteref"><sup>1</sup></a>.</p>
+<h2 id="contributing">Contributing</h2>
+<p>I hope I’ve managed to inspire you to think about how to visualise
+the execution of your own programs! Feel free to copy and adapt the code
+as you see fit. If you come up with some interesting modifications or
+better ways of doing things, then please do share!</p>
+<h2 id="see-also">See also</h2>
+<p>Brendan Gregg’s <a
+href="https://www.brendangregg.com/flamegraphs.html">flamegraphs</a>
+also generates a clickable SVG. I got the idea of adding keyboard
+support from looking at his SVG, there’s probably more interesting stuff
+to steal there.</p>
+<section id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>The following <a
+href="https://gist.github.com/ramnathv/2227408">gist</a> shows how to
+create gh-pages branch that doesn’t have any history. Also see the
+GitHub pages documentation for how to enable gh-pages for a
+respository.<a href="#fnref1" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+</main>
+</body>
+</html>

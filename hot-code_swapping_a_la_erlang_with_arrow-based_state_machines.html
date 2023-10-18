@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Stevan Andjelkovic" />
+  <title>Stevan's notes – hot-swapping-state-machines</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="alternate" type="application/rss+xml"
+        title="RSS feed"
+        href="rss.xml" />
+  <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+  <nav id="nav">
+    <span class="title">Stevan's notes...</span>
+    <a href="index.html">sorted by topic,</a>
+    <a href="chronological.html">by time,</a>
+    <a href="rss.xml">or as a feed <img height="10px" src="rss.svg" />!</a>
+    <a href="about.html">What's this about?</a>
+  </nav>
+</header>
+<hr />
+<main>
+<h1>hot-swapping-state-machines</h1>
+<nav id="TOC" class="sidenote" role="doc-toc">
+<h2 id="toc-title">Table of contents</h2>
+<ul>
+<li><a href="#background" id="toc-background">Background</a></li>
+<li><a href="#usage" id="toc-usage">Usage</a></li>
+<li><a href="#how-it-works" id="toc-how-it-works">How it works</a></li>
+<li><a href="#contributing" id="toc-contributing">Contributing</a></li>
+<li><a href="#see-also" id="toc-see-also">See also</a></li>
+<li><a href="#acknowledgments"
+id="toc-acknowledgments">Acknowledgments</a></li>
+</ul>
+</nav>
+<div class="date">Posted on Feb 21, 2023</div>
+<p>An experiment in implementing remote hot code swapping, or dynamic
+code upgrade, for state machines.</p>
+<h2 id="background">Background</h2>
+<p>In Erlang it’s possible to seamlessly hot swap the code on a running
+process.</p>
+<p>Consider the following <code>gen_server</code> implementation of a
+counter which can be <code>incr</code>emented and have its current
+<code>count</code> value retrieved:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode erlang"><code class="sourceCode erlang"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-module</span><span class="fu">(</span><span class="ch">counter</span><span class="fu">).</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="op">-</span><span class="fu">version(</span><span class="st">&quot;1&quot;</span><span class="fu">).</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">-export</span><span class="fu">([</span><span class="ch">start_link</span><span class="op">/</span><span class="dv">0</span><span class="fu">,</span> <span class="ch">incr</span><span class="op">/</span><span class="dv">0</span><span class="fu">,</span> <span class="ch">count</span><span class="op">/</span><span class="dv">0</span><span class="fu">]).</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">-</span><span class="fu">behavior(</span><span class="ch">gen_server</span><span class="fu">).</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">-export</span><span class="fu">([</span><span class="ch">init</span><span class="op">/</span><span class="dv">1</span><span class="fu">,</span> <span class="ch">handle_call</span><span class="op">/</span><span class="dv">3</span><span class="fu">,</span> <span class="ch">handle_cast</span><span class="op">/</span><span class="dv">2</span><span class="fu">,</span> <span class="ch">handle_info</span><span class="op">/</span><span class="dv">2</span><span class="fu">,</span> <span class="ch">terminate</span><span class="op">/</span><span class="dv">2</span><span class="fu">,</span> <span class="ch">code_change</span><span class="op">/</span><span class="dv">3</span><span class="fu">]).</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">start_link()</span> <span class="op">-&gt;</span> <span class="fu">gen_server:start_link({</span><span class="ch">local</span><span class="fu">,</span> <span class="fu">?</span><span class="va">MODULE</span><span class="fu">},</span> <span class="fu">?</span><span class="va">MODULE</span><span class="fu">,</span> <span class="fu">[],</span> <span class="fu">[{</span><span class="ch">debug</span><span class="fu">,</span> <span class="fu">[</span><span class="ch">trace</span><span class="fu">]}]).</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">incr()</span>  <span class="op">-&gt;</span> <span class="fu">gen_server:call(?</span><span class="va">MODULE</span><span class="fu">,</span> <span class="ch">incr</span><span class="fu">).</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">count()</span> <span class="op">-&gt;</span> <span class="fu">gen_server:call(?</span><span class="va">MODULE</span><span class="fu">,</span> <span class="ch">count</span><span class="fu">).</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">init([])</span> <span class="op">-&gt;</span> <span class="fu">{</span><span class="ch">ok</span><span class="fu">,</span> <span class="dv">0</span><span class="fu">}.</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="fu">handle_call(</span><span class="ch">incr</span><span class="fu">,</span> <span class="va">_From</span><span class="fu">,</span> <span class="va">State</span><span class="fu">)</span> <span class="op">-&gt;</span> <span class="fu">{</span><span class="ch">reply</span><span class="fu">,</span> <span class="ch">ok</span><span class="fu">,</span> <span class="va">State</span><span class="op">+</span><span class="dv">1</span><span class="fu">};</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="fu">handle_call(</span><span class="ch">count</span><span class="fu">,</span> <span class="va">_From</span><span class="fu">,</span> <span class="va">State</span><span class="fu">)</span> <span class="op">-&gt;</span> <span class="fu">{</span><span class="ch">reply</span><span class="fu">,</span> <span class="va">State</span><span class="fu">,</span> <span class="va">State</span><span class="fu">};</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="fu">handle_call(</span><span class="va">_Call</span><span class="fu">,</span> <span class="va">_From</span><span class="fu">,</span> <span class="va">State</span><span class="fu">)</span> <span class="op">-&gt;</span> <span class="fu">{</span><span class="ch">noreply</span><span class="fu">,</span> <span class="va">State</span><span class="fu">}.</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="fu">handle_cast(</span><span class="va">_Cast</span><span class="fu">,</span> <span class="va">State</span><span class="fu">)</span> <span class="op">-&gt;</span> <span class="fu">{</span><span class="ch">noreply</span><span class="fu">,</span> <span class="va">State</span><span class="fu">}.</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="fu">handle_info(</span><span class="va">_Info</span><span class="fu">,</span> <span class="va">State</span><span class="fu">)</span> <span class="op">-&gt;</span> <span class="fu">{</span><span class="ch">noreply</span><span class="fu">,</span> <span class="va">State</span><span class="fu">}.</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="fu">terminate(</span><span class="va">_Reason</span><span class="fu">,</span> <span class="va">_State</span><span class="fu">)</span> <span class="op">-&gt;</span> <span class="ch">ok</span><span class="fu">.</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="fu">code_change(</span><span class="va">_OldVsn</span><span class="fu">,</span> <span class="va">State</span><span class="fu">,</span> <span class="va">_Extra</span><span class="fu">)</span> <span class="op">-&gt;</span> <span class="fu">{</span><span class="ch">ok</span><span class="fu">,</span> <span class="va">State</span><span class="fu">}.</span></span></code></pre></div>
+<p>Here’s a small REPL session which shows how it works:</p>
+<pre><code>1&gt; c(counter).
+{ok,counter}
+2&gt; counter:start_link().
+{ok,&lt;0.87.0&gt;}
+3&gt; counter:incr().
+*DBG* counter got call incr from &lt;0.80.0&gt;
+*DBG* counter sent ok to &lt;0.80.0&gt;, new state 1
+ok
+4&gt; counter:incr().
+*DBG* counter got call incr from &lt;0.80.0&gt;
+*DBG* counter sent ok to &lt;0.80.0&gt;, new state 2
+ok
+5&gt; counter:count().
+*DBG* counter got call count from &lt;0.80.0&gt;
+*DBG* counter sent 2 to &lt;0.80.0&gt;, new state 2
+2</code></pre>
+<p>Now lets introduce a contrived change to the counter where we change
+the state to contain an additional counter, which starts at the value of
+the old one (see <code>code_change</code>). The two operations
+<code>incr</code> and <code>count</code> are changed to operate on the
+new counter leaving the old one alone.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode diff"><code class="sourceCode diff"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -1,5 +1,5 @@</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a> -module(counter).</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="st">--version(&quot;1&quot;).</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="va">+-version(&quot;2&quot;).</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a> -export([start_link/0, incr/0, count/0]).</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -13,14 +13,13 @@</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a> init([]) -&gt; {ok, 0}.</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="st">-handle_call(incr, _From, State) -&gt; {reply, ok, State+1};</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="st">-handle_call(count, _From, State) -&gt; {reply, State, State};</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="va">+handle_call(incr, _From, {OldState, State}) -&gt; {reply, ok, {OldState, State+1}};</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="va">+handle_call(count, _From, {OldState, State}) -&gt; {reply, State, {OldState, State}};</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a> handle_call(_Call, _From, State) -&gt; {noreply, State}.</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a> handle_cast(_Cast, State) -&gt; {noreply, State}.</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a> handle_info(_Info, State) -&gt; {noreply, State}.</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a> terminate(_Reason, _State) -&gt; ok.</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a><span class="st">-code_change(_OldVsn, State, _Extra) -&gt; {ok, State}.</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a><span class="va">+code_change(&quot;1&quot;, State, _Extra) -&gt; {ok, {State, State}}.</span></span></code></pre></div>
+<p>We can now upgrade the running process as follows:</p>
+<pre><code>6&gt; compile:file(counter).
+{ok,counter}
+7&gt; sys:suspend(counter).
+ok
+8&gt; code:purge(counter).
+false
+9&gt; code:load_file(counter).
+{module,counter}
+10&gt; sys:change_code(counter, counter, &quot;1&quot;, []).
+ok
+11&gt; sys:resume(counter).
+ok
+12&gt; counter:incr().
+*DBG* counter got call incr from &lt;0.80.0&gt;
+*DBG* counter sent ok to &lt;0.80.0&gt;, new state {2,3}
+ok
+13&gt; counter:incr().
+*DBG* counter got call incr from &lt;0.80.0&gt;
+*DBG* counter sent ok to &lt;0.80.0&gt;, new state {2,4}
+ok
+14&gt; counter:count().
+*DBG* counter got call count from &lt;0.80.0&gt;
+*DBG* counter sent 4 to &lt;0.80.0&gt;, new state {2,4}
+4</code></pre>
+<p>This repository is an experiment which tries to do something similar
+in Haskell for state machines of type
+<code>input -&gt; state -&gt; (state, output)</code>.</p>
+<h2 id="usage">Usage</h2>
+<p>Before we go into the details of how this is implemented in Haskell,
+lets have a look at how it looks from the user’s perspective.</p>
+<p>In one terminal run <code>cabal run exe</code> and in another
+terminal run <code>cabal repl</code> and type:</p>
+<pre><code>&gt; import LibMain
+&gt; incr
+&gt; count</code></pre>
+<p>This should show the following in the first terminal:</p>
+<pre><code>Output:    L Unit
+New state: Int 1
+
+Output:    R (Int 1)
+New state: Int 1</code></pre>
+<p>Where <code>L Unit</code> is the output from <code>incr</code> and
+<code>R (Int 1)</code> the output from <code>count</code>.</p>
+<p>Next we will upgrade the state machine from the REPL:</p>
+<pre><code>&gt; import Example.Counter
+&gt; upgrade (Upgrade counterSM counterSM2 upgradeState)
+&gt; incr
+&gt; incr
+&gt; count</code></pre>
+<p>Which will result in the following being printed in the first
+terminal:</p>
+<pre><code>Upgrade successful!
+
+Output:    L Unit
+New state: Pair (Int 1) (Int 1)
+
+Output:    L Unit
+New state: Pair (Int 1) (Int 2)
+
+Output:    R (Int 2)
+New state: Pair (Int 1) (Int 2)</code></pre>
+<p>If we try to upgrade again, we get an error:</p>
+<pre><code>The version running isn&#39;t the one the upgrade expects. Aborting upgrade.</code></pre>
+<h2 id="how-it-works">How it works</h2>
+<p>The basic idea is that we want our state machines to be seralisable
+so that we can send them over the network in order to perform remote
+upgrades.</p>
+<p>The key observation is that a state machine of type:</p>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">type</span> <span class="dt">SM</span> state input output <span class="ot">=</span> input <span class="ot">-&gt;</span> state <span class="ot">-&gt;</span> (state, output)</span></code></pre></div>
+<p>is an instance of <code>Arrow</code> and <code>Arrow</code>s allow us
+to express functions in a first-order way, as long as
+<code>arr :: Arrow a =&gt; (b -&gt; c) -&gt; a b c</code> is
+<em>not</em> used.</p>
+<p>The <code>Arrow</code> type class modulo <code>arr</code> is the
+<code>CartesianCategory</code> type class from Conal Elliott’s work on
+<a href="http://conal.net/papers/compiling-to-categories/">compiling to
+categories</a>.</p>
+<p>The <code>CartesianCategory</code> type class is defined as
+follows:</p>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">Category</span> k <span class="ot">=&gt;</span> <span class="dt">Cartesian</span> k <span class="kw">where</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="ot">  (&amp;&amp;&amp;) ::</span> k a c <span class="ot">-&gt;</span> k a d <span class="ot">-&gt;</span> k a (c, d)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="ot">  (***) ::</span> k b c <span class="ot">-&gt;</span> k b&#39; c&#39; <span class="ot">-&gt;</span> k (b, b&#39;) (c, c&#39;)</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="ot">  fst   ::</span> k (a, b) a</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="ot">  snd   ::</span> k (a, b) b</span></code></pre></div>
+<p>The initial (or free) <code>CartesianCategory</code> is given by the
+following data type:</p>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">FreeCC</span> a b <span class="kw">where</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Id</span><span class="ot">      ::</span> <span class="dt">FreeCC</span> a a</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Compose</span><span class="ot"> ::</span> <span class="dt">FreeCC</span> b c <span class="ot">-&gt;</span> <span class="dt">FreeCC</span> a b <span class="ot">-&gt;</span> <span class="dt">FreeCC</span> a c</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="ot">  (:&amp;&amp;&amp;)  ::</span> <span class="dt">FreeCC</span> a c <span class="ot">-&gt;</span> <span class="dt">FreeCC</span> a d <span class="ot">-&gt;</span> <span class="dt">FreeCC</span> a (c, d)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="ot">  (:***)  ::</span> <span class="dt">FreeCC</span> b c <span class="ot">-&gt;</span> <span class="dt">FreeCC</span> b&#39; c&#39; <span class="ot">-&gt;</span> <span class="dt">FreeCC</span> (b, b&#39;) (c, c&#39;)</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Fst</span><span class="ot">     ::</span> <span class="dt">FreeCC</span> (a, b) a</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Snd</span><span class="ot">     ::</span> <span class="dt">FreeCC</span> (a, b) b</span></code></pre></div>
+<p>with the, hopefully, obvious <code>Cartesian</code> instance.</p>
+<p>So the idea is that we write our program using the
+<code>Cartesian</code>:</p>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="ot">swap ::</span> <span class="dt">Cartesian</span> k <span class="ot">=&gt;</span> k (a, b) (b, a)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>swap <span class="ot">=</span> copy <span class="op">&gt;&gt;&gt;</span> <span class="fu">snd</span> <span class="op">***</span> <span class="fu">fst</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="ot">    copy ::</span> <span class="dt">Cartesian</span> k <span class="ot">=&gt;</span> k a (a, a)</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    copy <span class="ot">=</span> <span class="fu">id</span> <span class="op">&amp;&amp;&amp;</span> <span class="fu">id</span></span></code></pre></div>
+<p>And then we can instantiate <code>k</code> to be <code>FreeCC</code>
+and get ahold of the serialisable syntax.</p>
+<p>Ideally, since writing larger programs in this point-free style is
+tricky, we’d like to use Haskell’s arrow syntax:</p>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="ot">swap&#39; ::</span> <span class="dt">Cartesian</span> k <span class="ot">=&gt;</span> k (a, b) (b, a)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>swap&#39; <span class="ot">=</span> proc (x, y) <span class="ot">-&gt;</span> returnA <span class="op">-&lt;</span> (y, x)</span></code></pre></div>
+<p>After all <code>Cartesian</code> is merely <code>Arrow</code> without
+<code>arr</code> and we’ve shown how <code>swap</code> can be
+implemented without <code>arr</code>, but alas GHC nevertheless tries to
+translate <code>swap'</code> into something that uses <code>arr</code>
+which ruins our plan.</p>
+<p>Conal developed the <code>concat</code> GHC plugin to avoid this
+problem. It translates any monomorphic Haskell function into an
+<code>Arrow</code> of any user-defined Haskell Cartesian closed category
+(CCC)<a href="#fn1" class="footnote-ref" id="fnref1"
+role="doc-noteref"><sup>1</sup></a>.</p>
+<p>Oleg Grenrus also developed another GHC <a
+href="https://github.com/phadej/overloaded/blob/master/src/Overloaded/Categories.hs">plugin</a>
+that does the right thing and translates arrow syntax into
+<code>CartesianCategory</code> rather than <code>Arrow</code> which also
+solves the problem.</p>
+<p>Since both of these approaches rely on the GHC plugin machinery they
+are quite heavyweight. Conal’s translation works for any monomorphic
+function, so in a sense it solves a more general problem than we need.
+Oleg’s library is also solving a bunch of other problems that we don’t
+care about, it implements OverloadedStrings, OverloadedLists,
+OverloadedLabels using the plugin, and more importantly it doesn’t
+compile with GHC 9.2 or above.</p>
+<p>More recently Lucas Escot <a
+href="https://acatalepsie.fr/posts/overloading-lambda">showed</a> how to
+use ideas from Jean-Philippe Bernardy and Arnaud Spiwack’s <a
+href="https://arxiv.org/abs/2103.06195">paper</a> <em>Evaluating Linear
+Functions to Symmetric Monoidal Categories</em> (2021) to provide a
+small DSL which gives us something close to the arrow syntax. It’s also
+not quite perfect, in particular higher-order combinators cannot be
+expressed, but Lucas tells me that he’s working on a follow up post
+which tackles this problem. As we’ve seen in the above example, we also
+need to encode the state machine’s inputs and outputs as explicit
+<code>Either</code>s, it might be possible to get around this with some
+generically derived isomorphism though.</p>
+<p>Anyway, we use the <a
+href="https://github.com/stevana/hot-swapping-state-machines/blob/main/src/Syntax.hs">trick</a>
+that Lucas described to express our <a
+href="https://github.com/stevana/hot-swapping-state-machines/blob/3e0a0cf8f605cfd8edd60aef1ebe6fb002bbea3e/src/Example/Counter.hs#L6">state
+machines</a> and from that we get something <a
+href="https://github.com/stevana/hot-swapping-state-machines/blob/main/src/StateMachine.hs">similar</a>
+to the free Cartesian category (<code>FreeCC</code> above), which we
+then compile to the <a
+href="https://en.wikipedia.org/wiki/Categorical_abstract_machine">Categorical
+abstract machine</a> (CAM). This <a
+href="https://github.com/stevana/hot-swapping-state-machines/blob/main/src/Compiler.hs">compilation</a>
+process is rather straight-forward as <a
+href="https://github.com/stevana/hot-swapping-state-machines/blob/main/src/AbstractMachine.hs">CAM</a>
+is similar to <code>FreeCC</code>. The CAM <a
+href="https://github.com/stevana/hot-swapping-state-machines/blob/main/src/Code.hs">“bytecode”</a>
+is our serialised state machine and this is what gets sent over the
+network when doing upgrades.</p>
+<p>The idea is that each deployed node runs a CAM (or some other
+abstract machine), when we <a
+href="https://github.com/stevana/hot-swapping-state-machines/blob/3f7c4081d84a6ca3eeafbe892ca0798b96f61645/src/LibMain.hs#L25">deploy</a>
+the node we specify a initial state machine (SM) to run there. We then
+remotely upgrade the state machine on a node by sending it CAM bytecode
+of the old SM (this is used to verify that we are not updating the wrong
+SM), the bytecode for the new SM and the bytecode for a state migration
+(old state to new state). The state migration is <a
+href="https://github.com/stevana/hot-swapping-state-machines/blob/3f7c4081d84a6ca3eeafbe892ca0798b96f61645/src/LibMain.hs#L65">type-safe</a>.</p>
+<p>We could also serialise the free Cartesian category and send that
+over the network, but the bytecode is “flatter” (i.e. can more easily be
+turned into a list of bytecodes) and hopefully a more stable API. I can
+imagine situations where the syntax for writing state machines changes
+or gets more expressive, but the bytecode stays the same. Which is a
+good thing, since upgrading the abstract machine on a node can probably
+not be done as easily without any downtime.</p>
+<h2 id="contributing">Contributing</h2>
+<p>I believe this is a good starting point for further experiments, here
+are a few ideas:</p>
+<ul class="task-list">
+<li><input type="checkbox" />Generate <code>FreeFunc s a b</code> so
+that the <a
+href="https://github.com/stevana/hot-swapping-state-machines/blob/main/src/Correctness.hs">correctness</a>
+can be tested using property-based testing;</li>
+<li><input type="checkbox" />Backwards compatibility, i.e. allow old
+inputs after an upgrade, perhaps similar to how state migrations are
+handled by providing a <code>FreeFunc ()       oldInput newInput</code>
+as part of <a
+href="https://github.com/stevana/hot-swapping-state-machines/blob/02b84cf590addcb35d9ac524070ac93859e1b035/src/LibMain.hs#L62"><code>Upgrade</code></a>;</li>
+<li><input type="checkbox" />Automatic state migration? C.f. <a
+href="https://github.com/turion/essence-of-live-coding#migration">essence-of-live-coding</a>;</li>
+<li><input type="checkbox" />Downgrades and rollback in case upgrades
+fail;</li>
+<li><input type="checkbox" />Improve the DSL for writing state machines:
+<ul>
+<li>Either building upon the current approach described in <a
+href="https://acatalepsie.fr/posts/overloading-lambda"><em>Overloading
+the lambda abstraction in Haskell</em></a> by Lucas;</li>
+<li>Or perhaps using a custom preprocessor and quasiquoter for Cartesian
+(closed) categories, see Pepe Iborra’s <a
+href="https://hackage.haskell.org/package/arrowp-qq">arrowp-qq</a> for
+inspiration;</li>
+<li>Or porting the <a
+href="https://hackage.haskell.org/package/overloaded-0.3.1/docs/Overloaded-Categories.html">Overloaded.Categories</a>
+bits from Oleg’s plugin to newer GHC versions;</li>
+<li>Or actually fixing GHC, I’m not sure if there’s a proposal for this
+already, I think the closest thing I could find is <a
+href="https://github.com/ghc-proposals/ghc-proposals/pull/303">this</a>
+(stale) one by Alexis King.</li>
+</ul></li>
+<li><input type="checkbox" />In Erlang upgrades are usually not done
+directly on <code>gen_server</code> but rather via the
+<code>application</code> and <code>release</code>s behaviours. In short
+one <code>application</code> is a supervisor tree and a
+<code>release</code> is one or more <code>application</code>s. For more
+see <a
+href="https://kennyballou.com/blog/2016/12/elixir-hot-swapping/index.html">appup
+and relups</a>, as well as how this can be automated using rebar3 over
+<a
+href="https://lrascao.github.io/automatic-release-upgrades-in-erlang/">here</a>.
+What would porting that over to our setting look like?</li>
+<li><input type="checkbox" />How does Erlang handle upgrades of the VM
+without downtime?</li>
+<li><input type="checkbox" />Would anything need to be changed if we
+tried to combine the arrow-based state machines with <a
+href="https://github.com/stevana/supervised-state-machines">supervisors</a>
+or <a href="https://github.com/stevana/coroutine-state-machines">async
+I/O</a>?</li>
+<li><input type="checkbox" />Can we implement the abstract machine and
+event loop using <a
+href="https://github.com/jart/cosmopolitan">Cosmopolitan</a> or
+WebAssembly for portability?</li>
+<li><input type="checkbox" />Imagine if we wanted to develop state
+machines in an other programming language but still target the CAM. Most
+programming languages don’t have GADTs so type-safe the free Cartesian
+category will not be possible to implement, furthermore even if we could
+there’s the problem of working with combinators vs arrow syntax… Is
+there a more low-tech solution that would be easier to port to less
+featureful languages?</li>
+</ul>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a
+href="https://github.com/turion/essence-of-live-coding"><code>essence-of-live-coding</code></a>:
+FRP library with hot code swapping support.</li>
+<li>Dan Piponi’s <code>circuit</code>s are similar to our state
+machines:
+<ul>
+<li><a
+href="http://blog.sigfpe.com/2017/01/addressing-pieces-of-state-with.html"
+class="uri">http://blog.sigfpe.com/2017/01/addressing-pieces-of-state-with.html</a>;</li>
+<li><a
+href="http://blog.sigfpe.com/2017/01/building-free-arrows-from-components.html"
+class="uri">http://blog.sigfpe.com/2017/01/building-free-arrows-from-components.html</a>.</li>
+</ul></li>
+<li>Chris Penner’s <em>Deconstructing Lambdas</em> <a
+href="https://youtube.com/watch?v=xZmPuz9m2t0">talk</a> (2021);</li>
+<li>The <em>Dynamic code change</em> chapter (p. 72) in Joe Armstrong’s
+PhD <a
+href="http://kth.diva-portal.org/smash/record.jsf?pid=diva2%3A9492&amp;dswid=2250">thesis</a>
+(2003).</li>
+</ul>
+<h2 id="acknowledgments">Acknowledgments</h2>
+<p>Thanks to Daniel Gustafsson for helping me understand
+<code>Port</code> from the <em>Overloading the lambda abstraction in
+Haskell</em> blog post!</p>
+<section id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>The closed part of Cartesian <em>closed</em> category
+means that we also add exponents (not just finite products),
+i.e. analogous to <a
+href="https://hackage.haskell.org/package/base-4.17.0.0/docs/Control-Arrow.html#t:ArrowApply"><code>ArrowApply</code></a>.<a
+href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+</main>
+</body>
+</html>

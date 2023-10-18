@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Stevan Andjelkovic" />
+  <title>Stevan's notes – Domain-specific debuggers</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="alternate" type="application/rss+xml"
+        title="RSS feed"
+        href="rss.xml" />
+  <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+  <nav id="nav">
+    <span class="title">Stevan's notes...</span>
+    <a href="index.html">sorted by topic,</a>
+    <a href="chronological.html">by time,</a>
+    <a href="rss.xml">or as a feed <img height="10px" src="rss.svg" />!</a>
+    <a href="about.html">What's this about?</a>
+  </nav>
+</header>
+<hr />
+<main>
+<h1>Domain-specific debuggers</h1>
+<nav id="TOC" class="sidenote" role="doc-toc">
+<h2 id="toc-title">Table of contents</h2>
+<ul>
+<li><a href="#motivation" id="toc-motivation">Motivation</a></li>
+<li><a href="#idea" id="toc-idea">Idea</a></li>
+<li><a href="#examples" id="toc-examples">Examples</a>
+<ul>
+<li><a href="#distributed-systems"
+id="toc-distributed-systems">Distributed systems</a></li>
+<li><a href="#games" id="toc-games">Games</a></li>
+</ul></li>
+<li><a href="#optimisations"
+id="toc-optimisations">Optimisations</a></li>
+<li><a href="#contributing" id="toc-contributing">Contributing</a></li>
+<li><a href="#see-also" id="toc-see-also">See also</a></li>
+</ul>
+</nav>
+<h2 id="motivation">Motivation</h2>
+<ul>
+<li><p>General purpose debuggers such as <a
+href="https://www.sourceware.org/gdb/"><code>gdb</code></a> are
+underused</p></li>
+<li><p>Theory: people who use general purpose debuggers also care about
+memory layout, e.g.:</p>
+<ul>
+<li><p>John Carmack on using <a
+href="https://www.youtube.com/watch?v=tzr7hRXcwkw">debuggers</a> and his
+old <a
+href="https://github.com/oliverbenns/john-carmack-plan/blob/53c00aedaeeb23dee06b28ba985c3b3b4d61107c/archive/1998-10-14.md">.plan</a>
+(1998);</p></li>
+<li><p>Martin Thompson also <a
+href="https://youtu.be/1KRYH75wgy4?t=411">says</a> “step through your
+code using a debugger”.</p></li>
+</ul></li>
+<li><p>Possible fix: domain-specific debuggers, that focus on displaying
+your application state at the level of abstraction that you think of it,
+rather than how the programming language that you are using happens to
+lay it out in memory</p></li>
+</ul>
+<h2 id="idea">Idea</h2>
+<ul>
+<li>Assumptions: determinism, state machine</li>
+<li>Record inputs (and states) in circular buffer, dump to disk/SQLite
+db on error</li>
+</ul>
+<h2 id="examples">Examples</h2>
+<h3 id="distributed-systems">Distributed systems</h3>
+<ul>
+<li>TigerbeetleDB’s demo <a href="https://youtu.be/w3WYdYyjek4?t=3175"
+class="uri">https://youtu.be/w3WYdYyjek4?t=3175</a></li>
+<li><a
+href="https://spritely.institute/news/introducing-a-distributed-debugger-for-goblins-with-time-travel.html"
+class="uri">https://spritely.institute/news/introducing-a-distributed-debugger-for-goblins-with-time-travel.html</a></li>
+</ul>
+<h3 id="games">Games</h3>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=72y2EC5fkcE">Tomorrow
+Corporation Tech Demo</a></li>
+</ul>
+<h2 id="optimisations">Optimisations</h2>
+<ul>
+<li>Avoid storing the state in the trace (if deterministic)</li>
+<li>Avoiding infinite traces via state snapshots</li>
+<li>Turn off logging (if deterministic)</li>
+<li>Audit trails</li>
+</ul>
+<h2 id="contributing">Contributing</h2>
+<ul>
+<li>General purpose formats for states, inputs and outputs against which
+generic debuggers can be written against? Structured JSON? Binary?</li>
+</ul>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><p>The history of <a
+href="http://jakob.engbloms.se/archives/1564">time traveling
+debuggers</a></p></li>
+<li><p><a href="https://werat.dev/blog/what-a-good-debugger-can-do/"
+class="uri">https://werat.dev/blog/what-a-good-debugger-can-do/</a></p></li>
+<li><p>Mozilla’s <a
+href="https://github.com/rr-debugger/rr"><code>rr</code>
+debugger</a></p></li>
+<li><p><a href="https://youtu.be/-HhI3BEIqWw?t=1199">Visualising
+application state</a></p></li>
+<li><p>Command sourcing</p></li>
+<li><p>Jamie Brandon’s post <a
+href="https://www.scattered-thoughts.net/writing/local-state-is-harmful/"><em>Local
+state is harmful</em></a></p>
+<ol start="2014" type="1">
+<li></li>
+</ol></li>
+</ul>
+</main>
+</body>
+</html>

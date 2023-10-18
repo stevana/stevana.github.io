@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Stevan Andjelkovic" />
+  <title>Stevan's notes – On the role of practice in programming</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="alternate" type="application/rss+xml"
+        title="RSS feed"
+        href="rss.xml" />
+  <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+  <nav id="nav">
+    <span class="title">Stevan's notes...</span>
+    <a href="index.html">sorted by topic,</a>
+    <a href="chronological.html">by time,</a>
+    <a href="rss.xml">or as a feed <img height="10px" src="rss.svg" />!</a>
+    <a href="about.html">What's this about?</a>
+  </nav>
+</header>
+<hr />
+<main>
+<h1>On the role of practice in programming</h1>
+<nav id="TOC" class="sidenote" role="doc-toc">
+<h2 id="toc-title">Table of contents</h2>
+<ul>
+<li><a href="#motivation" id="toc-motivation">Motivation</a></li>
+<li><a href="#defining-practice" id="toc-defining-practice">Defining
+practice</a></li>
+<li><a href="#putting-practice-into-a-practice"
+id="toc-putting-practice-into-a-practice">Putting practice into a
+practice</a></li>
+<li><a href="#practice-and-software-engineering"
+id="toc-practice-and-software-engineering">Practice and software
+engineering</a></li>
+<li><a href="#processes-and-tools-that-encourage-practice"
+id="toc-processes-and-tools-that-encourage-practice">Processes and tools
+that encourage practice?</a>
+<ul>
+<li><a href="#the-status-quo" id="toc-the-status-quo">The status
+quo</a></li>
+<li><a href="#possible-tricks-to-steal"
+id="toc-possible-tricks-to-steal">Possible tricks to steal</a></li>
+</ul></li>
+<li><a href="#contributing" id="toc-contributing">Contributing</a></li>
+<li><a href="#see-also" id="toc-see-also">See also</a></li>
+</ul>
+</nav>
+<h2 id="motivation">Motivation</h2>
+<p>Practice makes perfect, the saying goes. Yet, very dedicated, people
+appear to spend a lifetime programming without producing a masterpiece.
+Why is that? The perhaps most common explaination is that the field is
+still young and we haven’t figured out how to engineer things with the
+same degree of accurency and predicability as other more established
+fields. A less common explaination, which I’d like to explore in this
+post, is that just because we go to work and program the whole day long
+it doesn’t mean that we are in fact practicing.</p>
+<h2 id="defining-practice">Defining practice</h2>
+<p>Mike Acton gave an <a
+href="https://youtu.be/qWJpI2adCcs?t=3506">interview</a> where he said
+that practice starts <em>from scratch every time</em>, unlike a project
+at work or as a hobby which builds upon previous work.</p>
+<p>I suppose the key thing is that you redo some <em>specific</em> thing
+many times until you become really good at it. Most projects involve
+many parts, so it’s unlikely that you are repeatedly doing some specific
+thing over and over again. This could explain why working on projects
+isn’t practice.</p>
+<p>One exception could be if your project is relatively small and you
+are doing it over and over again, then that might qualify as
+practice.</p>
+<p>Mike gives the example of setting aside half an hour per day to
+practice to try to implement an <a
+href="https://en.wikipedia.org/wiki/Asteroids_(video_game)">Asteroids</a>
+clone. In the beginning you’ll probably not get very far, throw it away,
+start from scratch, by day 300 you might be able to finish implementing
+the whole game in the allocated time. Perhaps Asteroids isn’t the best
+thing to practice, but you get the idea.</p>
+<p>While on the topic of games and getting good at programming, it’s
+interesting to note that John Carmack and the rest of id Software <a
+href="https://youtu.be/IzqdZAYcwfY?t=540">developing 13 games in a
+year</a>. Early id Software is an extreme example, most of us probably
+need to practice on something much smaller.</p>
+<h2 id="putting-practice-into-a-practice">Putting practice into a
+practice</h2>
+<p>Having established what we mean by practice, let’s turn our attention
+to how to put practice into a practice.</p>
+<p>Joe Armstrong is a good example. He <a
+href="https://vimeo.com/1344065#t=8m30s">explains</a> that he often
+wrote a piece of code and the next day he threw it away and rewrote it
+from scratch. In the early days of Erlang it was possible to do a total
+rewrite of the whole language in less than a week. New language features
+were added in one work session, if you couldn’t get the idea out of your
+brain and code it up in that time then you didn’t do it, Joe <a
+href="https://dl.acm.org/action/downloadSupplement?doi=10.1145%2F1238844.1238850&amp;file=m6-armstrong-h.mov">explained</a>
+(17:10). In a later talk he elaborated <a
+href="https://youtu.be/rQIE22e0cW8?t=3492">saying</a>:</p>
+<blockquote>
+<p>“We need to break systems down into small understandable components
+with message passing between them and with contracts describing whats
+going on between them so we can understand them, otherwise we just won’t
+be able to make software that works. I think the limit of human
+understandability is something like 128KB of code in any language. So we
+really need to box things down into small units of computation and
+formally verify them and the protocols in particular.”</p>
+</blockquote>
+<p>Chuck Moore <a
+href="https://www.red-gate.com/simple-talk/opinion/geek-of-the-week/chuck-moore-geek-of-the-week/">said</a>
+something in similar:</p>
+<blockquote>
+<p>“Instead of being rewritten, software has features added. And becomes
+more complex. So complex that no one dares change it, or improve it, for
+fear of unintended consequences. But adding to it seems relatively safe.
+We need dedicated programmers who commit their careers to single
+applications. Rewriting them over and over until they’re perfect.”
+(2009)</p>
+</blockquote>
+<blockquote>
+<p>“… Such people will never exist. The world is too full of more
+interesting things to do. The only hope is to abandon complex software.
+Embrace simple. Forget backward compatibility.”</p>
+</blockquote>
+<ul>
+<li><p>Both Joe and Chuck ask for simple systems, so that they can
+easily be rewritten (i.e. practiced on)</p></li>
+<li><p>Chuck Moore reimplemented the same Forth many times, in fact
+Forth was designed to be easily reimplementable on new hardware (this
+was back when new CPUs had new instruction sets), he also iterated on
+the Forth itself (…, colorForth, what where the earlier
+iterations?)</p></li>
+<li><p>OKAD, <a
+href="https://en.wikipedia.org/wiki/Very_Large_Scale_Integration">VLSI</a>
+design tools, “I’ve spent more time with it that any other; have
+re-written it multiple times; and carried it to a satisfying level of
+maturity.”</p></li>
+<li><p>John McCarthy’s Lisp with its meta-circular
+implementation?</p></li>
+</ul>
+<h2 id="practice-and-software-engineering">Practice and software
+engineering</h2>
+<ul>
+<li><p>We’ve defined pratice, we’ve seen examples of people who appear
+to use it on personal level, what about scaling it up to teams?</p></li>
+<li><p>Can whole projects be simple? Here’s two Turing award winners who
+think so:</p></li>
+<li><p>“At last, there breezed into my office the most senior manager of
+all, a general manager of our parent company, Andrew St. Johnston. I was
+surprised that he had even heard of me.”You know what went wrong?” he
+shouted – he always shouted – “You let your programmers do things which
+you yourself do not understand.” I stared in astonishment. He was
+obviously out of touch with present day realities. How could one person
+ever understand the whole of a modem software product like the Elliott
+503 Mark II software system? I realized later that he was absolutely
+right; he had diagnosed the true cause of the problem and he had planted
+the seed of its later solution.” –</p>
+<p>The emperor’s old clothes, Tony Hoare (1980) <a
+href="https://dl.acm.org/doi/10.1145/1283920.1283936"
+class="uri">https://dl.acm.org/doi/10.1145/1283920.1283936</a></p></li>
+<li><p>“The belief that complex systems require armies of designers and
+programmers is wrong. A system that is not understood in its entirety,
+or at least to a significant degree of detail by a single individual,
+should probably not be built.” – <a
+href="https://people.inf.ethz.ch/wirth/Articles/LeanSoftware.pdf">A Plea
+for Lean Software</a> by Niklaus Wirth (1995)</p></li>
+<li><p>Joe story about new manager asking for somebody who can explain
+the whole system to him. “Does anybody understand the entire system? If
+so, please come and talk to me. Nobody put their hand up. In the Erlang
+group, if somebody would have asked that question, several hands would
+have gone up.” <a href="https://youtu.be/-I_jE0l7sYQ?t=1389"
+class="uri">https://youtu.be/-I_jE0l7sYQ?t=1389</a></p></li>
+</ul>
+<h2 id="processes-and-tools-that-encourage-practice">Processes and tools
+that encourage practice?</h2>
+<ul>
+<li><p>Let’s assume that Mike, Joe, Chuck, Tony and Niklaus are on to
+something and that it’s in fact possible to <em>designing for
+practice</em> even in team-sized projects (aka software development as
+opposed to programming)</p></li>
+<li><p>What would processes and tools that help encourge such
+development look like?</p></li>
+</ul>
+<h3 id="the-status-quo">The status quo</h3>
+<ul>
+<li><p>TDD: write test that fails, simplest possilbe implementation that
+makes test pass, then refactor <em>incrementally</em> until satisfactory
+while keeping tests green.</p>
+<ul>
+<li>start from scratch rather than refactor?</li>
+<li>time limit (e.g. Joe’s one working session)</li>
+<li>size limit (e.g. Joe’s 128KB?)</li>
+<li>test-driven design: easily testable system is well-designed
+system</li>
+<li>practice-driven design: easily rewritable system is a well-designed
+system?
+<ul>
+<li>the fact that a system is easily and fully testable surely helps
+when rewriting from scratch, but it feels like there’s more to it?</li>
+<li>good spec / documentation / literate programming? Joe’s “the
+research”</li>
+<li>ability to “zoom” in and out on spec / docs? Refinement.</li>
+</ul></li>
+</ul></li>
+<li><p>Refactor vs rewrite from scratch debate?</p></li>
+<li><p>diy vs 3rd party: <a
+href="http://ithare.com/overused-code-reuse/"
+class="uri">http://ithare.com/overused-code-reuse/</a></p>
+<ul>
+<li><a href="https://lobste.rs/s/yubtob/build_vs_buy"
+class="uri">https://lobste.rs/s/yubtob/build_vs_buy</a></li>
+<li><a
+href="https://www.joelonsoftware.com/2001/10/14/in-defense-of-not-invented-here-syndrome/"
+class="uri">https://www.joelonsoftware.com/2001/10/14/in-defense-of-not-invented-here-syndrome/</a></li>
+<li><a
+href="https://eli.thegreenplace.net/2017/benefits-of-dependencies-in-software-projects-as-a-function-of-effort/"
+class="uri">https://eli.thegreenplace.net/2017/benefits-of-dependencies-in-software-projects-as-a-function-of-effort/</a></li>
+<li>See chapter 4 of <em>Development and Deployment of Multiplayer
+Online Games, Vol. II</em> by Sergey Ignatchenko (2020).</li>
+</ul></li>
+</ul>
+<h3 id="possible-tricks-to-steal">Possible tricks to steal</h3>
+<ul>
+<li><p>Parallel and independent development, c.f. Dave Snowden and <a
+href="https://en.wikipedia.org/wiki/Wisdom_of_the_crowd">wisdom of the
+crowd</a></p></li>
+<li><p>Encourage new team members to rewrite?</p></li>
+<li><p>What would programming languages look like if we applied these
+principles? Forth is a good example, are there others?</p></li>
+<li><p>Forth, bounded by blocks: “Disk memory is divided into units
+called “blocks.” Each block holds 1,024 characters of source text or
+binary data, traditionally organized as 16 lines of 64 characters.” <a
+href="https://www.forth.com/starting-forth/3-forth-editor-blocks-buffer/"
+class="uri">https://www.forth.com/starting-forth/3-forth-editor-blocks-buffer/</a></p></li>
+</ul>
+<blockquote>
+<p>There is a great similarity between colorForth and classic Forth:
+1024-byte blocks. Factoring source code into blocks is equivalent to
+creating paragraphs in English. It breaks a wall of text into pieces
+that highlight related ideas. Many Forth implementations abandoned this
+advantage and organized source into files of arbitrary length. Bad idea.
+Hugely debated. In addition, the text in a block can be displayed on a
+monitor without scrolling. A quantized unit of source code all visible
+at once.</p>
+</blockquote>
+<ul>
+<li><p>What about libraries? Can we design building blocks that allow us
+to build reliable, scalable and maintainable systems, in a way such that
+the building blocks can be understood and implemented by a single
+programmer in a day? Similar to how features were added to early Erlang,
+as mentioned above?</p></li>
+<li><p>One of the goals of this repository is to try to identify those
+building blocks and try to understand them well enough, document what
+Joe <a href="https://youtu.be/h8nmzPh5Npg?t=1302">calls</a> “the
+research”, perhaps through several reimplementations from scratch, so
+that they can be implemented by others in a day.</p></li>
+<li><p>More important to provide what Joe called “the research” than to
+provide a library?</p></li>
+<li><p>“To gain experience, there’s no sustitute for one’s own
+programming effort. Organizing a team into managers, designers,
+programers, analysts and users is detrimental. All should participate
+(with differing degrees of emphasis) in all aspects of development. In
+particular, everybody – including managers – should also be product
+users for a time. This last measure is the best guarantee to correct
+mistakes and perhaps also eliminate redundancies.” – Niklaus
+Wirth</p></li>
+<li><p>“What I cannot create, I do not understand” – Richard
+Feynman</p></li>
+</ul>
+<h2 id="contributing">Contributing</h2>
+<ul>
+<li><p>Other examples of processes or tools that encourage
+practice?</p></li>
+<li><p>Any references in the same general (or completely opposite)
+direction would be appreciated!</p></li>
+<li><p>About Rich Hickey (creator of Clojure), some interview probably
+with somebody else from Cognitect (half?) jokingly: “Rick doesn’t write
+programs longer than 1000 lines” (I cannot find the reference, I think
+it was a clojure meetup in london with a discussion after the talk?
+perhaps on simulant or repl driven development?)</p></li>
+</ul>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="https://codingdojo.org/practices/WhatIsCodingDojo/">Coding
+dojos</a> are spaces specifically designed for <em>practicing</em>;</li>
+<li><a
+href="https://www.hillelwayne.com/post/are-we-really-engineers/">Are We
+Really Engineers?</a>;</li>
+<li>Mike Acton’s talk on <a
+href="https://youtube.com/watch?v=rX0ItVEVjHc">Data-Oriented
+Design</a>.</li>
+</ul>
+</main>
+</body>
+</html>

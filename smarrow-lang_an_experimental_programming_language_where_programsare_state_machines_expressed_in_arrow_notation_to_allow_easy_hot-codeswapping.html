@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Stevan Andjelkovic" />
+  <title>Stevan's notes – smarrow-lang</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="alternate" type="application/rss+xml"
+        title="RSS feed"
+        href="rss.xml" />
+  <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+  <nav id="nav">
+    <span class="title">Stevan's notes...</span>
+    <a href="index.html">sorted by topic,</a>
+    <a href="chronological.html">by time,</a>
+    <a href="rss.xml">or as a feed <img height="10px" src="rss.svg" />!</a>
+    <a href="about.html">What's this about?</a>
+  </nav>
+</header>
+<hr />
+<main>
+<h1>smarrow-lang</h1>
+<nav id="TOC" class="sidenote" role="doc-toc">
+<h2 id="toc-title">Table of contents</h2>
+<ul>
+<li><a href="#why-a-new-language" id="toc-why-a-new-language">Why a new
+language?</a></li>
+<li><a href="#getting-started" id="toc-getting-started">Getting
+started</a></li>
+<li><a href="#features" id="toc-features">Features</a>
+<ul>
+<li><a href="#first-class-state-machines"
+id="toc-first-class-state-machines">First-class state machines</a></li>
+<li><a href="#arrow-notation" id="toc-arrow-notation">Arrow
+notation</a></li>
+<li><a href="#hot-code-swapping" id="toc-hot-code-swapping">Hot-code
+swapping</a></li>
+<li><a href="#adapters" id="toc-adapters">Adapters</a></li>
+<li><a href="#simulation-testing" id="toc-simulation-testing">Simulation
+testing</a></li>
+<li><a href="#time-travelling-debugger"
+id="toc-time-travelling-debugger">Time-travelling debugger</a></li>
+<li><a href="#deployments-via-supervision-trees"
+id="toc-deployments-via-supervision-trees">Deployments via supervision
+trees</a></li>
+<li><a href="#no-modules-or-packages" id="toc-no-modules-or-packages">No
+modules or packages</a></li>
+<li><a href="#upgrades" id="toc-upgrades">Upgrades</a></li>
+<li><a href="#protocols" id="toc-protocols">Protocols</a></li>
+<li><a href="#horizonal-composition--pipelining"
+id="toc-horizonal-composition--pipelining">Horizonal composition –
+pipelining</a></li>
+<li><a href="#vertical-composition"
+id="toc-vertical-composition">Vertical composition</a></li>
+<li><a href="#capabilities" id="toc-capabilities">Capabilities</a></li>
+<li><a href="#formal-verification" id="toc-formal-verification">Formal
+verification</a></li>
+</ul></li>
+<li><a href="#contributing" id="toc-contributing">Contributing</a>
+<ul>
+<li><a href="#to-do" id="toc-to-do">To do</a></li>
+</ul></li>
+<li><a href="#see-also" id="toc-see-also">See also</a></li>
+</ul>
+</nav>
+<p><code>smarrow-lang</code> is an experimental programming language
+where programs are state machines expressed in <a
+href="https://www.haskell.org/arrows/syntax.html">arrow
+notation</a>.</p>
+<p>State machines communicate with each other by sending messages, a bit
+like Erlang processes but with more restrictions. For example, a state
+machine may not spawn new state machines, and its state, input and
+output types are specified at compile time.</p>
+<p>These restrictions, or extra structure, are the basis for (to be
+implemented) features such as:</p>
+<ul>
+<li>Hot-code swapping;</li>
+<li>Type-safe state migrations;</li>
+<li>Input and output evolution.</li>
+<li><a
+href="https://apple.github.io/foundationdb/testing.html">Simulation
+testing</a> and formal verification.</li>
+</ul>
+<p>The goal of the language is to provide a testbed for experimenting
+with how to program distributed systems.</p>
+<h2 id="why-a-new-language">Why a new language?</h2>
+<p>Barbara Liskov gave two good reasons in her Turing award <a
+href="https://amturing.acm.org/vp/liskov_1108679.cfm">lecture</a>
+(2008):</p>
+<blockquote>
+<p>“Programmers write programs in programming languages, so programming
+language constructs are a very good way of communicating to programmers
+if you are trying to get them to understand how to build programs.”</p>
+</blockquote>
+<blockquote>
+<p>“There’s a funny disconnect in how we write distributed programs. You
+write your individual modules, but then when you want to connect them
+together you’re out of the programming language and into this other
+world. Maybe we need languages that are a little bit more complete now,
+so that we can write the whole thing in the language.”</p>
+</blockquote>
+<h2 id="getting-started">Getting started</h2>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> cabal run smarrow-deploy <span class="kw">&amp;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> cat example/Counter.smarr</span></code></pre></div>
+<pre><code>machine Counter where
+
+state : { count : Int = 0 }
+
+language
+  : Incr -&gt; {}
+  | Read -&gt; Int
+
+function i -&gt; case i of
+  { Incr -&gt; do { s &lt;- get -&lt; {}; put -&lt; { count = s.count + 1 } }
+  ; Read -&gt; get -&lt; {}
+  }</code></pre>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> cabal run smarrow <span class="at">--</span> deploy counter example/Counter.smarr</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">Deployed:</span> counter</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> cabal run smarrow <span class="at">--</span> invoke counter Incr</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="ex">{}</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> cabal run smarrow <span class="at">--</span> invoke counter Read</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="ex">1</span></span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode diff"><code class="sourceCode diff"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>$ diff -u example/Counter.smarr example/Counter2.smarr</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="st">-   put -&lt; { count = s.count + 1 }</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="va">+   put -&lt; { count = s.count + 2 }</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>$ cabal run smarrow -- deploy counter example/Counter2.smarr</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>Upgraded: counter</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> cabal run smarrow <span class="at">--</span> invoke counter Read</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ex">1</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> cabal run smarrow <span class="at">--</span> invoke counter Incr</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="ex">{}</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> cabal run smarrow <span class="at">--</span> invoke counter Read</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="ex">3</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> fg</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="ex">cabal</span> run smarrow-deploy</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="ex">^C</span></span></code></pre></div>
+<h2 id="features">Features</h2>
+<h3 id="first-class-state-machines">First-class state machines</h3>
+<p>In functional programming languages functions are first-class. In
+<code>smarrow</code> we experiment with making state machines
+first-class instead.</p>
+<h3 id="arrow-notation">Arrow notation</h3>
+<p>State machines are to <code>smarrow</code> what functions are to
+functional programing languages. A state machine has the type:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>  input <span class="ot">-&gt;</span> state <span class="ot">-&gt;</span> (state, output)</span></code></pre></div>
+<p>It’s a bit clunky to have to thread through the state explicitly
+though. We could have used a state monad and thereby get do-notation,
+which would improve the egonomics of writing state machines, but in
+<code>smarrow</code> we go down an other path and use arrow notation
+instead for reasons we shall explain next.</p>
+<h3 id="hot-code-swapping">Hot-code swapping</h3>
+<p>Conal Elliott’s work on <a
+href="http://conal.net/papers/compiling-to-categories/">compiling to
+categories</a> shows how <code>Arrow</code>s that don’t use
+<code>arr</code> can be compiled to first-order combinators (Cartesian
+closed categories).</p>
+<p>We use this fact to compile our state machines (which are
+<code>Arrow</code>s that don’t use <code>arr</code>) to a bytecode
+inspired by Cartesian closed categories. This bytecode can be sent over
+the write to remote nodes and update state machines without downtime,
+similar to hot-code swapping à la Erlang.</p>
+<h3 id="adapters">Adapters</h3>
+<p>State machines are pure, if we want them to do something useful we
+must hook them up to inputs from the “real world”. Adapters allow us to
+turn, for example, an HTTP server request into an input which we can
+then feed to a state machine and reply to the request using the output
+that the state machine produced.</p>
+<p>Similary console I/O or a REPL could be used as adapters.</p>
+<h3 id="simulation-testing">Simulation testing</h3>
+<p>Another useful adaptor is to deploy a bunch of communicating state
+machines on a fake network where all messages are kept in an in-memory
+priorty queue sorted by arrival time. We can then simulate the network,
+by popping the queue, advancing the clock to the arrival time, feed it
+to the receiving state machine, collect the outputs, generate arrival
+times for the outputs and feed them back into the queue. The arrival
+times are generated using a pseudo number generater fed with a seed,
+this allows us to determinstically get different interleaving of
+messages. The fact that we advance the clock to the arrival time makes
+timeouts happen without having to wait for them, which is useful when
+combined with fault injection of network faults. Essentially this gives
+us a discrete-event simulation, which is much faster than testing using
+Jepsen and is determinstic too!</p>
+<h3 id="time-travelling-debugger">Time-travelling debugger</h3>
+<p>If we record all inputs that we feed the state machines, then we can
+implement a time-travelling debugger by merely feeding the inputs
+one-by-one to the state machines and observing how the states change
+over time.</p>
+<p>We can use snapshots and fixed sized ring-buffers of inputs in case
+there are too many inputs to store then all.</p>
+<h3 id="deployments-via-supervision-trees">Deployments via supervision
+trees</h3>
+<p>XXX:</p>
+<h3 id="no-modules-or-packages">No modules or packages</h3>
+<p>A state machine is a unit of deployment, unlike a (pure) function. A
+state machine must be under version control before it can be deployed,
+it’s therefore globally uniquely identifiable and therefore there’s no
+need to further package it up.</p>
+<p>State machines carry automatically checked semantic versioning and
+other metadata making it possible to search for state machines,
+subscribe to (security) updates for ones that you’ve deployed, etc.</p>
+<p>See also:</p>
+<ul>
+<li><a
+href="https://erlang.org/pipermail/erlang-questions/2011-May/058768.html"
+class="uri">https://erlang.org/pipermail/erlang-questions/2011-May/058768.html</a></li>
+<li><a
+href="https://lobste.rs/s/xi3mi0/does_programming_language_with_ml_style"
+class="uri">https://lobste.rs/s/xi3mi0/does_programming_language_with_ml_style</a></li>
+<li>Unison</li>
+</ul>
+<h3 id="upgrades">Upgrades</h3>
+<p>After a system is deployed it will likely need to be upgraded.</p>
+<p>XXX: we already talked about hot-code swapping…</p>
+<ul>
+<li><p>Patches vs upgrades, semantically check inputs and outputs for
+changes?</p></li>
+<li><p>VM upgrades? How does Erlang deal with them?</p></li>
+</ul>
+<h3 id="protocols">Protocols</h3>
+<p>A state machines input type essentially defines its API, it doesn’t
+say anything about which sequences of inputs are allowed. Consider the
+POSIX filesystem API where we can open a file to get a file handle,
+which we can then read and write to, at the end we are supposed to close
+the file handle and once closed no further reads or writes are allowed.
+These legal sequences of inputs define the protocol. One way to encode
+protocols is by means of a state machines.</p>
+<p>Protocols can be enforced at run-time by protocol checkers that sit
+in-between state machines.</p>
+<h3 id="horizonal-composition--pipelining">Horizonal composition –
+pipelining</h3>
+<p>XXX: Horizontally compose state machines.</p>
+<ul>
+<li><a href="https://youtu.be/U3eo49nVxcA?t=1949">Jim Gray on
+parallelism via pipelining</a></li>
+</ul>
+<h3 id="vertical-composition">Vertical composition</h3>
+<h3 id="capabilities">Capabilities</h3>
+<ul>
+<li>Lecture on <a
+href="https://youtube.com/watch?v=TQhmua7Z2cY">capabilities</a> from
+MIT’s 6.858 Computer Systems Security course (2014)</li>
+<li><a
+href="https://spritely.institute/static/papers/spritely-core.html">The
+Heart of Spritely: Distributed Objects and Capability Security</a></li>
+</ul>
+<h3 id="formal-verification">Formal verification</h3>
+<ul>
+<li>Model-checking à la TLA+: <a
+href="https://github.com/Gabriella439/HasCal"
+class="uri">https://github.com/Gabriella439/HasCal</a></li>
+<li><a
+href="https://lawrencecpaulson.github.io/2022/10/12/verifying-distributed-systems-isabelle.html"
+class="uri">https://lawrencecpaulson.github.io/2022/10/12/verifying-distributed-systems-isabelle.html</a></li>
+</ul>
+<h2 id="contributing">Contributing</h2>
+<p>If any of this sounds interesting, feel free to get in touch.</p>
+<h3 id="to-do">To do</h3>
+<ul>
+<li>records</li>
+<li>state migration</li>
+<li>parametrised inputs/sums of products</li>
+<li>api evolution</li>
+<li>deprecation of machines?</li>
+<li>persistence</li>
+<li>typechecker</li>
+<li>state invariants?</li>
+<li>pre-conditions on input?</li>
+<li>pretty printer
+<ul>
+<li>and formatter?</li>
+</ul></li>
+<li>cli
+<ul>
+<li>rustup?</li>
+</ul></li>
+<li>encryption</li>
+<li>tunnel, <a href="https://tunnelto.dev"
+class="uri">https://tunnelto.dev</a> or <a
+href="https://github.com/pcarrier/srv.us"
+class="uri">https://github.com/pcarrier/srv.us</a> ?</li>
+<li>migrate deployment
+<ul>
+<li>automatic failover?</li>
+</ul></li>
+<li>observability</li>
+<li>debugger</li>
+<li>optimise encoding of messages based on frequency in previous
+deployment?</li>
+<li>echo server benchmark</li>
+</ul>
+<h2 id="see-also">See also</h2>
+<ul>
+<li>The P programming language</li>
+<li><a
+href="https://downloads.haskell.org/ghc/latest/docs/users_guide/exts/arrows.html"
+class="uri">https://downloads.haskell.org/ghc/latest/docs/users_guide/exts/arrows.html</a></li>
+<li><a href="https://www.haskell.org/arrows/sugar.html"
+class="uri">https://www.haskell.org/arrows/sugar.html</a></li>
+<li><a href="https://hackage.haskell.org/package/arrowp-qq-0.3.0/src/"
+class="uri">https://hackage.haskell.org/package/arrowp-qq-0.3.0/src/</a></li>
+<li><a
+href="https://karczmarczuk.users.greyc.fr/TEACH/Stage/ArrComp.pdf"
+class="uri">https://karczmarczuk.users.greyc.fr/TEACH/Stage/ArrComp.pdf</a></li>
+</ul>
+</main>
+</body>
+</html>

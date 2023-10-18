@@ -1,0 +1,4009 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Stevan's notes</title>
+    <description>Collection of notes on distributed systems.</description>
+    <language>en</language>
+    <link>https://stevana.github.io</link>
+    <item>
+      <title>Parallel stream processing with zero-copy fan-out and sharding</title>
+      <link>https://stevana.github.io/parallel_stream_processing_with_zero-copy_fan-out_and_sharding.html</link>
+      <pubDate>Wed, 11 Oct 2023 00:00:00 UTC</pubDate>
+      <description><![CDATA[Work in progress, please don’t share yet
+
+In a previous post I explored how we can make better use of our parallel
+hardware by means of pipelining.
+
+In a nutshell the idea of pipelining is to break up the problem in
+stages and have one (or more) thread(s) per stage and then connect the
+stages with queues. For example, imagine a service where we read some
+request from a socket, parse it, validate, update our state and
+construct a response, serialise the response and send it back over the
+socket. These are six distinct stages and we could create a pipeline
+with six CPUs/cores each working on a their own stage and feeding the
+output to the queue of the next stage. If one stage is slow we can shard
+the input, e.g. even requests to go to one worker and odd requests go to
+another thereby nearly doubling the throughput for that stage.
+
+One of the concluding remarks to the previous post is that we can gain
+even more performance by using a better implementation of queues,
+e.g. the LMAX Disruptor.
+
+The Disruptor is a low-latency high-throughput queue implementation with
+support for multi-cast (many consumers can in parallel process the same
+event), batching (both on producer and consumer side), back-pressure,
+sharding (for scalability) and dependencies between consumers.
+
+In this post we’ll recall the problem of using “normal” queues, discuss
+how Disruptor helps solve this problem and have a look at how we can we
+provide a declarative high-level language for expressing pipelines
+backed by Disruptors where all low-level details are hidden away from
+the user of the library. We’ll also have a look at how we can monitor
+and visualise such pipelines for debugging and performance
+troubleshooting purposes.
+
+Motivation and inspiration
+
+Before we dive into how we can achieve this, let’s start with the
+question of why I’d like to do it.
+
+I believe the way we write programs for multiprocessor networks,
+i.e. multiple connected computers each with multiple CPUs/cores, can be
+improved upon. Instead of focusing on the pitfalls of the current
+mainstream approaches to these problems, let’s have a look at what to me
+seems like the most promising way forward.
+
+Jim Gray gave a great explanation of dataflow programming in this Turing
+Award Recipient interview. He uses props to make his point, which makes
+it a bit difficult to summaries in text here. I highly recommend
+watching the video clip, the relevant part is only three minutes long.
+
+The key point is exactly that of pipelining. Each stage is running on a
+CPU/core, this program is completely sequential, but by connecting
+several stages we create a parallel pipeline. Further parallelism (what
+Jim calls partitioned parallelism) can be gained by partitioning the
+inputs, by say odd and even sequence number, and feeding one half of the
+inputs to one copy of the pipeline and the other half to another copy,
+thereby almost doubling the throughput. Jim calls this a “natural” way
+to achieve parallelism.
+
+While I’m not sure if “natural” is the best word, I do agree that it’s a
+nice way to make good use of CPUs/cores on a single computer without
+introducing non-determinism. Pipelining is also effectively used to
+achieve parallelism in manufacturing and hardware, perhaps that’s why
+Jim calls it “natural”?
+
+Things get a bit more tricky if we want to involve more computers. Part
+of the reason, I believe, is that we run into the problem highlighted by
+Barbara Liskov at the very end of her Turing award lecture (2009):
+
+  “There’s a funny disconnect in how we write distributed programs. You
+  write your individual modules, but then when you want to connect them
+  together you’re out of the programming language and into this other
+  world. Maybe we need languages that are a little bit more complete
+  now, so that we can write the whole thing in the language.”
+
+Ideally we’d like our pipelines to seamlessly span over multiple
+computers. In fact it should be possible to deploy same pipeline to
+different configurations of processors without changing the pipeline
+code (nor having to add any networking related code).
+
+A pipeline that is redeployed with additional CPUs or computers might or
+might not scale, it depends on whether it makes sense to partition the
+input of a stage further or if perhaps the introduction of an additional
+computer merely adds more overhead. How exactly the pipeline is best
+spread over the available computers and CPUs/cores will require some
+combination of domain knowledge, measurement and judgment. Depending on
+how quick we can make redeploying of pipelines, it might be possible to
+autoscale them using a program that monitors the queue lengths.
+
+Also related to redeploying, but even more important than autoscaling,
+are upgrades of pipelines. That’s both upgrading the code running at the
+individual stages, as well as how the stages are connected to each
+other, i.e. the pipeline itself.
+
+Martin Thompson has given many talks which echo the general ideas of Jim
+and Barbara. If you prefer reading then you can also have a look at the
+reactive manifesto which he cowrote. Martin is also one of the people
+behind the Disruptor, which we will come back to soon, and he also said
+the following:
+
+  “If there’s one thing I’d say to the Erlang folks, it’s you got the
+  stuff right from a high-level, but you need to invest in your
+  messaging infrastructure so it’s super fast, super efficient and obeys
+  all the right properties to let this stuff work really well.”
+
+This quote together with Joe Armstrong’s anecdote of an unmodified
+Erlang program only running 33 times faster on a 64 core machine, rather
+than 64 times faster as per the Ericsson higher-up’s expectations,
+inspired me to think about how one can improve upon the already
+excellent work that Erlang is doing in this space.
+
+Longer term, I like to think of pipelines spanning computers as a
+building block for what Barbara calls a “substrate for distributed
+systems”. Unlike Barbara I don’t think this substrate should be based on
+shared memory, but overall I agree with her goal of making it easier to
+program distributed systems by providing generic building blocks.
+
+Prior work
+
+Working with streams of data is common. The reason for this is that it’s
+a nice abstraction when dealing with data that cannot fit in memory. The
+alternative is to manually load chunks of data one wants to process into
+memory, load the next chunk etc, when we processes streams this is
+hidden away from us.
+
+Parallelism is a related problem, in that when one has big volumes of
+data it’s also common to care about performance and how we can utilise
+multiple processors.
+
+Since dealing with limited memory and multiprocessors is a problem that
+as bothered programmers and computer scientists for a long time, at
+least since the 1960s, there’s a lot of work that has been done in this
+area. I’m at best familiar with a small fraction of this work, so please
+bear with me but also do let me know if I missed any important
+development.
+
+In 1963 Melvin Conway proposed coroutines, which allows the user to
+conveniently process very large, or even infinite, lists of items
+without first loading the list into memory, i.e. streaming.
+
+Shortly after, in 1965, Peter Landin introduced streams as a functional
+analogue of Melvin’s imperative coroutines.
+
+A more radical departure from Von Neumann style sequential programming
+can be seen in the work on dataflow programming in general and
+especially in Paul Morrison’s flow-based programming (late 1960s). Paul
+uses the following picture to illustrate the similarity between
+flow-based programming and an assembly line in manufacturing:
+
+[]
+
+Each stage is its own process running in parallel with the other stages.
+In flow-based programming stages are computation and the conveyor belts
+are queues. This gives us implicit parallelism and determinate outcome.
+
+Doug McIlroy, who was aware of some of the dataflow work[1], wrote a
+memo in 1964 about the idea of pipes, although it took until 1973 for
+them to get implemented in Unix by Ken Thompson. Unix pipes have a
+strong feel of flow-based programming, although all data is of type
+string. A pipeline of commands will start a process per command, so
+there’s implicit parallelism as well (assuming the operative system
+schedules different processes on different CPUs/cores). Fanning out can
+be done with tee and process substitution,
+e.g. echo foo | tee >(cat) >(cat) | cat, and more complicated non-linear
+flows can be achieved with mkfifo.
+
+With the release of GNU parallel in 2010 more explicit control over
+parallelism was introduced as well as the ability to run jobs on remote
+computers.
+
+Around the same time many (functional) programming languages started
+getting streaming libraries. Haskell’s conduit library had its first
+release in 2011 and Haskell’s pipes library came shortly after (2012).
+Java version 8, which has streams, was released in 2014. Both Clojure
+and Scala, which also use the JVM, got streams that same year (2014).
+
+Among the more imperative programming languages, JavaScript and Python
+both have generators (a simple form of coroutines) since around 2006. Go
+has “goroutines”, a clear nod to coroutines, since its first version
+(2009). Coroutines are also part of the C++20 standard.
+
+Almost all of the above mentioned streaming libraries are intended to be
+run on a single computer. Often they even run in a single thread,
+i.e. not exploiting parallelism at all. Sometimes concurrent/async
+constructs are available which create a pool of worker threads that
+process the items concurrently, but they often break determinism
+(i.e. rerunning the same computation will yield different results,
+because the workers do not preserve the order of the inputs).
+
+If the data volumes are too big for a single computer then there’s a
+different set of streaming tools, such as Apache Hadoop (2006), Apache
+Spark (2009), Apache Kafka (2011), Apache Storm (2011), and Apache Flink
+(2011). While the Apache tools can often be deployed locally for testing
+purposes, they are intended for distributed computations and are
+therefore perhaps a bit more cumbersome to deploy and use than the
+streaming libraries we mentioned earlier.
+
+Initially it might not seem like a big deal that streaming libraries
+don’t “scale up” or distributed over multiple computers, and that
+streaming tools like the Apache ones don’t gracefully “scale down” to a
+single computer. Just pick the right tool for the right job, right?
+Well, it turns out that 40-80% of jobs submitted to MapReduce systems
+(such as Apache Hadoop) would run faster if they were ran on a single
+computer instead of a distributed cluster of computers, so picking the
+right tool is perhaps not as easy as it first seems.
+
+There are two exceptions, that I know of, of streaming libraries that
+also work in a distributed setting. Scala’s Akka/Pekko streams (2014)
+when combined with Akka/Pekko clusters and Aeron (2014). Aeron is the
+spiritual successor of the Disruptor also written by Martin Thompson et
+al. The Disruptor’s main use case was as part of the LMAX exchange. From
+what I understand exchanges close in the evening (or at least did back
+then in the case of LMAX), which allows for updates etc. These
+requirements changed for Aeron where 24/7 operation was necessary and so
+distributed stream processing is necessary where upgrades can happen
+without processing stopping (or even slowing down).
+
+Finally, I’d also like to mention functional reactive programming, or
+FRP, (1997). I like to think of it as a neat way of expressing stream
+processing networks. Disruptor’s “wizard” DSL and Akka’s graph DSL try
+to add a high-level syntax for expressing networks, but they both have a
+rather imperative rather than declarative feel. It’s however not clear
+(to me) how effectively implement, parallelise[2], or distribute FRP.
+Some interesting work has been done with hot code swapping in the FRP
+setting, which is potentially useful for a telling a good upgrade story.
+
+To summarise, while there are many streaming libraries there seem to be
+few (at least that I know of) that tick all of the following boxes:
+
+1.  Parallel processing:
+    -   in a determinate way;
+    -   fanning out and sharding without copying data (when run on a
+        single computer).
+2.  Potentially distributed over multiple computers for fault tolerance
+    and upgrades, without the need to change the code of the pipeline;
+3.  Observable, to ease debugging and performance analysis;
+4.  Declarative high-level way of expressing stream processing networks
+    (i.e. the pipeline);
+5.  Good deploy, upgrade, rescale story for stateful systems;
+6.  Elastic, i.e. ability to rescale automatically to meet the load.
+
+I think we need all of the above in order to build Barbara’s “substrate
+for distributed systems”. We’ll not get all the way there in this post,
+but at least this should give you a sense of the direction I’d like to
+go.
+
+Plan
+
+The rest of this post is organised as follows.
+
+First we’ll have a look at how to model pipelines as a transformation of
+lists. The purpose of this is to give us an easy to understand
+sequential specification of we would like our pipelines to do.
+
+We’ll then give our first parallel implementation of pipelines using
+“normal” queues. The main point here is to recap of the problem with
+copying data that arises from using “normal” queues, but we’ll also
+sketch how one can test the parallel implementation using the model.
+
+After that we’ll have a look at the Disruptor API, sketch its single
+producer implementation and discuss how it helps solve the problems we
+identified in the previous section.
+
+Finally we’ll have enough background to be able to sketch the Disruptor
+implementation of pipelines. We’ll also discuss how
+monitoring/observability can be added.
+
+List transformer model
+
+Let’s first introduce the type for our pipelines. We index our pipeline
+datatype by two types, in order to be able to precisely specify its
+input and output types. For example, the Identity pipeline has the same
+input as output type, while pipeline composition (:>>>) expects its
+first argument to be a pipeline from a to b, and the second argument a
+pipeline from b to c in order for the resulting composed pipeline to be
+from a to c (similar to functional composition).
+
+    data P :: Type -> Type -> Type where
+      Id      :: P a a
+      (:>>>)  :: P a b -> P b c -> P a c
+      Map     :: (a -> b) -> P a b
+      (:***)  :: P a c -> P b d -> P (a, b) (c, d)
+      (:&&&)  :: P a b -> P a c -> P a (b, c)
+      (:+++)  :: P a c -> P b d -> P (Either a b) (Either c d)
+      (:|||)  :: P a c -> P b c -> P (Either a b) c
+      Shard   :: P a b -> P a b
+
+Here’s a pipeline that takes a stream of integers as input and outputs a
+stream of pairs where the first component is the input integer and the
+second component is a boolean indicating if the first component was an
+even integer or not.
+
+    examplePipeline :: P Int (Int, Bool)
+    examplePipeline = Id :&&& Map even
+
+So far our pipelines are merely data which describes what we’d like to
+do. In order to actually perform a stream transformation we’d need to
+give semantics to our pipeline datatype[3].
+
+The simplest semantics we can give our pipelines is that in terms of
+list transformations.
+
+    model :: P a b -> [a] -> [b]
+    model Id         xs  = xs
+    model (f :>>> g) xs  = model g (model f xs)
+    model (Map f)    xs  = map f xs
+    model (f :*** g) xys =
+      let
+        (xs, ys) = unzip xys
+      in
+        zip (model f xs) (model g ys)
+    model (f :&&& g) xs = zip (model f xs) (model g xs)
+    model (f :+++ g) es =
+      let
+        (xs, ys) = partitionEithers es
+      in
+        -- Note that we pass in the input list, in order to perserve the order.
+        merge es (model f xs) (model g ys)
+      where
+        merge []             []       []       = []
+        merge (Left  _ : es) (l : ls) rs       = Left  l : merge es ls rs
+        merge (Right _ : es) ls       (r : rs) = Right r : merge es ls rs
+    model (f :||| g) es =
+      let
+        (xs, ys) = partitionEithers es
+      in
+        merge es (model f xs) (model g ys)
+      where
+        merge []             []       []       = []
+        merge (Left  _ : es) (l : ls) rs       = l : merge es ls rs
+        merge (Right _ : es) ls       (r : rs) = r : merge es ls rs
+    model (Shard f) xs = model f xs
+
+Note that this semantics is completely sequential and preserves the
+order of the inputs (determinism). Also note that since we don’t have
+parallelism yet, Sharding doesn’t do anything. We’ll introduce
+parallelism without breaking determinism in the next section.
+
+We can now run our example pipeline in the REPL:
+
+    > model examplePipeline [1,2,3,4,5]
+    [(1,False),(2,True),(3,False),(4,True),(5,False)]
+
+Queue pipeline deployment
+
+In the previous section we saw how to deploy pipelines in a purely
+sequential way in order to process lists. The purpose of this is merely
+to give ourselves an intuition of what pipelines should do as well as an
+executable model which we can test our intuition against.
+
+Next we shall have a look at our first parallel deployment. The idea
+here is to show how we can involve multiple threads in the stream
+processing, without making the output non-deterministic (same input
+should always give the same output).
+
+We can achieve this as follows:
+
+    deploy :: P a b -> TQueue a -> IO (TQueue b)
+    deploy Id         xs = return xs
+    deploy (f :>>> g) xs = deploy g =<< deploy f xs
+    deploy (Map f)    xs = deploy (MapM (return . f)) xs
+    deploy (MapM f)   xs = do
+      ys <- newTQueueIO
+      forkIO $ forever $ do
+        x <- atomically (readTQueue xs)
+        y <- f x
+        atomically (writeTQueue ys y)
+      return ys
+    deploy (f :&&& g) xs = do
+      xs1 <- newTQueueIO
+      xs2 <- newTQueueIO
+      forkIO $ forever $ do
+        x <- atomically (readTQueue xs)
+        atomically $ do
+          writeTQueue xs1 x
+          writeTQueue xs2 x
+      ys <- deploy f xs1
+      zs <- deploy g xs2
+      yzs <- newTQueueIO
+      forkIO $ forever $ do
+        y <- atomically (readTQueue ys)
+        z <- atomically (readTQueue zs)
+        atomically (writeTQueue yzs (y, z))
+      return yzs
+
+    example' :: [Int] -> IO [(Int, Bool)]
+    example' xs0 = do
+      xs <- newTQueueIO
+      mapM_ (atomically . writeTQueue xs) xs0
+      ys <- deploy (Id :&&& Map even) xs
+      replicateM (length xs0) (atomically (readTQueue ys))
+
+Running this in our REPL, gives the same result as in the model:
+
+    > example' [1,2,3,4,5]
+    [(1,False),(2,True),(3,False),(4,True),(5,False)]
+
+In fact, we can use our model to define a property-based test which
+asserts that our queue deployment is faithful to the model:
+
+    prop_commute :: Eq b => P a b -> [a] -> PropertyM IO ()
+    prop_commute p xs = do
+      ys <- run $ do
+        qxs <- newTQueueIO
+        mapM_ (atomically . writeTQueue qxs) xs
+        qys <- deploy p qxs
+        replicateM (length xs) (atomically (readTQueue qys))
+      assert (model p xs == ys)
+
+Actually running this property for arbitrary pipelines would require us
+to first define a pipeline generator, which is a bit tricky given the
+indexes of the datatype[4]. It can still me used as a helper for testing
+specific pipelines though, e.g. prop_commute examplePipeline.
+
+A bigger problem is that we’ve spawned two threads, when deploying :&&&,
+whose mere job is to copy elements from the input queue (xs) to the
+input queues of f and g (xs{1,2}), and from the outputs of f and g (ys
+and zs) to the output of f &&& g (ysz). Copying data is expensive.
+
+When we shard a pipeline we effectively clone it and send half of the
+traffic to one clone and the other half to the other. One way to achieve
+this is as follows, notice how in shard we swap qEven and qOdd when we
+recurse:
+
+    deploy (Shard f) xs = do
+      xsEven <- newTQueueIO
+      xsOdd  <- newTQueueIO
+      _pid   <- forkIO (shard xs xsEven xsOdd)
+      ysEven <- deploy f xsEven
+      ysOdd  <- deploy f xsOdd
+      ys     <- newTQueueIO
+      _pid   <- forkIO (merge ysEven ysOdd ys)
+      return ys
+      where
+        shard :: TQueue a -> TQueue a -> TQueue a -> IO ()
+        shard  qIn qEven qOdd = do
+          atomically (readTQueue qIn >>= writeTQueue qEven)
+          shard qIn qOdd qEven
+
+        merge :: TQueue a -> TQueue a -> TQueue a -> IO ()
+        merge qEven qOdd qOut = do
+          atomically (readTQueue qEven >>= writeTQueue qOut)
+          merge qOdd qEven qOut
+
+This alteration will shard the input queue (qIn) on even and odd
+indices, and we can merge it back without losing determinism. Note that
+if we’d simply had a pool of worker threads taking items from the input
+queue and putting them on the output queue (qOut) after processing, then
+we wouldn’t have a deterministic outcome. Also notice that in the
+deployment of Sharding we also end up copying data between the queues,
+similar to the fan-out case (:&&&)!
+
+Before we move on to show how to avoid doing this copying, let’s have a
+look at a couple of examples to get a better feel for pipelining and
+sharding. If we generalise Map to MapM in our model we can write the
+following contrived program:
+
+    modelSleep :: P () ()
+    modelSleep =
+      MapM (const (threadDelay 250000)) :&&& MapM (const (threadDelay 250000)) :>>>
+      MapM (const (threadDelay 250000)) :>>>
+      MapM (const (threadDelay 250000))
+
+The argument to threadDelay (or sleep) is microseconds, so at each point
+in the pipeline we are sleeping 1/4 of a second.
+
+If we feed this pipeline 5 items:
+
+    runModelSleep :: IO ()
+    runModelSleep = void (model modelSleep (replicate 5 ()))
+
+We see that it takes roughly 5 seconds:
+
+    > :set +s
+    > runModelSleep
+    (5.02 secs, 905,480 bytes)
+
+This is expected, even though we pipeline and fan-out, as the model is
+completely sequential.
+
+If we instead run the same pipeline using the queue deployment, we get:
+
+    > runQueueSleep
+    (1.76 secs, 907,160 bytes)
+
+The reason for this is that the two sleeps in the fan-out happen in
+parallel now and when the first item is at the second stage the first
+stage starts processing the second item, and so on, i.e. we get a
+pipelining parallelism.
+
+If we, for some reason, wanted to achieve a sequential running time
+using the queue deployment, we’d have to write a one stage pipeline like
+so:
+
+    queueSleepSeq :: P () ()
+    queueSleepSeq =
+      MapM $ \() -> do
+        ()       <- threadDelay 250000
+        ((), ()) <- (,) <$> threadDelay 250000 <*> threadDelay 250000
+        ()       <- threadDelay 250000
+        return ()
+
+    > runQueueSleepSeq
+    (5.02 secs, 898,096 bytes)
+
+Using sharding we can get an even shorter running time:
+
+    queueSleepSharded :: P () ()
+    queueSleepSharded = Shard queueSleep
+
+    > runQueueSleepSharded
+    (1.26 secs, 920,888 bytes)
+
+This is pretty much where we left off in my previous post. If the speed
+ups we are seeing from pipelining don’t make sense, it might help to go
+back and reread the old post, as I spent some more time constructing an
+intuitive example there.
+
+Disruptor
+
+Before we can understand how the Disruptor can help us avoid the problem
+copying between queues that we just saw, we need to first understand a
+bit about how the Disruptor is implemented.
+
+We will be looking at the implementation of the single-producer
+Disruptor, because in our pipelines there will never be more than one
+producer per queue (the stage before it)[5].
+
+Let’s first have a look at the datatype and then explain each field:
+
+    data RingBuffer a = RingBuffer
+      { capacity             :: Int
+      , elements             :: IOArray Int a
+      , cursor               :: IORef SequenceNumber
+      , gatingSequences      :: IORef (IOArray Int (IORef SequenceNumber))
+      , cachedGatingSequence :: IORef SequenceNumber
+      }
+
+    newtype SequenceNumber = SequenceNumber Int
+
+The Disruptor is a ring buffer queue with a fixed capacity. It’s backed
+by an array whose length is equal to the capacity, this is where the
+elements of the ring buffer are stored. There’s a monotonically
+increasing counter called the cursor which keeps track of how many
+elements we have written. By taking the value of the cursor modulo the
+capacity we get the index into the array where we are supposed to write
+our next element (this is how we wrap around the array, i.e. forming a
+ring). In order to avoid overwriting elements which have not yet been
+consumed we also need to keep track of the cursors of all consumers
+(gatingSequences). As an optimisation we cache where the last consumer
+is (cachedGatingSequence).
+
+The API from the producing side looks as follows:
+
+    tryClaimBatch   :: RingBuffer a -> Int -> IO (Maybe SequenceNumber)
+    writeRingBuffer :: RingBuffer a -> SequenceNumber -> a -> IO ()
+    publish         :: RingBuffer a -> SequenceNumber -> IO ()
+
+We first try to claim n :: Int slots in the ring buffer, if that fails
+(returns Nothing) then we know that there isn’t space in the ring buffer
+and we should apply backpressure upstream (e.g. if the producer is a web
+server, we might want to temporarily rejecting clients with status code
+503). Once we successfully get a sequence number, we can start writing
+our data. Finally we publish the sequence number, this makes it
+available on the consumer side.
+
+The consumer side of the API looks as follows:
+
+    addGatingSequence :: RingBuffer a -> IO (IORef SequenceNumber)
+    waitFor           :: RingBuffer a -> SequenceNumber -> IO SequenceNumber
+    readRingBuffer    :: RingBuffer a -> SequenceNumber -> IO a
+
+First we need to add a consumer to the ring buffer (to avoid overwriting
+on wrap around of the ring), this gives us a consumer cursor. The
+consumer is responsible for updating this cursor, the ring buffer will
+only read from it to avoid overwriting. After the consumer reads the
+cursor, it calls waitFor on the read value, this will block until an
+element has been published on that slot by the producer. In the case
+that the producer is ahead it will return the current sequence number of
+the producer, hence allowing the consumer to do a batch of reads (from
+where it currently is to where the producer currently is). Once the
+consumer has caught up with the producer it updates its cursor.
+
+Here’s an example which hopefully makes things more concrete:
+
+    example :: IO ()
+    example = do
+      rb <- newRingBuffer_ 2
+      c <- addGatingSequence rb
+      let batchSize = 2
+      Just hi <- tryClaimBatch rb batchSize
+      let lo = hi - (coerce batchSize - 1)
+      assertIO (lo == 0)
+      assertIO (hi == 1)
+      -- Notice that these writes are batched:
+      mapM_ (\(i, c) -> writeRingBuffer rb i c) (zip [lo..hi] ['a'..])
+      publish rb hi
+      -- Since the ring buffer size is only two and we've written two
+      -- elements, it's full at this point:
+      Nothing <- tryClaimBatch rb 1
+      consumed <- readIORef c
+      produced <- waitFor rb consumed
+      -- The consumer can do batched reads, and only do some expensive
+      -- operation once it reaches the end of the batch:
+      xs <- mapM (readRingBuffer rb) [consumed + 1..produced]
+      assertIO (xs == "ab")
+      -- The consumer updates its cursor:
+      writeIORef c produced
+      -- Now there's space again for the producer:
+      Just 2 <- tryClaimBatch rb 1
+      return ()
+
+See the Disruptor module in case you are interested in the
+implementation details.
+
+Hopefully by now we’ve seen enough internals to be able to explain why
+the Disruptor performs well. First of all, by using a ring buffer we
+only allocate memory when creating the ring buffer, it’s then reused
+when we wrap around the ring. The ring buffer is implemented using an
+array, so the memory access patterns are predictable and the CPU can do
+prefetching. The consumers don’t have a copy of the data, they merely
+have a pointer (the sequence number) to how far in the producer’s ring
+buffer they are, which allows for fanning out or sharding to multiple
+consumers without copying data. The fact that we can batch on both the
+write side (with tryClaimBatch) and on the reader side (with waitFor)
+also helps. All this taken together contributes to the Disruptor’s
+performance.
+
+Disruptor pipeline deployment
+
+Recall that the reason we introduced the Disruptor was to avoid copying
+elements of the queue when fanning out (using the :&&& combinator) and
+sharding.
+
+The idea would be to have the workers we fan-out to both be consumers of
+the same Disruptor, that way the inputs don’t need to be copied.
+Avoiding to copy the individual outputs from the worker’s queues (of as
+and bs) into the combined output (of (a, b)s) is a bit trickier.
+
+One way, that I think works, is to do something reminiscent what
+Data.Vector does for pairs. That’s a vector of pairs (Vector (a, b)) is
+actually represented as a pair of vectors ((Vector a, Vector b))[6].
+
+We can achieve this with associated types as follows:
+
+    class HasRB a where
+      data RB a :: Type
+      newRB               :: Int -> IO (RB a)
+      tryClaimBatchRB     :: RB a -> Int -> IO (Maybe SequenceNumber)
+      writeRingBufferRB   :: RB a -> SequenceNumber -> a -> IO ()
+      publishRB           :: RB a -> SequenceNumber -> IO ()
+      addGatingSequenceRB :: RB a -> IO Counter
+      waitForRB           :: RB a -> SequenceNumber -> IO SequenceNumber
+      readRingBufferRB    :: RB a -> SequenceNumber -> IO a
+
+The instances for this class for types that are not pairs will just use
+the Disruptor that we defined above.
+
+    instance HasRB String where
+      data RB String = RB (RingBuffer String)
+      newRB n        = RB <$> newRingBuffer_ n
+      ...
+
+While the instance for pairs will use a pair of Disruptors:
+
+    instance (HasRB a, HasRB b) => HasRB (a, b) where
+      data RB (a, b) = RBPair (RB a) (RB b)
+      newRB n = RBPair <$> newRB n <*> newRB n
+      ...
+
+The deploy function for the fan-out combinator can now avoid copying:
+
+    deploy :: (HasRB a, HasRB b) => P a b -> RB a -> IO (RB b)
+    deploy (p :&&& q) xs = do
+      ys <- deploy p xs
+      zs <- deploy q xs
+      return (RBPair ys zs)
+
+Sharding, or partition parallelism as Jim calls it, is a way to make a
+copy of a pipeline and divert half of the events to the first copy and
+the other half to the other copy. Assuming there are enough unused
+CPUs/core, this could effectively double the throughput. It might be
+helpful to think of the events at even positions in the stream going to
+the first pipeline copy while the events in the odd positions in the
+stream go to the second copy of the pipeline.
+
+When we shard in the TQueue deployment of pipelines we end up copying
+events from the original stream into the two pipeline copies. This is
+similar to copying when fanning out, which we discussed above, and the
+solution is similar.
+
+First we need to change the pipeline type so that the shard constructor
+has an output type that’s Sharded.
+
+    data P :: Type -> Type -> Type where
+      ...
+    - Shard :: P a b -> P a b
+    + Shard :: P a b -> P a (Sharded b)
+
+This type is in fact merely the identity type:
+
+    newtype Sharded a = Sharded a
+
+But it allows us to define a HasRB instance which does the sharding
+without copying as follows:
+
+    instance HasRB a => HasRB (Sharded a) where
+      data RB (Sharded a) = RBShard Partition Partition (RB a) (RB a)
+      readRingBufferRB (RBShard p1 p2 xs ys) i
+        | partition i p1 = readRingBufferRB xs i
+        | partition i p2 = readRingBufferRB ys i
+      ...
+
+The idea being that we split the ring buffer into two, like when fanning
+out, and then we have a way of taking an index and figuring out which of
+the two ring buffers it’s actually in.
+
+This partitioning information, p, is threaded though while deploying:
+
+    deploy (Shard f) p xs = do
+      let (p1, p2) = addPartition p
+      ys1 <- deploy f p1 xs
+      ys2 <- deploy f p2 xs
+      return (RBShard p1 p2 ys1 ys2)
+
+The partitioning information consists of the total number of partitions
+and the index of the current partition.
+
+    data Partition = Partition
+      { pIndex :: Int
+      , pTotal :: Int
+      }
+
+No partitioning is represented as follows:
+
+    noPartition :: Partition
+    noPartition = Partition 0 1
+
+While creating a new partition is done as follows:
+
+    addPartition :: Partition -> (Partition, Partition)
+    addPartition (Partition i total) =
+      ( Partition i (total * 2)
+      , Partition (i + total) (total * 2)
+      )
+
+So, for example, if we partition twice we get:
+
+    > let (p1, p2) = addPartition noPartition in (addPartition p1, addPartition p2)
+    ((Partition 0 4, Partition 2 4), (Partition 1 4, Partition 3 4))
+
+From this information we can compute if an index is in an partition or
+not as follows:
+
+    partition :: SequenceNumber -> Partition -> Bool
+    partition i (Partition n total) = i `mod` total == 0 + n
+
+To understand why this works, it might be helpful to consider the case
+where we only have two partitions. We can partition on even or odd
+indices as follows: even i = i `mod` 2 == 0 + 0 and
+odd i = i `mod` 2 == 0 + 1. Written this way we can easier see how to
+generalise to total partitions:
+partition i (Partition n total) = i `mod` total == 0 + n. So for
+total = 2 then partition i (Partition 0 2) == even while
+partition i (Partition 1 2) == odd.
+
+Since partitioning and partitioning a partition, etc, always introduce a
+power of two we can further optimise to use bitwise or as follows:
+partition i (Partition n total) = i .|. (total - 1) == 0 + n thereby
+avoiding the expensive modulus computation. This is a trick used in
+Disruptor as well, and the reason why the capacity of a Disruptor always
+needs to be a power of two.
+
+See the HasRB (Sharded a) instance in the following module for the
+details.
+
+If we run our sleep pipeline from before using the Disruptor deployment
+we get similar timings as with the queue deployment:
+
+    > runDisruptorSleep False
+    (2.01 secs, 383,489,976 bytes)
+
+    > runDisruptorSleepSharded False
+    (1.37 secs, 286,207,264 bytes)
+
+In order to get a better understanding of how not copying when fanning
+out and sharding improves performance, let’s instead have a look at this
+pipeline which fans out five times:
+
+    copyP :: P () ()
+    copyP =
+      Id :&&& Id :&&& Id :&&& Id :&&& Id
+      :>>> Map (const ())
+
+If we deploy this pipeline using queues and feed it five million items
+we get the following statistics from the profiler:
+
+    11,457,369,968 bytes allocated in the heap
+       198,233,200 bytes copied during GC
+         5,210,024 bytes maximum residency (27 sample(s))
+         4,841,208 bytes maximum slop
+               216 MiB total memory in use (0 MB lost due to fragmentation)
+
+
+    real    0m8.368s
+    user    0m10.647s
+    sys     0m0.778s
+
+While the same setup but using the Disruptor deployment gives us:
+
+    6,629,305,096 bytes allocated in the heap
+      110,544,544 bytes copied during GC
+        3,510,424 bytes maximum residency (17 sample(s))
+        5,090,472 bytes maximum slop
+              214 MiB total memory in use (0 MB lost due to fragmentation)
+
+    real    0m5.028s
+    user    0m7.000s
+    sys     0m0.626s
+
+So about an half the amount of bytes allocated in the heap using the
+Disruptor.
+
+If we double the fan-out factor from five to ten, we get the following
+stats with the queue deployment:
+
+    35,552,340,768 bytes allocated in the heap
+     7,355,365,488 bytes copied during GC
+        31,518,256 bytes maximum residency (295 sample(s))
+           739,472 bytes maximum slop
+               257 MiB total memory in use (0 MB lost due to fragmentation)
+
+    real    0m46.104s
+    user    3m35.192s
+    sys     0m1.387s
+
+and the following for the Disruptor deployment:
+
+    11,457,369,968 bytes allocated in the heap
+       198,233,200 bytes copied during GC
+         5,210,024 bytes maximum residency (27 sample(s))
+         4,841,208 bytes maximum slop
+               216 MiB total memory in use (0 MB lost due to fragmentation)
+
+    real    0m8.368s
+    user    0m10.647s
+    sys     0m0.778s
+
+So it seems that the gap between the two deployments widens as we
+introduce more fan-out, this expected as the queue implementation will
+have more copying of data to do[7].
+
+Observability
+
+Given that pipelines are directed acyclic graphs and that we have a
+concrete datatype constructor for each pipeline combinator, it’s
+relatively straight forward to add a visualisation of a deployment.
+
+Furthermore, since each Disruptor has a cursor keeping that of how many
+elements it produced and all the consumers of a Disruptor have one
+keeping track of how many elements they have consumed, we can annotate
+our deployment visualisation with this data and get a good idea of the
+progress the pipeline is making over time as well as spot potential
+bottlenecks.
+
+Here’s an example of such an visualisation, for a word count pipeline,
+as an interactive SVG (you need to click on the image):
+
+[Demo]
+
+The way it’s implemented is that we spawn a separate thread that read
+the producer’s cursors and consumer’s gating sequences
+(IORef SequenceNumber in both cases) every millisecond and saves the
+SequenceNumbers (integers). After collecting this data we can create one
+dot diagram for every time the data changed. In the demo above, we also
+collected all the elements of the Disruptor, this is useful for
+debugging (the implementation of the pipeline library), but it would
+probably be too expensive to enable this when there’s a lot of items to
+be processed.
+
+I have written a separate write up on how to make the SVG interactive
+over here.
+
+Running
+
+All of the above Haskell code is available on GitHub. The easiest way to
+install the right version of GHC and cabal is probably via ghcup. Once
+installed the examples can be run as follows:
+
+    cat data/test.txt | cabal run uppercase
+    cat data/test.txt | cabal run wc # word count
+
+The sleep examples are run like this:
+
+    cabal run sleep
+    cabal run sleep -- --sharded
+
+The different copying benchmarks can be reproduced as follows:
+
+    for flag in "--no-sharding" \
+                "--copy10" \
+                "--tbqueue-no-sharding" \
+                "--tbqueue-copy10"; do \
+      cabal build copying && \
+        time cabal run copying -- "$flag" && \
+        eventlog2html copying.eventlog && \
+        ghc-prof-flamegraph copying.prof && \
+        firefox copying.eventlog.html && \
+        firefox copying.svg
+    done
+
+Further work and contributing
+
+There’s still a lot to do, but I thought it would be a good place to
+stop for now. Here are a bunch of improvements, in no particular order:
+
+-   ☐ Implement the Arrow instance for Disruptor Pipelines, this isn’t
+    as straightforward as in the model case, because the combinators are
+    littered with HasRB constraints, e.g.:
+    (:&&&) :: (HasRB b, HasRB c) => P a b ->       P a c -> P a (b, c).
+    Perhaps taking inspiration from constrained/restricted monads? This
+    would allow us to specify pipelines using the arrow notation.
+-   ☐ I believe the current pipeline combinator allow for arbitrary
+    directed acyclic graphs (DAGs), but what if feedback cycles are
+    needed? Does an ArrowLoop instance make sense in that case?
+-   ☐ Can we avoid copying when using Either via (:|||) or (:+++), e.g.
+    can we store all Lefts in one ring buffer and all Rights in another?
+-   ☐ Use unboxed arrays for types that can be unboxed in the HasRB
+    instances?
+-   ☐ In the word count example we get an input stream of lines, but we
+    only want to produce a single line as output when we reach the end
+    of the input stream. In order to do this I added a way for workers
+    to say that NoOutput was produced in one step. Currently that
+    constructor still gets written to the output Disruptor, would it be
+    possible to not write it but still increment the sequence number
+    counter?
+-   ☐ Add more monitoring? Currently we only keep track of the queue
+    length, i.e. saturation. Adding service time, i.e. how long it takes
+    to process an item, per worker shouldn’t be hard. Latency (how long
+    an item has been waiting in the queue) would be more tricky as we’d
+    need to annotate and propagate a timestamp with the item?
+-   ☐ Since monitoring adds a bit of overheard, it would be neat to be
+    able to turn monitoring on and off at runtime;
+-   ☐ The HasRB instances are incomplete, and it’s not clear if they
+    need to be completed? More testing and examples could help answer
+    this question, or perhaps a better visualisation?
+-   ☐ Actually test using prop_commute partially applied to a concrete
+    pipeline?
+-   ☐ Implement a property-based testing generator for pipelines and
+    test using prop_commute using random pipelines?
+-   ☐ Add network/HTTP source and sink?
+-   ☐ Deploy across network of computers?
+-   ☐ Hot-code upgrades of workers/stages with zero downtime, perhaps
+    continuing on my earlier attempt?
+-   ☐ In addition to upgrading the workers/stages, one might also want
+    to rewire the pipeline itself. Doug made me aware of an old paper by
+    Gilles Kahn and David MacQueen (1976), where they reconfigure their
+    network on the fly. Perhaps some ideas can be stole from there?
+-   ☐ Related to reconfiguring is to be able shard/scale/reroute
+    pipelines and add more machines without downtime. Can we do this
+    automatically based on our monitoring? Perhaps building upon my
+    earlier attempt?
+-   ☐ More benchmarks, in particular trying to confirm that we indeed
+    don’t allocate when fanning out and sharding[8], as well as
+    benchmarks against other streaming libraries.
+
+If any of this seems interesting, feel free to get involved.
+
+See also
+
+-   Guy Steele’s talk How to Think about Parallel Programming: Not!
+    (2011);
+-   Understanding the Disruptor, a Beginner’s Guide to Hardcore
+    Concurrency by Trisha Gee and Mike Barker (2011);
+-   Mike Barker’s brute-force solution to Guy’s problem and benchmarks;
+-   Streaming 101: The world beyond batch (2015);
+-   Streaming 102: The world beyond batch (2016);
+-   SEDA: An Architecture for Well-Conditioned Scalable Internet
+    Services (2001);
+-   Microsoft Naiad: a timely dataflow system (with stage notifications)
+    (2013);
+-   Elixir’s ALF flow-based programming library (2021);
+-   How fast are Linux pipes anyway? (2022);
+-   netmap: a framework for fast packet I/O;
+-   The output of Linux pipes can be indeterministic (2019);
+-   Programming Distributed Systems by Mae Milano (Strange Loop, 2023).
+
+[1] I noticed that the Wikipedia page for dataflow programming mentions
+that Jack Dennis and his graduate students pioneered that style of
+programming while he was at MIT in the 60s. I knew Doug was at MIT
+around that time as well, and so I sent an email to Doug asking if he
+knew of Jack’s work. Doug replied saying he had left MIT by the 60s, but
+was still collaborating with people at MIT and was aware of Jack’s work
+and also the work by Kelly, Lochbaum and Vyssotsky on BLODI (1961) was
+on his mind when he wrote the garden hose memo (1964).
+
+[2] There’s a paper called Parallel Functional Reactive Programming by
+Peterson et al. (2000), but as Conal Elliott points out:
+
+  “Peterson et al. (2000) explored opportunities for parallelism in
+  implementing a variation of FRP. While the underlying semantic model
+  was not spelled out, it seems that semantic determinacy was not
+  preserved, in contrast to the semantically determinate concurrency
+  used in this paper (Section 11).”
+
+Conal’s approach (his Section 11) seems to build upon very fine grained
+parallelism provided by an “unambiguous choice” operator which is
+implemented by spawning two threads. I don’t understand where exactly
+this operator is used in the implementation, but if it’s used every time
+an element is processed (in parallel) then the overheard of spawning the
+threads could be significant?
+
+[3] The design space of what pipeline combinators to include in the
+pipeline datatype is very big. I’ve chosen the ones I’ve done because
+they are instances of already well established type classes:
+
+    instance Category P where
+      id    = Id
+      g . f = f :>>> g
+
+    instance Arrow P where
+      arr     = Map
+      f *** g = f :*** g
+      f &&& g = f :&&& g
+
+    instance ArrowChoice P where
+      f +++ g = f :+++ g
+      f ||| g = f :||| g
+
+Ideally we’d also like to be able to use Arrow notation/syntax to
+describe our pipelines. Even better would be if arrow notation worked
+for Cartesian categories. See Conal Elliott’s work on compiling to
+categories, as well as Oleg Grenrus’ GHC plugin that does the right
+thing and translates arrow syntax into Cartesian categories.
+
+[4] Search for “QuickCheck GADTs” if you are interested in finding out
+more about this topic.
+
+[5] The Disruptor also comes in a multi-producer variant, see the
+following repository for a Haskell version or the LMAX repository for
+the original Java implementation.
+
+[6] See also array of structures vs structure of arrays in other
+programming languages.
+
+[7] I’m not sure why “bytes allocated in the heap” gets doubled in the
+Disruptor case and tripled in the queue cases though?
+
+[8] I’m not sure why “bytes allocated in the heap” gets doubled in the
+Disruptor case and tripled in the queue cases though?
+]]></description>
+      <category>Development</category>
+    </item>
+
+    <item>
+      <title>Visualising datastructures over time using SVG</title>
+      <link>https://stevana.github.io/visualising_datastructures_over_time_using_svg.html</link>
+      <pubDate>Sat,  9 Sep 2023 00:00:00 UTC</pubDate>
+      <description><![CDATA[This post is about how to write an SVG viewer / browser / “slideshow”
+which is itself a self-contained SVG.
+
+Motivation
+
+I’ve been working on a parallel processing pipeline. Each stage of the
+pipeline is running on a separate thread, and it takes some work items
+from a queue in front of it, processes them and then puts them in the
+queue in front of the next stage in the pipeline.
+
+In order to better understand what exactly is going on I thought I’d
+visualise the pipeline including the length and contents of all queues
+as well as the position each worker/stage is at in the queue it’s
+processing.
+
+For now lets just imagine that an SVG image is created every time
+interval. So after a run of the pipeline we’ll have a bunch of SVGs
+showing us how it evolved over time.
+
+Initially I was using the feh image viewer, which if you pass it several
+images lets you navigate through them using the arrow keys.
+
+But then I wondered: how can I show these SVGs to somebody else over the
+web?
+
+Demo
+
+Before I show you how I did it, let’s have a look at the resulting
+pipeline visualisation (you need to click on the image):
+
+[Demo]
+
+The arrows in the top left corner are clickable and will take you to the
+first, next, previous and last SVG respectively.
+
+What you are seeing is a run of a parallel word count pipeline, where
+lines are coming in from stdin and the counts are being written to
+stdout at the end.
+
+The code
+
+Let’s start by having a look at the SVG itself.
+
+    <svg version="1.1" xmlns="http://www.w3.org/2000/svg">
+
+      // The navigation menu for going to the first, previous, next and last
+      // slide/image. There's also a progress bar here which shows which slide
+      // we are currently on and how many there are in total.
+      <g font-family="Times,serif" font-size="14.00">
+        <text id="first"    x="20"  y="30">⇤</text>
+        <text id="previous" x="50"  y="30">←</text>
+        <text id="progress" x="80"  y="30"></text>
+        <text id="next"     x="120" y="30">→</text>
+        <text id="last"     x="150" y="30">⇥</text>
+      </g>
+
+      // Placeholder for the image.
+      <g id="image"></g>
+
+      // The index of the currently viewed image.
+      <desc id="0"></desc>
+
+      // The fact that we can embedd JavaScript into SVGs is what makes this
+      // whole thing work.
+      <script>
+      // <![CDATA[
+
+        // Let me move this out to its own code block, so we get syntax
+        // highlighting.
+
+      // ]]]]><![CDATA[>
+      </script>
+    </svg>
+
+The following goes into the script tag above:
+
+        // Array holding the SVG images.
+        const imgs = new Array(
+          "<svg>...</svg>",
+          "<svg>...</svg>",
+          "<svg>...</svg>",
+          );
+
+        // Helper for registering onclick handlers.
+        function registerClick(selector, f) {
+            document.querySelector(selector).addEventListener("click", (e) => {
+                f(e);
+            });
+        }
+
+        // Set and return the value of our counter, this is abusing the id
+        // of the desc tag...
+        function setCounter(f) {
+            const counter = document.querySelector("desc");
+            counter.id = f(parseInt(counter.id));
+            return counter.id;
+        }
+
+        // Updates our image placeholder by injecting the SVG into the
+        // image tag. Also updates the progress bar.
+        function setImage(i) {
+            const img = document.querySelector("#image");
+            img.setAttribute("href", imgs[i]);
+            updateProgress();
+        }
+
+        // Update the progress bar in the menu.
+        function updateProgress() {
+            document.querySelector("#progress").innerHTML =
+                document.querySelector("desc").id + "/" + (imgs.length - 1);
+        }
+
+        // We can now define our navigation functions in terms of setting
+        // the counter and the image.
+
+        function first() {
+            setImage(setCounter((_) => 0));
+        }
+
+        function previous() {
+            setImage(setCounter((i) => i <= 0 ? 0 : --i));
+        }
+
+        function next() {
+            setImage(setCounter((i) => i >= imgs.length - 1 ? imgs.length - 1 : ++i));
+        }
+
+        function last() {
+            setImage(setCounter((_) => imgs.length - 1));
+        }
+
+        // Finally, to kick things off: register onclick handlers for the
+        // navigation buttons and set the image to the first image in the array.
+        registerClick("#first",    (_) => first());
+        registerClick("#next",     (_) => next());
+        registerClick("#previous", (_) => previous());
+        registerClick("#last",     (_) => last());
+        setImage(0);
+
+        // We could even add keyboard support...
+        window.addEventListener("keydown", (e) => {
+            // Left arrow or k.
+            if (e.keyCode === 37 || e.keyCode === 75) {
+                previous();
+            }
+            // Right arrow or j.
+            else if (e.keyCode === 39 || e.keyCode === 74) {
+                next();
+            }
+        });
+
+Another thing worth mentioning is that in my application the thread that
+collects the metrics runs about 1000 times per second. If there’s no
+change in the metrics then we probably don’t want to display an image
+that’s the same as the previous one. So I keep a CRC32 checksum of the
+metrics that the last image is generated from and if the next metrics
+data has the same checksum, I skip generating that image (as it will be
+the same as the previous one).
+
+The (inner) SVGs themselves are generated with graphviz via the dot
+language, the record-based node shapes turned out to be useful for
+visualing data structures.
+
+It’s quite annoying to populate the imgs array by hand, so I wrote a
+small bash script which takes a bunch of SVGs and outputs a single SVG
+which can be used to view the original images.
+
+Usage
+
+The easiest way to get started is probably to clone the repository.
+
+    git clone https://github.com/stevana/svg-viewer-in-svg
+    cd svg-viewer-in-svg
+
+In the img/ directory there are three simple SVGs:
+
+    ls img/
+    circle.svg  ellipse.svg  rectangle.svg
+
+We can combine them all into one a single SVG that is a “slideshow” of
+the shapes as follows:
+
+    ./src/svg-viewer-in-svg img/*.svg > /tmp/combined-shapes.svg
+    firefox /tmp/combined-shapes.svg
+
+If you want to “install” the script, simply copy it to any directory
+that is in your $PATH.
+
+One last thing worth noting is that hosting these combined SVGs on
+GitHub is a bit of a pain. Merely checking them into a repository and
+trying to include them in markdown won’t work, because GitHub appears to
+be doing some SVG script tag sanitising for security reasons. Uploading
+them to gh-pages and linking to those seems to work though[1].
+
+Contributing
+
+I hope I’ve managed to inspire you to think about how to visualise the
+execution of your own programs! Feel free to copy and adapt the code as
+you see fit. If you come up with some interesting modifications or
+better ways of doing things, then please do share!
+
+See also
+
+Brendan Gregg’s flamegraphs also generates a clickable SVG. I got the
+idea of adding keyboard support from looking at his SVG, there’s
+probably more interesting stuff to steal there.
+
+[1] The following gist shows how to create gh-pages branch that doesn’t
+have any history. Also see the GitHub pages documentation for how to
+enable gh-pages for a respository.
+]]></description>
+      <category>Observability</category>
+    </item>
+
+    <item>
+      <title>Elastically scalable thread pools</title>
+      <link>https://stevana.github.io/elastically_scalable_thread_pools.html</link>
+      <pubDate>Tue, 14 Mar 2023 00:00:00 UTC</pubDate>
+      <description><![CDATA[An experiment in controlling the size of a thread pool using a PID
+controller.
+
+Motivation
+
+A tried and tested way to achieve parallelism is to use pipelining. It’s
+used extensively in manufacturing and in computer hardware.
+
+For example, Airbus apparently outputs two airplanes per day on average,
+even though it takes two months to build a single airplane from start to
+finish. It’s also used inside CPUs to pipeline instructions.
+
+Let’s imagine we want to take advantage of pipelining in some software
+system. To make things more concrete, let’s say we have a system where
+some kind of requests come on over the network and we want to process
+them in some way. The first stage of the pipeline is to parse the
+incoming requests from raw bytestrings into some more structured data,
+the second stage is to apply some validation logic to the parsed data
+and the third stage is to process the valid data and produce some
+outputs that are then sent back to the client or stored somewhere.
+
+[]
+
+The service time of an item can differ from stage to stage, for example
+parsing might be slower than validation, which can create bottlenecks.
+Luckily it’s quite easy to spot bottlenecks by merely observing the
+queue lengths and once a slow stage is found we can often fix it by
+merely adding an additional parallel processor to that stage. For
+example we could spin up two or more threads that take bytestrings from
+the first queue and turn them into structured data and thereby
+compensate for parsing being slow.
+
+By spinning up more threads we can decrease latency (waiting time in the
+queue) and increase throughput (process more items), but we are also on
+the other hand using more energy and potentially hogging CPU resources
+that might be better used elsewhere in the pipeline or system at large.
+
+So here’s the question that the rest of this post is concerned about:
+can we dynamically spin up and spin down threads at a stage in response
+to the input queue length for that stage?
+
+Plan
+
+Let’s focus on a single stage of the pipeline to make things easier for
+ourselves.
+
+[]
+
+We’d like to increase the parallelism of the processors if the input
+queue grows, and decrease it when the queue shrinks. One simple strategy
+might be to establish thresholds, i.e. if there’s over 100 items in the
+input queue then allocate more processors and if there’s no items in the
+queue then deallocate them.
+
+Since allocating and deallocating processors can be an expense in
+itself, we’d like to avoid changing them processor count unnecessarily.
+
+The threshold based approach is sensitive to unnecessarily changing the
+count if the arrival rate of work fluctuates. The reason for this is
+because it only takes the present queue length into account.
+
+We can do better by also incorporating the past and trying to predict
+the future, this is the basic idea of PID controllers from control
+theory.
+
+Here’s what the picture looks like with a PID controller in the loop:
+
+                                                +----------------------------------+
+                                                |                                  |
+        ------------------------------------------->[Input queue]-->[Worker pool]----->[Output queue]-->
+                                                |                                  |
+         r(t)   e(t)                    u(t)    |                                  |
+        ----->+------>[PID controller]--------> |                                  |
+              ^                                 |                                  |
+              |                                 +----------------------------------+
+              |                                                 | y(t)
+              +-------------------------------------------------+
+
+The PID controller monitors the queue length y(t), compares it to some
+desired queue length r(t) (also known as the setpoint) and calculates
+the error e(t). The error determines the control variable u(t) which is
+used to grow or shrink the processor pool.
+
+Pseudo-code
+
+Let’s start top-down with the main function which drives our whole
+experiment.
+
+Main
+
+    main =
+
+      // Create the in- and out-queues.
+      inQueue  := newQueue()
+      outQueue := newQueue()
+
+
+      // The workers don't do anything interesting, they merely sleep for a bit to
+      // pretend to be doing some work.
+      worker := sleep 0.025s
+
+      // Create an empty worker pool.
+      pool := newPool(worker, inQueue, outQueue)
+
+      // Start the PID controller in a background thread. The parameters provided
+      // here allow us to tune the PID controller, we'll come back to them later.
+      kp := 1
+      ki := 0.05
+      kd := 0.05
+      dt := 0.01s
+      fork(pidController(kp, ki, kd, dt, pool))
+
+
+      // Create a workload for our workers. We use the sine function to create
+      // between 0 and 40 work items every 0.1s for 60s. The idea being that because
+      // the workload varies over time the PID controller will have some work to do
+      // figuring out how many workers are needed.
+      sineLoadGenerator(inQueue, 40, 0.1s, 60s)
+
+Worker pool
+
+The worker pool itself is merely a struct which packs up the necessary
+data we need to be able to scale it up and down.
+
+    struct Pool =
+      { inQueue:  Queue<Input>
+      , outQueue: Queue<Output>
+      , worker:   Function<Input, Output>
+      , pids:     List<ProcessId>
+      }
+
+Creating a newPool creates the struct with an empty list of process ids.
+
+    newPool worker inQueue outQueue = Pool { ..., pids: emptyList }
+
+Scaling up and down are functions that take and return a Pool.
+
+    scaleUp pool =
+      work := forever
+                x := readQueue(pool.inQueue)
+                y := pool.worker(x)
+                writeQueue(pool.outQueue, y)
+      pid   := fork(work)
+      pool' := pool.pids = append(pid, pool.pids)
+      return pool'
+
+The function scaleDown does the inverse, i.e. kills and removes the last
+process id from pool.pids.
+
+Load generator
+
+In order to create work load that varies over time we use the sine
+function. The sine function oscillates between  − 1 and 1:
+
+[]
+
+We would like to have it oscillate between 0 and some max value m. By
+multiplying the output of the sine function by m/2 we get an oscillation
+between  − m/2 and m/2, we can then add m/2 to make it oscillate between
+0 and m.
+
+We’ll sample the resulting function once every timesStep seconds, this
+gives us the amount of work items (n) to create we then spread those out
+evenly in time, rinse and repeat until we reach some endTime.
+
+    sineLoadGenerator inQueue workItem maxItems timeStep endTime =
+      for t := 0; t < endtime; t += timeStep
+        n := sin(t) * maxItems / 2 + maxItems / 2
+        for i := 0; i < n; i++
+          writeQueue(inQueue, workItem)
+          sleep(timeStep / n)
+
+PID controller
+
+The PID controller implementation follows the pseudo-code given at
+Wikipedia:
+
+    previous_error := 0
+    integral := 0
+    loop:
+       error := setpoint − measured_value
+       proportional := error;
+       integral := integral + error × dt
+       derivative := (error − previous_error) / dt
+       output := Kp × proportional + Ki × integral + Kd × derivative
+       previous_error := error
+       wait(dt)
+       goto loop
+
+Where Kp, Ki and Kd is respectively the proportional, integral and
+derivative gain and dt is the loop interval time. The proportional part
+acts on the present error value, the integral acts on the past and the
+derivative tries to predict the future. The measured value is the input
+queue length and the setpoint, i.e. desired queue length, is set to
+zero. If the output of the PID controller is less than  − 100 (i.e. the
+queue length is over 100 taking the present, past and possible future
+into account) then we scale up and if it’s more than  − 20 (i.e. the
+queue length is less than 20) then we scale down the worker pool.
+
+How it works
+
+We start off by only setting the proportional part and keeping the
+integral and derivative part zero, this is called a P-controller. We see
+below that it will scale the worker count up and down proportionally to
+the sine wave shaped load:
+
+[]
+
+A P-controller only focuses on the present, and we see that it allocates
+and deallocates workers unnecessarily. In order to smooth things out we
+introduce the integral part, i.e. a PI-controller. The integral part
+takes the past into account. We see now that the worker count stabilises
+at 28:
+
+[]
+
+We can improve on this by adding the derivative part which takes the
+future into account. We then see that it stabilises at 26 workers:
+
+[]
+
+With the full PID controller, which stabilises using less workers than
+the PI-controller, we see that the queue length spikes up to 20 or so
+each time the work load generator hits one of the sine function’s peaks.
+Recall that we started scaling down once the queue length was less than
+20.
+
+Usage
+
+The above graphs were generated by running: cabal run app -- kp ki kd,
+where the K_(p), K_(i), and K_(d) parameters are the tuning parameters
+for the PID controller.
+
+If you don’t have the GHC Haskell compiler and the cabal build tool
+already installed, then the easiest way to get it is via ghcup.
+Alternatively if you got nix then nix-shell should give give you access
+to all the dependencies you need.
+
+Contributing
+
+There are many ways we can build upon this experiment, here are a few
+ideas:
+
+-   ☐ We probably want to limit the max number of threads in a pool;
+-   ☐ Clamp integral part to avoid integral windup;
+-   ☐ If two or more threads take items from some input queue and put
+    them on some output queue then there’s no guarantee that the order
+    of the output items will be the same as the input items. We could
+    solve this, and regain determinism, by using array based queues and
+    shard on the index, i.e. even indices goes to one processor and odd
+    to an other or more generally modulus N can be used to shard between
+    N processors. This is essentially what the LMAX Disruptor does;
+-   ☐ We’ve only looked at one stage in a pipeline, what happens if we
+    have multiple stages? is it enough to control each individual stage
+    separately or do we need more global control?
+-   ☐ Can we come up with other things to control? E.g. batch sizes?
+-   ☐ We’ve only monitored the current queue length, could we combine
+    this with other data? E.g. time series of the queue length from the
+    previous day?
+-   ☐ Is it robust to wildly changing usage patterns? E.g. bursty
+    traffic or the Slashdot effect?
+-   ☐ We’ve looked at scaling up and down on a single machine (vertical
+    scaling), what about scaling out and in across multiple machines
+    (horizontal scaling)?
+-   ☐ We generated and processed real work items (by sleeping), could we
+    do a discrete-event simulation instead to avoid having to wait for
+    the sleeps?
+-   ☐ I just picked random values for the PID controller parameters,
+    there are more principled ways of tuning the PID controller;
+-   ☐ The PID controller we implemented merely followed the pseudo-code
+    from Wikipedia, there’s probably better ways of implementing it?
+
+If any of this sounds interesting, feel free to get in touch!
+
+See also
+
+-   A Review of Auto-scaling Techniques for Elastic Applications in
+    Cloud Environments
+
+    1.  is a survey paper which talks about both threshold and PID
+        controllers;
+
+-   SEDA: An Architecture for Well-Conditioned Scalable Internet
+    Services (2001), this is paper that I got the idea for elastic
+    scalable thread pools. They use a threshold approach rather than a
+    PID controller, saying:
+
+      The controller periodically samples the input queue (once per
+      second by default) and adds a thread when the queue length exceeds
+      some threshold (100 events by default). Threads are removed from a
+      stage when they are idle for a specified period of time (5 seconds
+      by default).
+
+    But also:
+
+      Under SEDA, the body of work on control systems can be brought to
+      bear on service resource management, and we have only scratched
+      the surface of the potential for this technique.
+
+    A bit more explanation is provided by Matt Welsh, who is one of the
+    author, in his PhD thesis (2002):
+
+      A benefit to ad hoc controller design is that it does not rely on
+      complex models and parameters that a system designer may be unable
+      to understand or to tune. A common complaint of classic PID
+      controller design is that it is often difficult to understand the
+      effect of gain settings.
+
+-   There are many introductory text books on control theory, but
+    there’s a lot less resources on how to apply control theory to
+    software systems. Here are a few resources:
+
+    -   Feedback Control for Computer Systems book by Philipp K. Janert
+        (2013);
+
+    -   Tutorial: Recent Advances in the Application of Control Theory
+        to Network and Service Management.
+
+-   It could very well be that the way we’ve applied classic PID
+    controllers isn’t suitable for unpredictable internet traffic loads.
+    There are branches of control theory might be better suited for
+    this, see, for example, robust and adaptive control theory;
+
+-   The .NET thread pool apparently uses the hill climbing optimisation
+    technique to elastically scale;
+
+-   My previous post: An experiment in declaratively programming
+    parallel pipelines of state machines.
+
+Discussion
+
+-   Hacker News;
+-   lobste.rs;
+-   r/haskell;
+-   Also see Glyn Normington’s comment in the issue tracker.
+]]></description>
+      <category>Deployment</category>
+    </item>
+
+    <item>
+      <title>Pipelined state machines</title>
+      <link>https://stevana.github.io/pipelined_state_machines.html</link>
+      <pubDate>Wed,  1 Mar 2023 00:00:00 UTC</pubDate>
+      <description><![CDATA[An experiment in declaratively programming parallel pipelines of state
+machines.
+
+Motivation
+
+Imagine a flat complex in Sweden. Being the socialist utopia Sweden is
+there’s a shared laundry room which the people in the flat complex can
+book. In the laundry room there’s everything one needs to wash, dry and
+iron your clothes. You don’t even need to bring your own laundry
+detergent!
+
+Lets call three people living there Ann, Bo and Cecilia, and lets assume
+they all want to use the laundry room. Depending on how the booking
+system is implemented the total time it would take for all three people
+to do their laundry varies.
+
+For example if the booking system allocates a big time slot per person
+in which that person can do the whole cycle of Washing, Drying and
+Ironing then, assuming each step takes one time unit, we get a situation
+like this:
+
+          Person
+            ^
+        Ann | W D I                             W = Washing
+         Bo |       W D I                       D = Drying
+    Cecilia |             W D I                 I = Ironing
+            +-------------------> Time
+            0 1 2 3 4 5 6 7 8 9
+
+Bo cannot start washing until Ann is done ironing, because Ann has
+booked the room for the whole cycle, and so on.
+
+If the booking system is more granular and allows booking a time slot
+per step then we can get a situation that looks like this:
+
+          Person
+            ^
+        Ann | W D I
+         Bo |   W D I
+    Cecilia |     W D I
+            +-------------------> Time
+            0 1 2 3 4 5 6 7 8 9
+
+It should be clear that the total time is shorter in this case, because
+the machines are utilised better (Bo can start using the washing machine
+right after Ann is done with it). Also note that if each person would
+start a new washing after they finish ironing the first one and so on
+then the time savings would be even greater.
+
+This optimisation is called pipelining. It’s used a lot in
+manufacturing, for example Airbus builds two airplanes per day. If you
+were to order a plane today you’d get it delivered in two months time.
+How is that they deliver two per day if it takes two months to build
+them? Pipelining! It’s also used inside CPUs to pipeline instructions.
+
+The rest of this document is an experiment in how we can construct such
+pipelining in software in a declarative way.
+
+Usage
+
+The workers or stages in our pipeline will be state machines of the
+following type.
+
+    data SM s a b where
+      Id      :: SM s a a
+      Compose :: SM s b c -> SM s a b -> SM s a c
+      Fst     :: SM s (a, b) a
+      Snd     :: SM s (a, b) b
+      (:&&&)  :: SM s a c -> SM s a d -> SM s a (c, d)
+      (:***)  :: SM s a c -> SM s b d -> SM s (a, b) (c, d)
+      SlowIO  :: SM s a a -- Simulate a slow I/O computation.
+
+Here’s an example of a stage which takes an ordered pair as input and
+swaps the elements of the pair. Note the use of SlowIO to simulate that
+some slow I/O computation happens.
+
+    swap :: SM () (a, b) (b, a)
+    swap = Snd :*** Fst `Compose` copy `Compose` SlowIO
+      where
+        copy = Id :&&& Id
+
+We can interpret such state machines into plain functions as follows.
+
+    interpret :: SM s a b -> (a -> s -> IO (s, b))
+    interpret Id            x s = return (s, x)
+    interpret (Compose g f) x s = do
+      (s', y) <- interpret f x s
+      interpret g y s'
+    interpret Fst           x s = return (s, fst x)
+    interpret Snd           x s = return (s, snd x)
+    interpret (f :&&& g)    x s = do
+      (s', y)  <- interpret f x s
+      (s'', z) <- interpret g x s'
+      return (s'', (y, z))
+    interpret (f :*** g)    x s = do
+      (s', y)  <- interpret f (fst x) s
+      (s'', z) <- interpret g (snd x) s'
+      return (s'', (y, z))
+    interpret SlowIO x s = do
+      threadDelay 200000 -- 0.2s
+      return (s, x)
+
+Next lets have a look at how we can construct pipelines of such state
+machines.
+
+    data P a b where
+      SM     :: String -> SM s a b -> s -> P a b
+      (:>>>) :: P a b -> P b c -> P a c
+
+The following is an example pipeline where there’s only one stage in
+which we do our pair swapping three times.
+
+    swapsSequential :: P (a, b) (b, a)
+    swapsSequential = SM "three swaps" (swap `Compose` swap `Compose` swap) ()
+
+The above corresponds to our coarse grained booking system where the
+laundry was booked for the whole cycle. Whereas the following
+corresponds to the more fine grained approach where we get pipelining.
+
+    swapsPipelined :: P (a, b) (b, a)
+    swapsPipelined =
+      SM "first swap"  swap () :>>>
+      SM "second swap" swap () :>>>
+      SM "third swap"  swap ()
+
+A pipeline can be deployed, we’ll use the following type to keep track
+of the queue associated with the pipeline as well as the name and pids
+of the state machines involved in the pipeline.
+
+    data Deployment a = Deployment
+      { queue :: TQueue a
+      , pids  :: [(String, Async ())]
+      }
+
+    names :: Deployment a -> String
+    names = bracket . intercalate "," . reverse . map fst . pids
+      where
+        bracket s = "[" ++ s ++ "]"
+
+Here’s the actual deployment function which takes a pipeline and gives
+back an input-queue and a Deployment which holds the output-queue and
+the names and pids of the state machines.
+
+    deploy :: P a b -> IO (TQueue a, Deployment b)
+    deploy p = do
+      q <- newTQueueIO
+      d <- deploy' p (Deployment q [])
+      return (q, d)
+
+    deploy' :: P a b -> Deployment a -> IO (Deployment b)
+    deploy' (SM name sm s0) d = do
+      q' <- newTQueueIO
+      pid <- async (go s0 q')
+      return Deployment { queue = q', pids = (name, pid) : pids d }
+      where
+        f = interpret sm
+
+        go s q' = do
+          x <- atomically $ readTQueue (queue d)
+          (s', o) <- f x s
+          atomically $ writeTQueue q' o
+          go s' q'
+    deploy' (sm :>>> sm') d = do
+      d' <- deploy' sm d
+      deploy' sm' d'
+
+We now have everything we need to run a simple benchmark comparing the
+sequential version of three swaps versus the pipelined version.
+
+    data PipelineKind = Sequential | Pipelined
+      deriving Show
+
+    main :: IO ()
+    main = do
+      mapM_ libMain [Sequential, Pipelined]
+
+    libMain :: PipelineKind -> IO ()
+    libMain k = do
+      (q, d) <- deploy $ case k of
+                           Sequential -> swapsSequential
+                           Pipelined  -> swapsPipelined
+      print k
+      putStrLn $ "Pids: " ++ names d
+      start <- getCurrentTime
+      forM_ [(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7)] $ \x ->
+        atomically $ writeTQueue q x
+      resps <- replicateM 6 $ atomically $ readTQueue (queue d)
+      end <- getCurrentTime
+      putStrLn $ "Responses: " ++ show resps
+      putStrLn $ "Time: " ++ show (diffUTCTime end start)
+      putStrLn ""
+
+We can run the above with cabal run readme-pipeline-example, which
+results in something like the following being printed to the screen.
+
+    Sequential
+    Pids: [three swaps]
+    Responses: [(2,1),(3,2),(4,3),(5,4),(6,5),(7,6)]
+    Time: 3.611045787s
+
+    Pipelined
+    Pids: [first swap,second swap,third swap]
+    Responses: [(2,1),(3,2),(4,3),(5,4),(6,5),(7,6)]
+    Time: 1.604990775s
+
+Cool, we managed to reduce the total running time by more than half! We
+can do even better though! In addition to pipelining we can also shard
+the queues by letting two state machines work on the same queue, the
+first processing the elements in the even positions of the queue and the
+second processing the elements in the odd positions.
+
+    data P a b where
+      SM     :: String -> SM s a b -> s -> P a b
+      (:>>>) :: P a b -> P b c -> P a c
+    + Shard  :: P a b -> P a b
+
+Here’s an example of a sharded pipeline, where each shard will spawn two
+state machines (one working on the even indexes of the queue and the
+other on the odd).
+
+    swapsSharded :: P (a, b) (b, a)
+    swapsSharded =
+      Shard (SM "first swap"  swap ()) :>>>
+      Shard (SM "second swap" swap ()) :>>>
+      Shard (SM "third swap"  swap ())
+
+In the deployment of shards, we achieve the even-odd split by reading
+from the input queue, qIn, and first writing to the even queue, qEven,
+and then switching over to the odd queue, qOdd, when making the
+recursive call in shardQIn. Whereas shardQOut does the inverse and
+merges the two queues back into the output queue:
+
+    + deploy' (Shard p) d = do
+    +   let qIn = queue d
+    +   qEven  <- newTQueueIO
+    +   qOdd   <- newTQueueIO
+    +   pidIn  <- async $ shardQIn qIn qEven qOdd
+    +   dEven  <- deploy' p (Deployment qEven [])
+    +   dOdd   <- deploy' p (Deployment qOdd [])
+    +   qOut   <- newTQueueIO
+    +   pidOut <- async $ shardQOut (queue dEven) (queue dOdd) qOut
+    +   return (Deployment qOut (("shardIn:  " ++ names dEven ++ " & " ++ names dOdd, pidIn) :
+    +                            ("shardOut: " ++ names dEven ++ " & " ++ names dOdd, pidOut) :
+    +                            pids dEven ++ pids dOdd ++ pids d))
+    +   where
+    +     shardQIn :: TQueue a -> TQueue a -> TQueue a -> IO ()
+    +     shardQIn  qIn qEven qOdd = do
+    +       atomically (readTQueue qIn >>= writeTQueue qEven)
+    +       shardQIn qIn qOdd qEven
+    +
+    +     shardQOut :: TQueue a -> TQueue a -> TQueue a -> IO ()
+    +     shardQOut qEven qOdd qOut = do
+    +       atomically (readTQueue qEven >>= writeTQueue qOut)
+    +       shardQOut qOdd qEven qOut
+
+Running this version we see more than 3.5x speed-up compared to the
+sequential pipeline.
+
+    Sharded
+    Pids: [first swap,first swap,shardOut: [first swap] & [first swap],shardIn:  [first swap] & [first swap],second swap,second swap,shardOut: [second swap] & [second swap],shardIn:  [second swap] & [second swap],third swap,third swap,shardOut: [third swap] & [third swap],shardIn:  [third swap] & [third swap]]
+    Responses: [(2,1),(3,2),(4,3),(5,4),(6,5),(7,6)]
+    Time: 1.00241912s
+
+There are still many more improvements to be made here:
+
+-   Avoid spawning threads for merely shuffling elements between queues,
+    e.g. shardQ{In, Out} above;
+-   Avoid copying elements between queues;
+-   Back-pressure;
+-   Batching.
+
+I believe all these problems can be solved by choosing a better
+concurrent queue data structure than TQueue, so that’s what we’ll have a
+look at next.
+
+Disruptor
+
+The Disruptor* modules are a Haskell port of the LMAX Disruptor, which
+is a high performance inter-thread messaging library. The developers at
+LMAX, which operates a financial exchange, reported in 2010 that they
+could process more than 100,000 transactions per second at less than 1
+millisecond latency.
+
+At its core it’s just a lock-free concurrent queue, but it also provides
+building blocks for achieving several useful concurrent programming
+tasks that typical queues don’t (or at least don’t make obvious how to
+do). The extra features include:
+
+-   Multi-cast (many consumers can in parallel process the same event);
+-   Batching (both on producer and consumer side);
+-   Back-pressure;
+-   Sharding for scalability;
+-   Dependencies between consumers.
+
+It’s also performs better than most queues, as we shall see further
+down.
+
+Example
+
+    import Control.Concurrent
+    import Control.Concurrent.Async
+    import Disruptor.SP
+
+    main :: IO ()
+    main = do
+
+      -- Create the shared ring buffer.
+      let bufferCapacity = 128
+      rb <- newRingBuffer bufferCapacity
+
+      -- The producer keeps a counter and produces events that are merely the pretty
+      -- printed value as a string of that counter.
+      let produce :: Int -> IO (String, Int)
+          produce n = return (show n, n + 1)
+
+          -- The counter starts at zero.
+          initialProducerState = 0
+
+          -- No back-pressure is applied in this example.
+          backPressure :: Int -> IO ()
+          backPressure _ = return ()
+
+      producer <- newEventProducer rb produce backPressure initialProducerState
+
+      -- The consumer merely prints the string event to the terminal.
+      let consume :: () -> String -> SequenceNumber -> EndOfBatch -> IO ()
+          consume () event snr endOfBatch =
+            putStrLn (event ++ if endOfBatch then " (end of batch)" else "")
+
+          -- The consumer doesn't need any state in this example.
+          initialConsumerState = ()
+
+          -- Which other consumers do we need to wait for before consuming an event?
+          dependencies = []
+
+          -- What to do in case there are no events to consume?
+          waitStrategy = Sleep 1
+
+      consumer <- newEventConsumer rb consume initialConsumerState dependencies waitStrategy
+
+      -- Tell the ring buffer which the last consumer is, to avoid overwriting
+      -- events that haven't been consumed yet.
+      setGatingSequences rb [ecSequenceNumber consumer]
+
+      withEventProducer producer $ \ap ->
+        withEventConsumer consumer $ \ac -> do
+          threadDelay (3 * 1000 * 1000) -- 3 sec
+          cancel ap
+          cancel ac
+
+You can run the above example with cabal run readme-disruptor-example.
+
+A couple of things we could change to highlight the features we
+mentioned in the above section:
+
+1.  Add a second consumer that saves the event to disk, this consumer
+    would be slower than the current one which logs to the terminal, but
+    we could use buffer up events in memory and only actually write when
+    the end of batch flag is set to speed things up;
+
+2.  We could also shard depending on the sequence number, e.g. have two
+    slower consumers that write to disk and have one of them handle even
+    sequence numbers while the other handles odd ones;
+
+3.  The above producer writes one event at the time to the ring buffer,
+    but since we know at which sequence number the last consumer is at
+    we can easily make writes in batches as well;
+
+4.  Currently the producer doesn’t apply any back-pressure when the ring
+    buffer is full, in a more realistic example where the producer
+    would, for example, create events from requests made to a http
+    server we could use back-pressure to tell the http server to return
+    status code 429 (too many requests);
+
+5.  If we have one consumer that writes to the terminal and another one
+    that concurrently writes to disk, we could add a third consumer that
+    does something with the event only if it has both been logged and
+    stored to disk (i.e. the third consumer depends on both the first
+    and the second).
+
+How it works
+
+The ring buffer is implemented using a bounded array, it keeps track of
+a monotonically increasing sequence number and it knows its the capacity
+of the array, so to find out where to write the next value by simply
+taking the modulus of the sequence number and the capacity. This has
+several advantages over traditional queues:
+
+1.  We never remove elements when dequeing, merely overwrite them once
+    we gone all way around the ring. This removes write contention
+    between the producer and the consumer, one could also imagine
+    avoiding garbage collection by only allocating memory the first time
+    around the ring (but we don’t do this in Haskell);
+
+2.  Using an array rather than linked list increasing striding due to
+    spatial locality.
+
+The ring buffer also keeps track of up to which sequence number its last
+consumer has consumed, in order to not overwrite events that haven’t
+been handled yet.
+
+This also means that producers can ask how much capacity left a ring
+buffer has, and do batched writes. If there’s no capacity left the
+producer can apply back-pressure upstream as appropriate.
+
+Consumers need keep track of which sequence number they have processed,
+in order to avoid having the ring buffer overwrite unprocessed events as
+already mentioned, but this also allows consumers to depend on each
+other.
+
+When a consumer is done processing an event, it asks the ring buffer for
+the event at its next sequence number, the ring buffer then replies that
+either there are no new events, in which case the consumer applies it
+wait strategy, or the ring buffer can reply that there are new events,
+the consumer the handles each one in turn and the last one will be have
+the end of batch flag set, so that the consumer can effectively batch
+the processing.
+
+Performance
+
+Our Disruptor implementation, which hasn’t been optimised much yet, is
+about 2x slower than LMAX’s Java version on their single-producer
+single-consumer benchmark (1P1C) (basically the above example) on a
+couple of years old Linux laptop.
+
+The same benchmark compared to other Haskell libraries:
+
+-   10.3x faster than Control.Concurrent.Chan;
+
+-   8.3x faster than Control.Concurrent.STM.TBQueue;
+
+-   1.7x faster than unagi-chan;
+
+-   25.5x faster than chaselev-deque;
+
+-   700x faster than ring-buffer;
+
+-   1.3x slower than lockfree-queue;
+
+-   TODO: Compare with data-ringbuffer.
+
+In the triple-producer single-consumer (3P1C) benchmark, the Java
+version is 5x slower than the Java 1P1C case. And our 3P1C is 4.6x
+slower than our 1P1C version and our 3P1C version is 2.7x slower than
+the Java version.
+
+The same benchmark compared to other Haskell libraries:
+
+-   73x faster than Control.Concurrent.Chan;
+
+-   3.5x faster than Control.Concurrent.STM.TBQueue;
+
+-   1.3x faster than unagi-chan;
+
+-   1.9x faster than lockfree-queue.
+
+For a slightly more “real world” example, we modified the 3P1C test to
+have three producers that log messages while the consumer writes them to
+a log file and compared it to fast-logger. The pipelined-state-machines
+benchmark has a throughput of 3:4 that of fast-logger. When we bump it
+to ten concurrently logging threads the pipelined-state-machines
+benchmark has a throughput of 10:7 that of fast-logger.
+
+See the file benchmark.sh for full details about how the benchmarks are
+run.
+
+As always take benchmarks with a grain of salt, we’ve tried to make them
+as fair with respect to each other and as true to the original Java
+versions as possible. If you see anything that seems unfair, or if you
+get very different results when trying to reproduce the numbers, then
+please file an issue.
+
+Contributing
+
+There’s a lot of possible paths to explore from here, including:
+
+-   ☐ Can we swap out our use of TQueue for Disruptor in our deploy of
+    Pipelines?
+-   ☐ Can we add something like a FanOut :: P a b -> P a c -> P a (b, c)
+    and a Par :: P a c -> P b d -> P (a, b) (c, d) combinator to allow
+    two parallel queues?
+-   ☐ What about sum-types and error handling?
+-   ☐ Our current, and the above just mentioned, pipeline combinators
+    are all binary to can we generalise this to N-ary?
+-   ☐ Can we visualise pipelines using dot or similar?
+-   ☐ Can we build a performance/cost simulator of pipelines?
+-   ☐ Arrow syntax or monadic DSL for pipelines?
+-   ☐ We’ve seen previously how we can hot-code upgrade state machines,
+    what about hot-code upgrading pipelines?
+-   ☐ Can we implement the Erlang gen_event behaviour using Disruptor?
+-   ☐ Would it make sense to use the spiritual successor of the
+    Disruptor instead, i.e. the different array queues from aeron and
+    agrona:
+    -   Single-producer single-consumer;
+    -   Multiple-producers single-consumer;
+    -   Multiple-producers multiple-consumers.
+-   ☐ How exactly do these pipelines relate to the libraries pipes,
+    conduit and streamly?
+-   ☐ How does it relate to synchronous programming languages such as
+    Esterel, Lustre, ReactiveML, etc? It seems to me that their main
+    motivation is to be concurrent or parallel while still determinstic,
+    which is what we’d like as well. Looking at ReactiveML’s
+    documentation for compositions we see the same constructs as we’ve
+    discussed: their ; is our Compose (with its arguments flipped),
+    their || is our FanOut, their |> is our :>>> and their let-and
+    construct could be achived by adding projection functions to our
+    Pipelines similar to Fst and Snd for SM. Interestingly they don’t
+    have any sum-types-like construct here, i.e. something like
+    (:|||) :: P a c -> P b c -> P (Either a b) c;
+-   ☐ I like to think of how one constructs a pipeline, i.e. the choice
+    of which tasks should happen in parallel or should be sharded etc,
+    as a choice of how to best make use of the CPUs/cores of a single
+    computer. If seen this way then that begs the question: what about a
+    network of multiple computers? Perhaps there should be something
+    like a Topology data type which describes how multiple pipelines
+    interact and a topology is deployed by deploying multiple pipelines
+    over multiple machines?
+
+See also
+
+Presentations
+
+-   LMAX - How to Do 100K TPS at Less than 1ms Latency by Martin
+    Thompson (QCon 2010);
+
+-   LMAX Disruptor and the Concepts of Mechanical Sympathy by Jamie
+    Allen (2011);
+
+-   Concurrent Programming with the Disruptor by Trisha Gee (2012);
+
+-   Disruptor 3.0: Details and Advanced Patterns by Mike Barker (YOW!
+    2013);
+
+-   Designing for Performance by Martin Thompson (GOTO 2015);
+
+-   A quest for predictable latency with Java concurrency Martin
+    Thompson (JavaZone 2016);
+
+-   Evolution of Financial Exchange Architectures by Martin Thompson
+    (QCon 2020)
+
+    -   1,000,000 tx/s and less than 100 microseconds latency, he is no
+        longer at LMAX though so we don’t know if these exchanges are
+        using the disruptor pattern.
+
+-   Aeron: Open-source high-performance messaging talk by Martin
+    Thompson (Strange Loop, 2014);
+
+-   Aeron: What, Why and What Next? talk by Todd Montgomery (GOTO,
+    2015);
+
+-   Cluster Consensus: when Aeron met Raft talk by Martin Thompson
+    (GOTO, 2018);
+
+-   Fault Tolerant 24/7 Operations with Aeron Cluster talk by Todd
+    Montgomery (2022).
+
+Writings
+
+-   Martin Thompson’s blog;
+-   The Disruptor mailing list;
+-   The Mechanical Sympathy mailing list;
+-   The LMAX Architecture by Martin Fowler (2011);
+-   Staged event-driven architecture;
+-   The Reactive Manifesto;
+-   Flow-based programming.
+]]></description>
+      <category>Development</category>
+    </item>
+
+    <item>
+      <title>Hot-code swapping à la Erlang with Arrow-based state machines</title>
+      <link>https://stevana.github.io/hot-code_swapping_a_la_erlang_with_arrow-based_state_machines.html</link>
+      <pubDate>Tue, 21 Feb 2023 00:00:00 UTC</pubDate>
+      <description><![CDATA[An experiment in implementing remote hot code swapping, or dynamic code
+upgrade, for state machines.
+
+Background
+
+In Erlang it’s possible to seamlessly hot swap the code on a running
+process.
+
+Consider the following gen_server implementation of a counter which can
+be incremented and have its current count value retrieved:
+
+    -module(counter).
+    -version("1").
+
+    -export([start_link/0, incr/0, count/0]).
+
+    -behavior(gen_server).
+    -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+
+    start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], [{debug, [trace]}]).
+
+    incr()  -> gen_server:call(?MODULE, incr).
+    count() -> gen_server:call(?MODULE, count).
+
+    init([]) -> {ok, 0}.
+
+    handle_call(incr, _From, State) -> {reply, ok, State+1};
+    handle_call(count, _From, State) -> {reply, State, State};
+    handle_call(_Call, _From, State) -> {noreply, State}.
+
+    handle_cast(_Cast, State) -> {noreply, State}.
+
+    handle_info(_Info, State) -> {noreply, State}.
+
+    terminate(_Reason, _State) -> ok.
+
+    code_change(_OldVsn, State, _Extra) -> {ok, State}.
+
+Here’s a small REPL session which shows how it works:
+
+    1> c(counter).
+    {ok,counter}
+    2> counter:start_link().
+    {ok,<0.87.0>}
+    3> counter:incr().
+    *DBG* counter got call incr from <0.80.0>
+    *DBG* counter sent ok to <0.80.0>, new state 1
+    ok
+    4> counter:incr().
+    *DBG* counter got call incr from <0.80.0>
+    *DBG* counter sent ok to <0.80.0>, new state 2
+    ok
+    5> counter:count().
+    *DBG* counter got call count from <0.80.0>
+    *DBG* counter sent 2 to <0.80.0>, new state 2
+    2
+
+Now lets introduce a contrived change to the counter where we change the
+state to contain an additional counter, which starts at the value of the
+old one (see code_change). The two operations incr and count are changed
+to operate on the new counter leaving the old one alone.
+
+    @@ -1,5 +1,5 @@
+     -module(counter).
+    --version("1").
+    +-version("2").
+
+     -export([start_link/0, incr/0, count/0]).
+
+    @@ -13,14 +13,13 @@
+
+     init([]) -> {ok, 0}.
+
+    -handle_call(incr, _From, State) -> {reply, ok, State+1};
+    -handle_call(count, _From, State) -> {reply, State, State};
+    +handle_call(incr, _From, {OldState, State}) -> {reply, ok, {OldState, State+1}};
+    +handle_call(count, _From, {OldState, State}) -> {reply, State, {OldState, State}};
+     handle_call(_Call, _From, State) -> {noreply, State}.
+
+     handle_cast(_Cast, State) -> {noreply, State}.
+     handle_info(_Info, State) -> {noreply, State}.
+
+     terminate(_Reason, _State) -> ok.
+
+    -code_change(_OldVsn, State, _Extra) -> {ok, State}.
+    +code_change("1", State, _Extra) -> {ok, {State, State}}.
+
+We can now upgrade the running process as follows:
+
+    6> compile:file(counter).
+    {ok,counter}
+    7> sys:suspend(counter).
+    ok
+    8> code:purge(counter).
+    false
+    9> code:load_file(counter).
+    {module,counter}
+    10> sys:change_code(counter, counter, "1", []).
+    ok
+    11> sys:resume(counter).
+    ok
+    12> counter:incr().
+    *DBG* counter got call incr from <0.80.0>
+    *DBG* counter sent ok to <0.80.0>, new state {2,3}
+    ok
+    13> counter:incr().
+    *DBG* counter got call incr from <0.80.0>
+    *DBG* counter sent ok to <0.80.0>, new state {2,4}
+    ok
+    14> counter:count().
+    *DBG* counter got call count from <0.80.0>
+    *DBG* counter sent 4 to <0.80.0>, new state {2,4}
+    4
+
+This repository is an experiment which tries to do something similar in
+Haskell for state machines of type input -> state -> (state, output).
+
+Usage
+
+Before we go into the details of how this is implemented in Haskell,
+lets have a look at how it looks from the user’s perspective.
+
+In one terminal run cabal run exe and in another terminal run cabal repl
+and type:
+
+    > import LibMain
+    > incr
+    > count
+
+This should show the following in the first terminal:
+
+    Output:    L Unit
+    New state: Int 1
+
+    Output:    R (Int 1)
+    New state: Int 1
+
+Where L Unit is the output from incr and R (Int 1) the output from
+count.
+
+Next we will upgrade the state machine from the REPL:
+
+    > import Example.Counter
+    > upgrade (Upgrade counterSM counterSM2 upgradeState)
+    > incr
+    > incr
+    > count
+
+Which will result in the following being printed in the first terminal:
+
+    Upgrade successful!
+
+    Output:    L Unit
+    New state: Pair (Int 1) (Int 1)
+
+    Output:    L Unit
+    New state: Pair (Int 1) (Int 2)
+
+    Output:    R (Int 2)
+    New state: Pair (Int 1) (Int 2)
+
+If we try to upgrade again, we get an error:
+
+    The version running isn't the one the upgrade expects. Aborting upgrade.
+
+How it works
+
+The basic idea is that we want our state machines to be seralisable so
+that we can send them over the network in order to perform remote
+upgrades.
+
+The key observation is that a state machine of type:
+
+      type SM state input output = input -> state -> (state, output)
+
+is an instance of Arrow and Arrows allow us to express functions in a
+first-order way, as long as arr :: Arrow a => (b -> c) -> a b c is not
+used.
+
+The Arrow type class modulo arr is the CartesianCategory type class from
+Conal Elliott’s work on compiling to categories.
+
+The CartesianCategory type class is defined as follows:
+
+    class Category k => Cartesian k where
+      (&&&) :: k a c -> k a d -> k a (c, d)
+      (***) :: k b c -> k b' c' -> k (b, b') (c, c')
+      fst   :: k (a, b) a
+      snd   :: k (a, b) b
+
+The initial (or free) CartesianCategory is given by the following data
+type:
+
+    data FreeCC a b where
+      Id      :: FreeCC a a
+      Compose :: FreeCC b c -> FreeCC a b -> FreeCC a c
+      (:&&&)  :: FreeCC a c -> FreeCC a d -> FreeCC a (c, d)
+      (:***)  :: FreeCC b c -> FreeCC b' c' -> FreeCC (b, b') (c, c')
+      Fst     :: FreeCC (a, b) a
+      Snd     :: FreeCC (a, b) b
+
+with the, hopefully, obvious Cartesian instance.
+
+So the idea is that we write our program using the Cartesian:
+
+    swap :: Cartesian k => k (a, b) (b, a)
+    swap = copy >>> snd *** fst
+      where
+        copy :: Cartesian k => k a (a, a)
+        copy = id &&& id
+
+And then we can instantiate k to be FreeCC and get ahold of the
+serialisable syntax.
+
+Ideally, since writing larger programs in this point-free style is
+tricky, we’d like to use Haskell’s arrow syntax:
+
+    swap' :: Cartesian k => k (a, b) (b, a)
+    swap' = proc (x, y) -> returnA -< (y, x)
+
+After all Cartesian is merely Arrow without arr and we’ve shown how swap
+can be implemented without arr, but alas GHC nevertheless tries to
+translate swap' into something that uses arr which ruins our plan.
+
+Conal developed the concat GHC plugin to avoid this problem. It
+translates any monomorphic Haskell function into an Arrow of any
+user-defined Haskell Cartesian closed category (CCC)[1].
+
+Oleg Grenrus also developed another GHC plugin that does the right thing
+and translates arrow syntax into CartesianCategory rather than Arrow
+which also solves the problem.
+
+Since both of these approaches rely on the GHC plugin machinery they are
+quite heavyweight. Conal’s translation works for any monomorphic
+function, so in a sense it solves a more general problem than we need.
+Oleg’s library is also solving a bunch of other problems that we don’t
+care about, it implements OverloadedStrings, OverloadedLists,
+OverloadedLabels using the plugin, and more importantly it doesn’t
+compile with GHC 9.2 or above.
+
+More recently Lucas Escot showed how to use ideas from Jean-Philippe
+Bernardy and Arnaud Spiwack’s paper Evaluating Linear Functions to
+Symmetric Monoidal Categories (2021) to provide a small DSL which gives
+us something close to the arrow syntax. It’s also not quite perfect, in
+particular higher-order combinators cannot be expressed, but Lucas tells
+me that he’s working on a follow up post which tackles this problem. As
+we’ve seen in the above example, we also need to encode the state
+machine’s inputs and outputs as explicit Eithers, it might be possible
+to get around this with some generically derived isomorphism though.
+
+Anyway, we use the trick that Lucas described to express our state
+machines and from that we get something similar to the free Cartesian
+category (FreeCC above), which we then compile to the Categorical
+abstract machine (CAM). This compilation process is rather
+straight-forward as CAM is similar to FreeCC. The CAM “bytecode” is our
+serialised state machine and this is what gets sent over the network
+when doing upgrades.
+
+The idea is that each deployed node runs a CAM (or some other abstract
+machine), when we deploy the node we specify a initial state machine
+(SM) to run there. We then remotely upgrade the state machine on a node
+by sending it CAM bytecode of the old SM (this is used to verify that we
+are not updating the wrong SM), the bytecode for the new SM and the
+bytecode for a state migration (old state to new state). The state
+migration is type-safe.
+
+We could also serialise the free Cartesian category and send that over
+the network, but the bytecode is “flatter” (i.e. can more easily be
+turned into a list of bytecodes) and hopefully a more stable API. I can
+imagine situations where the syntax for writing state machines changes
+or gets more expressive, but the bytecode stays the same. Which is a
+good thing, since upgrading the abstract machine on a node can probably
+not be done as easily without any downtime.
+
+Contributing
+
+I believe this is a good starting point for further experiments, here
+are a few ideas:
+
+-   ☐ Generate FreeFunc s a b so that the correctness can be tested
+    using property-based testing;
+-   ☐ Backwards compatibility, i.e. allow old inputs after an upgrade,
+    perhaps similar to how state migrations are handled by providing a
+    FreeFunc ()       oldInput newInput as part of Upgrade;
+-   ☐ Automatic state migration? C.f. essence-of-live-coding;
+-   ☐ Downgrades and rollback in case upgrades fail;
+-   ☐ Improve the DSL for writing state machines:
+    -   Either building upon the current approach described in
+        Overloading the lambda abstraction in Haskell by Lucas;
+    -   Or perhaps using a custom preprocessor and quasiquoter for
+        Cartesian (closed) categories, see Pepe Iborra’s arrowp-qq for
+        inspiration;
+    -   Or porting the Overloaded.Categories bits from Oleg’s plugin to
+        newer GHC versions;
+    -   Or actually fixing GHC, I’m not sure if there’s a proposal for
+        this already, I think the closest thing I could find is this
+        (stale) one by Alexis King.
+-   ☐ In Erlang upgrades are usually not done directly on gen_server but
+    rather via the application and releases behaviours. In short one
+    application is a supervisor tree and a release is one or more
+    applications. For more see appup and relups, as well as how this can
+    be automated using rebar3 over here. What would porting that over to
+    our setting look like?
+-   ☐ How does Erlang handle upgrades of the VM without downtime?
+-   ☐ Would anything need to be changed if we tried to combine the
+    arrow-based state machines with supervisors or async I/O?
+-   ☐ Can we implement the abstract machine and event loop using
+    Cosmopolitan or WebAssembly for portability?
+-   ☐ Imagine if we wanted to develop state machines in an other
+    programming language but still target the CAM. Most programming
+    languages don’t have GADTs so type-safe the free Cartesian category
+    will not be possible to implement, furthermore even if we could
+    there’s the problem of working with combinators vs arrow syntax… Is
+    there a more low-tech solution that would be easier to port to less
+    featureful languages?
+
+See also
+
+-   essence-of-live-coding: FRP library with hot code swapping support.
+-   Dan Piponi’s circuits are similar to our state machines:
+    -   http://blog.sigfpe.com/2017/01/addressing-pieces-of-state-with.html;
+    -   http://blog.sigfpe.com/2017/01/building-free-arrows-from-components.html.
+-   Chris Penner’s Deconstructing Lambdas talk (2021);
+-   The Dynamic code change chapter (p. 72) in Joe Armstrong’s PhD
+    thesis (2003).
+
+Acknowledgments
+
+Thanks to Daniel Gustafsson for helping me understand Port from the
+Overloading the lambda abstraction in Haskell blog post!
+
+[1] The closed part of Cartesian closed category means that we also add
+exponents (not just finite products), i.e. analogous to ArrowApply.
+]]></description>
+      <category>Upgrading</category>
+    </item>
+
+    <item>
+      <title>Deploying and restarting state machines using supervisor trees</title>
+      <link>https://stevana.github.io/deploying_and_restarting_state_machines_using_supervisor_trees.html</link>
+      <pubDate>Mon, 13 Feb 2023 00:00:00 UTC</pubDate>
+      <description><![CDATA[An experimental implementation of Erlang/OTP’s gen_server and supervisor
+behaviours that doesn’t use lightweight threads and message passing.
+
+Motivation
+
+What exactly is it that makes Erlang suitable for writing reliable
+distributed systems?
+
+I’ve previously argued that it’s Erlang’s behaviours rather than its
+lightweight processes and message passing.
+
+Behaviours can be thought of as generic building blocks for building
+reliable distributed systems. Erlang/OTP exposes six behaviours and
+encourages its users to compose them into bigger systems. The behaviours
+are generic in that they are parametrised by interfaces, the idea being
+that the user implements the interface in a problem specific way and
+then the user gets the generic component from Erlang/OTP. Typically the
+interface requires a sequential implementation while the generic
+component exposes a concurrent (or thread-safe) API, i.e. behaviours
+abstract away the low-level and difficult concurrent code which is
+difficult to get right. Joe Armstrong describes them as follows:
+
+  Behaviors in Erlang can be thought of as parameterizable higher-order
+  parallel processes. They represent an extension of conventional
+  higher-order functions (like map, fold etc) into a concurrent domain.
+
+Which I think is a good analogy, as e.g. map and fold hide the low-level
+details of for-loops, although the concurrent details of behaviours are
+typically more complicated than manually dealing with index variables.
+
+This repo is an experiment in trying to implement two of these
+behaviours, namely gen_server and supervisor, without using lightweight
+processes/threads and message passing. I believe the last part about not
+using lightweight threads is a design space that hasn’t been explored
+much yet. Most programming languages or libraries seem to start with the
+assumption that what makes Erlang great for writing reliable distributed
+systems is its lightweight threads and message passing, and they never
+even get to the point where they steal the structure of behaviours!
+
+How it works
+
+Generic server
+
+The sequential semantics (or “business logic”) of a generic server
+(gen_server) should take some input and the current state and produce
+some output and a new updated state, i.e.:
+
+      input -> state -> (state, output)
+
+Client requests to the server will come in via the network, so we also
+need a Codec to be able to decode ByteStrings into inputs and encode
+outputs into ByteStrings to be able to reply to the client. We might
+also want to deserialise the initial state state from disk on startup
+and serialise it to disk on termination. See the StateMachine module for
+the details of the above.
+
+Supervisor
+
+The job of a supervisor is to monitor its children for failures and do
+restarts according to some predetermined restart strategy in case a
+failure happens.
+
+Supervisors are organised in trees where generic servers (or more
+generally any other worker behaviours) are at the leaves and other
+supervisors are at the nodes. Since supervisors trees determine an order
+(depth-first) they can be used to deploy a system of generic servers.
+
+See the Supervisor module for details.
+
+Event loop
+
+The concurrent part of the generic servers is implemented in the
+EventLoop module. The basic idea is that we concurrently write client
+request ByteStrings to a concurrent queue and the event loop will decode
+the input and step the right server with said input and respond to the
+client with the output produce by the server.
+
+The behavior of supervisors is also implemented in the event loop.
+Basically we wrap the step function in a try and catch and in case of
+failure we do the appropriate restarts.
+
+Example
+
+As an example of generic server I’ve implemented a simple key value
+store in the Example.KeyValueStore module. In app/Main.hs we start an
+event loop with a simple supervisor tree containing the key value store:
+
+        main :: IO ()
+        main = do
+          let sup = Supervisor OneForOne
+                      [ Worker ("kv1", kvStore)
+                      , Supervisor RestForOne
+                          [ Worker ("kv2", kvStore), Worker ("kv3", kvStore) ]
+                      ]
+          queue <- newTBQueueIO 128
+          withEventLoop sup queue $ do
+            call_ "kv2" (Store "x" 1) queue
+            r0 <- call "kv2" (Lookup "x") queue
+            print r0
+            call_ "kv2" (Lookup "crash") queue -- Deliberate bug which causes a crash.
+            r1 <- call "kv2" (Lookup "x") queue
+            print r1
+            r2 <- call "kv2" (Lookup "y") queue
+            print r2
+
+When run with cabal run kv it produces the following output:
+
+        Calling kv2: Store "x" 1
+        KV store starting: kv1
+        KV store starting: kv2
+        KV store starting: kv3
+        Calling kv2: Lookup "x"
+        Right "Result (Just 1)"
+        Calling kv2: Lookup "crash"
+        kv2 threw: divide by zero
+        KV store terminating: kv2
+        KV store terminating: kv3
+        KV store starting: kv2
+        KV store starting: kv3
+        Calling kv2: Lookup "x"
+        Right "Result Nothing"
+        Calling kv2: Lookup "y"
+        Right "Result Nothing"
+
+Contributing
+
+There are many ways in which this repo can be extended, here are some
+ideas:
+
+-   ☐ Add HTTP endpoint for writing to the event loop queue. (Hint: see
+    the HttpServer and EventLoop modules of this repo));
+-   ☐ Save and restore the state of the example to disk in terminate and
+    init;
+-   ☐ Customisable shutdown grace time;
+-   ☐ The supervisors itself should fail if its children have failed too
+    many times within some time interval;
+-   ☐ Supervisors should be able to supervise supervisor trees that are
+    deployed on other computers.
+
+See also
+
+-   There are a handful of supervisor implementations in Haskell
+    already, but I think all of them assume that the children are
+    running on their own threads.
+]]></description>
+      <category>Deployment</category>
+    </item>
+
+    <item>
+      <title>Simulation testing using state machines</title>
+      <link>https://stevana.github.io/simulation_testing_using_state_machines.html</link>
+      <pubDate>Tue,  7 Feb 2023 00:00:00 UTC</pubDate>
+      <description><![CDATA[[GitHub CI] [Hackage]
+
+Property-based testing (PBT), i.e. generating random inputs and checking
+some property of the output, of pure programs is an established practice
+by now. It’s taught in introductory university classes and it’s part of
+test suites in industry.
+
+Most real world programs are not pure though, they are stateful. While
+it’s often possible to structure your program in such a way that the
+impure stuff is done in main, e.g. read the contents of a file, and then
+passed on to a pure function, e.g. a parser, it’s not always possible.
+Consider a long-running program that interacts with the filesystem and
+with other programs over the network, e.g. some kind of web service or a
+distributed database. It’s difficult to split such a program up into
+doing a little bit of impure stuff at the start, then hand it over to a
+pure function (which we can apply PBT on).
+
+Given this it’s perhaps a bit surprising that there are relatively few
+resources about applying PBT to stateful systems. This repository is an
+attempt to close that gap and try to make PBT stateful systems more
+common.
+
+The goals we’d like to achieve are:
+
+-   Show how to test stateful (i.e. impure/monadic) programs using
+    property-based testing;
+
+-   Show how we can do concurrent testing to help uncover problems such
+    as race conditions;
+
+-   Show how we can build bigger systems in a modular way by applying
+    the property-based testing equivalent of integration and contract
+    tests;
+
+-   Show how to use fault injection and so called simulation testing to
+    “end-to-end” test distributed systems;
+
+-   Introduce the reader to related work and open problems in the area
+    along the way.
+
+In the interest of brevity, we assume that the reader already has:
+
+-   Enough familiarity with Haskell to be able to read simple programs,
+    for example if you can follow along in the Learn You a Haskell for
+    Great Good! tutorial, then you should be fine;
+
+-   Some experience with property-based testing of non-stateful
+    (i.e. pure) programs. For example as explained in the official
+    QuickCheck manual or in the following tutorial;
+
+-   Basic knowledge of state machines (i.e. Mealy / Moore machines and
+    transducers).
+
+Other than that this tutorial is striving to be as self-contained as
+possibly as well as accessible to non-Haskell programmers.
+
+Structure
+
+The tutorial is split up into five parts (so far), and each part has the
+following structure:
+
+-   Motivation: explains why we are doing what we are about to do;
+-   Plan: how we will do it;
+-   Code: a concrete implementation of the idea (in case you get stuck
+    when trying to implement it yourself);
+-   Discussion: common questions or objections;
+-   Exercises: things the authors were to lazy to do, but they know how
+    to;
+-   Problems: things the authors don’t know how to do (yet);
+-   See also: links to further reading about the topic or related
+    topics;
+-   Summary: the most important take away.
+
+The parts build upon each other. We start by modelling and testing a
+simple counter using a state machine in part 1, we then reuse the same
+state machine model to test the counter for thread-safety using
+linearisability in part 2. In part 3 we will implement a queue and a web
+service that uses said queue, the state machine model for the queue and
+the real implementation of the queue will be contract tested to ensure
+that the model is faithful to the implementation, subsequently while
+testing the web service we will use the model in place of the real
+queue. In part 4 we introduce fault injection to the queue allowing us
+to test how the web service performs when its dependency fails. Finally,
+in part 5, we combine all the above ideas in what, sometimes is called
+simulation testing, to test a distributed system that uses replicated
+state machines.
+
+Table of contents
+
+1.  State machine testing
+2.  Concurrent state machine testing with linearisability
+3.  Integration tests against state machine fakes and consumer-driven
+    contract tests for the fakes
+4.  Fault-injection
+5.  Simulation testing
+
+Usage
+
+This repository contains literate Haskell code in src. If you want to
+interact with it, install ghcup and then type cabal repl. Alternatively,
+if you are using the nix package manager, then running nix-shell in the
+root directory should give you the right ghc version and all other
+dependencies you might need.
+
+The literate code is transformed into markdown using pandoc in
+tools/generate_markdown.sh and the markdown is put inside the docs
+directory for easier browsing.
+
+The following is a link to the first part of the generate markdown, at
+the end it will link to the second part and so on. Or you can use the
+table of contents above or the docs directory to jump to desired part
+straight away.
+
+Contributing
+
+Any feedback, suggestions for improvement or questions are most welcome
+via the issue tracker!
+
+See the CONTRIBUTING.md file for more detailed guidelines regarding
+contributing.
+
+License
+
+See the LICENSE file.
+]]></description>
+      <category>Testing</category>
+    </item>
+
+    <item>
+      <title>Erlang's not about lightweight processes and message passing...</title>
+      <link>https://stevana.github.io/erlangs_not_about_lightweight_processes_and_message_passing.html</link>
+      <pubDate>Wed, 18 Jan 2023 00:00:00 UTC</pubDate>
+      <description><![CDATA[I used to think that the big idea of Erlang is its lightweight processes
+and message passing. Over the last couple of years I’ve realised that
+there’s a bigger insight to be had, and in this post I’d like to share
+it with you.
+
+Background
+
+Erlang has an interesting history. If I understand things correctly, it
+started off as a Prolog library for building reliable distributed
+systems, morphed into a Prolog dialect, before finally becoming a
+language in its own right.
+
+The goal seemed to have always been to solve the problem of building
+reliable distributed systems. It was developed at Ericsson and used to
+program their telephone switches. This was sometime in the 80s and 90s,
+before internet use become widespread. I suppose they were already
+dealing with “internet scale” traffic, i.e. hundreds of millions of
+users, with stricter SLAs than most internet services provide today. So
+in a sense they were ahead of their time.
+
+In 1998 Ericsson decided to ban all use of Erlang[1]. The people
+responsible for developing it argued that if they were going to ban it,
+then they might as well open source it. Which Ericsson did and shortly
+after most of the team that created Erlang quit and started their own
+company.
+
+One of these people was Joe Armstrong, which also was one of the main
+people behind the design and implementation of Erlang. The company was
+called Bluetail and they got bought up a couple of times but in the end
+Joe got fired in 2002.
+
+Shortly after, still in 2002, Joe starts writing his PhD thesis at the
+Swedish Institute of Computer Science (SICS). Joe was born 1950, so he
+was probably 52 years old at this point. The topic of the thesis is
+Making reliable distributed systems in the presence of software errors
+and it was finished the year after in 2003.
+
+It’s quite an unusual thesis in many ways. For starters, most theses are
+written by people in their twenties with zero experience of practical
+applications. Whereas in Joe’s case he has been working professionally
+on this topic since the 80s, i.e. about twenty years. The thesis
+contains no math nor theory, it’s merely a presentation of the ideas
+that underpin Erlang and how they used Erlang to achieve the original
+goal of building reliable distributed systems.
+
+I highly commend reading his thesis and forming your own opinion, but to
+me it’s clear that the big idea there isn’t lightweight processes[2] and
+message passing, but rather the generic components which in Erlang are
+called behaviours.
+
+Behaviours
+
+I’ll first explain in more detail what behaviours are, and then I’ll
+come back to the point that they are more important than the idea of
+lightweight processes.
+
+Erlang behaviours are like interfaces in, say, Java or Go. It’s a
+collection of type signatures which can have multiple implementations,
+and once the programmer provides such an implementation they get access
+to functions written against that interface. To make it more concrete
+here’s a contrived example in Go:
+
+    // The interface.
+    type HasName interface {
+            Name() string
+    }
+
+    // A generic function written against the interface.
+    func Greet(n HasName) {
+        fmt.Printf("Hello %s!\n", n.Name())
+    }
+
+    // First implementation of the interface.
+    type Joe struct {}
+
+    func (_ *Joe) Name() string {
+            return "Joe"
+    }
+
+    // Second implementation of the interface.
+    type Mike struct {}
+
+    func (_ *Mike) Name() string {
+            return "Mike"
+    }
+
+    func main() {
+            joe := &Joe{}
+            mike := &Mike{}
+            Greet(mike)
+            Greet(joe)
+    }
+
+Running the above program will display:
+
+    Hello Mike!
+    Hello Joe!
+
+This hopefully illustrates how Greet is generic in, or parametrised by,
+the interface HasName.
+
+Generic server behaviour
+
+Next lets have a look at a more complicated example in Erlang taken from
+Joe’s thesis (p. 136). It’s a key-value store where we can store a key
+value pair or lookup the value of a key, the handle_call part is the
+most interesting:
+
+    -module(kv).
+    -behaviour(gen_server).
+
+    -export([start/0, stop/0, lookup/1, store/2]).
+
+    -export([init/1, handle_call/3, handle_cast/2, terminate/2]).
+
+    start() ->
+      gen_server:start_link({local,kv},kv,arg1,[]).
+
+    stop() -> gen_server:cast(kv, stop).
+
+    init(arg1) ->
+      io:format("Key-Value server starting~n"),
+      {ok, dict:new()}.
+
+    store(Key, Val) ->
+      gen_server:call(kv, {store, Key, Val}).
+
+    lookup(Key) -> gen_server:call(kv, {lookup, Key}).
+
+    handle_call({store, Key, Val}, From, Dict) ->
+      Dict1 = dict:store(Key, Val, Dict),
+      {reply, ack, Dict1};
+    handle_call({lookup, crash}, From, Dict) ->
+      1/0; %% <- deliberate error :-)
+    handle_call({lookup, Key}, From, Dict) ->
+      {reply, dict:find(Key, Dict), Dict}.
+
+    handle_cast(stop, Dict) -> {stop, normal, Dict}.
+
+    terminate(Reason, Dict) ->
+      io:format("K-V server terminating~n").
+
+This is an implementation of the gen_server behaviour/interface. Notice
+how handle_call updates the state (Dict) in case of a store and lookups
+the key in the state. Once gen_server is given this implementation it
+will provide a server which can handle concurrent store and lookup
+requests, similarly to how Greet provided the displaying functionality.
+
+At this point you might be thinking “OK, so what? Lots of programming
+languages have interfaces…”. That’s true, but notice how handle_call is
+completely sequential, i.e. all concurrency is hidden away in the
+generic gen_server component. “Yeah, but that’s just good engineering
+practice which can be done in any language” you say. That’s true as
+well, but the thesis pushes this idea quite far. It identifies six
+behaviours: gen_server, gen_event, gen_fsm, supervisor, application, and
+release and then says these are enough to build reliable distributed
+systems. As a case study Joe uses one of Ericsson’s telephone switches
+(p. 157):
+
+  When we look at the AXD301 project in chapter 8, we will see that
+  there were 122 instances of gen_server, 36 instances of gen_event and
+  10 instances of gen_fsm. There were 20 supervisors and 6 applications.
+  All this is packaged into one release.
+
+Joe gives several arguments for why behaviour should be used
+(pp. 157-158):
+
+1.  The application programmer only has to provide the part of the code
+    which defines the semantics (or “business logic”) of their problem,
+    while the infrastructure code is provided automatically by the
+    behaviour;
+
+2.  The application programmer writes sequential code, all concurrency
+    is hidden away in the behaviour;
+
+3.  Behaviours are written by experts, and based on years of experience
+    and represent “best practices”;
+
+4.  Easier for new team members to get started: business logic is
+    sequential, similar structure that they might have seen before
+    elsewhere;
+
+5.  If whole systems are implemented reusing a small set of behaviours:
+    as behaviour implementations improve the whole systems will improve
+    without requiring any code changes;
+
+6.  Sticking to only using behaviours enforces structure, which in turn
+    makes testing and formal verification much easier.
+
+We’ll come back to this last point about testing later.
+
+Event manager behaviour
+
+Lets come back to the behaviours we listed above first. We looked at
+gen_server, but what are the others for? There’s gen_event which is a
+generic event manager, which lets you register event handlers that are
+then run when the event manager gets messages associated with the
+handlers. Joe says this is useful for, e.g., error logging and gives the
+following example of an simple logger (p. 142):
+
+    -module(simple_logger).
+    -behaviour(gen_event).
+
+    -export([start/0, stop/0, log/1, report/0]).
+
+    -export([init/1, terminate/2,
+             handle_event/2, handle_call/2]).
+
+    -define(NAME, my_simple_event_logger).
+
+    start() ->
+      case gen_event:start_link({local, ?NAME}) of
+        Ret = {ok, Pid} ->
+          gen_event:add_handler(?NAME,?MODULE,arg1),
+          Ret;
+      Other ->
+        Other
+      end.
+
+    stop() -> gen_event:stop(?NAME).
+
+    log(E) -> gen_event:notify(?NAME, {log, E}).
+
+    report() ->
+      gen_event:call(?NAME, ?MODULE, report).
+
+    init(arg1) ->
+      io:format("Logger starting~n"),
+      {ok, []}.
+
+    handle_event({log, E}, S) -> {ok, trim([E|S])}.
+
+    handle_call(report, S) -> {ok, S, S}.
+
+    terminate(stop, _) -> true.
+
+    trim([X1,X2,X3,X4,X5|_]) -> [X1,X2,X3,X4,X5];
+    trim(L) -> L.
+
+The interesting part is handle_event, trim and report. Together they let
+the user log, keep track and display the last five error messages.
+
+State machine behaviour
+
+The gen_fsm behavior has been renamed to gen_statem (for state machine)
+since thesis was written. It’s very similar to gen_server, but more
+geared towards implementing protocols, which often are specified as
+state machines. I believe any gen_server can be implemented as a
+gen_statem and vice versa so we won’t go into the details of gen_statem.
+
+Supervisor behaviour
+
+The next interesting behavior is supervisor. Supervisors are processes
+which sole job is to make sure that other processes are healthy and
+doing their job. If a supervised process fails then the supervisor can
+restart it according to some predefined strategy. Here’s an example due
+to Joe (p. 148):
+
+    -module(simple_sup).
+    -behaviour(supervisor).
+
+    -export([start/0, init/1]).
+
+    start() ->
+      supervisor:start_link({local, simple_supervisor},
+      ?MODULE, nil).
+
+    init(_) ->
+      {ok,
+      {{one_for_one, 5, 1000},
+      [
+       {packet,
+         {packet_assembler, start, []},
+         permanent, 500, worker, [packet_assembler]},
+       {server,
+         {kv, start, []},
+         permanent, 500, worker, [kv]},
+       {logger,
+         {simple_logger, start, []},
+         permanent, 500, worker, [simple_logger]}]}}.
+
+The {one_for_one, 5, 1000} is the restart strategy. It says that if one
+of the supervised processes (packet_assembler, kv, and simple_logger)
+fail then only restart the failing process (one_for_one). If the
+supervisor needs to restart more than 5 times in 1000 seconds then the
+supervisor itself should fail.
+
+The permanent, 500, worker part means that this is a worker process
+which should be permanently kept alive and its given 500 milliseconds to
+gracefully stop what it’s doing in case the supervisor wants to restart
+it.
+
+“Why would the supervisor want to restart it if it’s not dead already?”,
+one might wonder. Well, there are other restart strategies than
+one_for_one. For example, one_for_all where if one process fails then
+the supervisor restarts all of its children.
+
+If we also consider that supervisors can supervise supervisors, which
+are not necessarily running on the same computer, then I hope that you
+get an idea of how powerful this behaviour can be. And, no, this isn’t
+“just Kubernetes”, because it’s at the thread/lightweight process level
+rather than docker container level.
+
+The idea for supervisors and their restart strategies comes from the
+observation that often a restart appears to fix the problem, as captured
+in the Have You Tried Turning It Off And On Again? sketches from IT
+Crowd.
+
+Knowing that failing processes will get restarted coupled with Jim
+Gray’s idea of failing fast, that’s either produce the output according
+to the specification or signal failure and stop operating, leads to
+Joe’s slogan: “Let it crash!” (p. 107). Another way to think of it is
+that a program should only express its “happy path”, should anything go
+wrong on its happy way it should crash, rather than trying to be clever
+about it and try to fix the problem (potentially making it worse), and
+another program higher up the supervisor tree will handle it.
+
+Supervisors and the “let it crash” philosophy, appear to produce
+reliable systems. Joe uses the Ericsson AXD301 telephone switch example
+again (p. 191):
+
+  Evidence for the long-term operational stability of the system had
+  also not been collected in any systematic way. For the Ericsson AXD301
+  the only information on the long-term stability of the system came
+  from a power-point presentation showing some figures claiming that a
+  major customer had run an 11 node system with a 99.9999999%
+  reliability, though how these figure had been obtained was not
+  documented.
+
+To put this in perspective, five nines (99.999%) reliability is
+considered good (5.26 minutes of downtime per year). “59% of Fortune 500
+companies experience a minimum of 1.6 hours of downtime per week”,
+according to some report from a biased company. Notice per year vs per
+week, but as we don’t know how either reliability numbers are obtained
+its probably safe to assume that the truth is somewhere in the middle –
+still a big difference, but not 31.56 milliseconds (nine nines) of
+downtime per year vs 1.6 hours of downtime per week.
+
+Application and release behaviours
+
+I’m not sure if application and release technically are behaviours, i.e.
+interfaces. They are part of the same chapter as the other behaviours in
+the thesis and they do provide a clear structure which is a trait of the
+other behaviours though, so we’ll include them in the discussion.
+
+So far we’ve presented behaviours from the bottom up. We started with
+“worker” behaviours gen_server, gen_statem and gen_event which together
+capture the semantics of our problem. We then saw how we can define
+supervisor trees whose children are other supervisor trees or workers,
+to deal with failures and restarts.
+
+Next level up is an application which consists of a supervisor tree
+together with everything else we need to deliver a particular
+application.
+
+A system can consist of several application and that’s where the final
+“behaviour” comes in. A release packages up one or more applications.
+They also contain code to handle upgrades. If the upgrade fails, it must
+be able to rollback to the previous stable state.
+
+How behaviours can be implemented
+
+I hope that by now I’m managed to convince you that it’s not actually
+the lightweight processes and message passing by themselves that make
+Erlang great for building reliable systems.
+
+At best one might be able to claim that lightweight processes and
+supervisors are the key mechanisms at play[3], but I think it would be
+more honest to recognise the structure that behaviours provide and how
+that ultimately leads to reliable software.
+
+I’ve not come across any other language, library, or framework which
+provides such relatively simple building blocks that compose into big
+systems like the AXD301 (“over a million lines of Erlang code”, p. 167).
+
+This begs the question: why aren’t language and library designers
+stealing the structure behind Erlang’s behaviours, rather than copying
+the ideas of lightweight processes and message passing?
+
+Let’s take a step back. We said earlier that behaviours are interfaces
+and many programming languages have interfaces. How would we go about
+starting to implement behaviours in other languages?
+
+Lets start with gen_server. I like to think its interface signature as
+being:
+
+    Input -> State -> (State, Output)
+
+That’s it takes some input, its current state and produces a pair of the
+new updated state and an output.
+
+How do we turn this sequential signature into something that can handle
+concurrent requests? One way would be to fire up a HTTP server which
+transforms requests into Inputs and puts them on a queue, have an event
+loop which pops inputs from the queue and feeds it to the sequential
+implementation, then writing the output back to the client response. It
+wouldn’t be difficult to generalise this to be able to handle multiple
+gen_servers at the same time, by giving each a name and let the request
+include the name in addition to the input.
+
+gen_event could be implemented by allowing registration of callbacks to
+certain types of event on the queue.
+
+supervisors is more interesting, one simple way to think of it is: when
+we feed the gen_server function the next input from the queue, we wrap
+that call in an exception handler, and should it throw we notify its
+supervisor. It gets a bit more complicated if the supervisor is not
+running on the same computer as the gen_server.
+
+I haven’t thought about application and releases much yet, but given
+that configuration, deployment and upgrades are difficult problems they
+seem important.
+
+Correctness of behaviours
+
+Writing a post solely about stealing from Erlang doesn’t seem fair, even
+though it’s the right thing to do, so I’d like to finish off with how we
+can build upon the insights of Joe and the Erlang community.
+
+I’ve been interesting in testing for a while now. Most recently I’ve
+been looking into simulation testing distributed systems à la
+FoundationDB.
+
+Simulation testing in a nutshell is running your system in a simulated
+world, where the simulation has full control over which messages get
+sent when over the network.
+
+FoundationDB built their own programming language, or dialect of C++
+with actors, in order do the simulation testing. Our team seemed to be
+able to get quite far with merely using state machines of type:
+
+    Input -> State -> (State, [Output])
+
+where [Output] is a sequence of outputs.
+
+The idea being that the simulator keeps track of a priority queue of
+messages sorted by their arrival time, it pops a message, advances the
+clock to the arrival time of that message, feeds the message to the
+receiving state machine, generates new arrival times for all output
+messages and puts them back into the priority queue, rinse and repeat.
+As long as everything is deterministic and the arrival times are
+generated using a seed we can explore many different interleavings and
+get reproducible failures. It’s also much faster than Jepsen, because
+messaging is done in-memory and we advance the clock to the arrival
+time, thereby triggering any timeouts without having to wait for them.
+
+We used to say that programs of this state machine type where written in
+“network normal form”, and conjectured that every program which can
+receive and send stuff over the network can be refactored into this
+shape[4]. Even if we had a proof, “network normal form” always felt a
+bit arbitrary. But then I read Joe’s thesis and realised that gen_server
+and gen_statem basically have the same type, so I stopped being
+concerned about it. As I think that if a structure is found to be useful
+by different people, then it’s usually a sign that it isn’t arbitrary.
+
+Anyway, in, at least, one of Joe’s talks he mentions how difficult it’s
+to correctly implement distributed leader election.
+
+I believe this is a problem that would be greatly simplified by having
+access to a simulator. A bit like I’d imagine having access to a wind
+tunnel would make building an airplane easier. Both lets you test your
+system under extreme conditions, such as unreliable networking or power
+loss, before they happen in “production”. Furthermore, this simulator
+can be generic in, or parametrised by, behaviours. Which means that the
+developer gets it for free while the complexity of the simulator is
+hidden away, just like the concurrent code of gen_server!
+
+FoundationDB is a good example of simulation testing working, as
+witnessed by this tweet where somebody asked Kyle “aphyr” Kingsbury to
+Jepsen test FoundationDB:
+
+  “haven’t tested foundation[db] in part because their testing appears
+  to be waaaay more rigorous than mine.”
+
+Formal verification is also made easier if the program is written a
+state machine. Basically all of Lamport’s model checking work with TLA+
+assumes that the specification is a state machine. Also more recently
+Kleppmann has shown how to exploit the state machine structure to do
+proof by (structural) induction to solve the state explosion problem.
+
+So there you have it, we’ve gone full circle. We started by taking
+inspiration from Joe and Erlang’s behaviours, and ended up using the
+structure of the gen_server behaviour to make it easier to solve a
+problem that Joe used to have.
+
+Contributing
+
+There are a bunch of related ideas that I have started working on:
+
+-   Stealing ideas from Martin Thompson’s work on the LMAX Disruptor and
+    aeron to make a fast event loop, on top of which the behaviours run;
+-   Enriching the state machine type with async I/O;
+-   How to implement supervisors in more detail;
+-   Hot code swapping of state machines.
+
+Feel free to get in touch, if you find any of this interesting and would
+like to get involved, or if you have have comments, suggestions or
+questions.
+
+See also
+
+-   Chapter 6.1 on behaviours in Joe Armstrong’s thesis, p. 129;
+-   OTP design principles;
+-   The documentation for behaviours:
+    -   gen_server;
+    -   gen_event;
+    -   gen_statem;
+    -   supervisor;
+    -   application;
+    -   release.
+-   Hewitt, Meijer and Szyperski: The Actor Model (everything you wanted
+    to know, but were afraid to ask) (2012);
+-   Erlang the movie (1990);
+-   Systems that run forever self-heal and scale by Joe Armstrong
+    (Strange Loop, 2013);
+-   The Do’s and Don’ts of Error Handling by Joe Armstrong (GOTO, 2018);
+-   The Zen of Erlang by Fred Hebert (2016);
+-   The Hitchhiker’s Guide to the Unexpected by Fred Hebert (2018);
+-   Why Do Computers Stop and What Can Be Done About It? by Jim Gray
+    (1985);
+-   The supervision trees chapter of Adopting Erlang (2019);
+-   “If there’s one thing I’d say to the Erlang folks, it’s you got the
+    stuff right from a high-level, but you need to invest in your
+    messaging infrastructure so it’s super fast, super efficient and
+    obeys all the right properties to let this stuff work really well.”
+    quote by Martin Thompson (Functional Conf, 2017).
+
+Discussion
+
+-   Hacker News
+-   lobste.rs
+-   r/programming
+-   r/haskell
+-   r/erlang
+-   Elixir Forum
+
+[1] From Joe Armstrong’s thesis (p. 6):
+
+  In February 1998 Erlang was banned for new product development within
+  Ericsson—the main reason for the ban was that Ericsson wanted to be a
+  consumer of sodware technologies rather than a producer.
+
+From Bjarne Däcker’s thesis (2000, p. 37):
+
+  In February 1998, Erlang was banned within Ericsson Radio AB (ERA) for
+  new product projects aimed for external customers because:
+
+  “The selection of an implementation language implies a more long-term
+  commitment than selection of processors and OS, due to the longer life
+  cycle of implemented products. Use of a proprietary language, implies
+  a continued effort to maintain and further develop the support and the
+  development environment. It further implies that we cannot easily
+  benefit from, and find synergy with, the evolution following the large
+  scale deployment of globally used languages.”
+
+Joe also says, in this talk (34:30), that there were two reasons for
+Erlang getting banned: 1) that it wasn’t Java, and 2) that it wasn’t
+C++.
+
+[2] It’s a common misconception is that Erlang is about actors.
+
+The actor model first presented in A Universal Modular Actor Formalism
+for Artificial Intelligence by Carl Hewitt, Peter Bishop, Richard
+Steiger (1973) and refined by others over time, e.g. see Irene Greif’s
+thesis (1975) or Gul Agha’s thesis (1985).
+
+Erlang first appeard later in 1986, but the Erlang developers were not
+aware of the actor model. In fact Robert Virding, one of the original
+Erlang designers, claims that knowing about the actor model might even
+have slowed them down.
+
+Carl Hewitt has written a paper called Actor Model of Computation:
+Scalable Robust Information Systems (2015) which documents the
+differences between Erlang’s processes and the actor model.
+
+[3] Scala’s Akka seems to be of this opinion. They got something they
+call “actors”, not to be confused with the actor model as per footnote
+1, and obligatory supervisors trees. They don’t appear to have any
+analogues of the other Erlang behaviours though.
+
+Confusingly Akka has a concept called “behavior”, but it has nothing to
+do with Erlang behaviours.
+
+[4] The intuition being that since every program using the state monad
+can be rewritten to a normal form where a single read/get followed by a
+single write/put, it seems reasonable to assume that something similar
+would work for recv and send over the network. I forget the reference
+for the state monad normal form, either Plotkin and Power or Uustalu?
+]]></description>
+      <category>Development</category>
+    </item>
+
+    <item>
+      <title>Working with binary data</title>
+      <link>https://stevana.github.io/working_with_binary_data.html</link>
+      <pubDate>Wed, 11 Jan 2023 00:00:00 UTC</pubDate>
+      <description><![CDATA[Can we make binary encodings “human-readable”? This post explores this
+question by means of implementing a library inspired by Erlang’s bit
+syntax.
+
+Motivation
+
+JSON is probably the most commonly used format for serialising data
+today. A frequent argument for using it is that JSON is human-readable.
+
+What does that mean exactly? I suppose that people usually mean two
+things. First, it’s less verbose than XML, making it easier to read.
+Most people would probably still call XML human-readable, but arguebly
+less so than JSON. Second, it’s easier to read than binary encodings
+produced by MessagePack, ASN.1 or Protobuf, etc. For example, the JSON
+string "foo" is represented by the following byte sequence when using
+MessagePack:
+
+                     +------------ A string of length 3 consisting of ...
+                     |  +--------- ... the character 'f', following by ...
+                     |  |  +--+--- ... two 'o' characters.
+                     |  |  |  |
+                     v  v  v  v
+                     a3 66 6f 6f
+
+If we were to open a file with the above bytes or echo them to the
+terminal we’d see £foo. Which, while one character shorter[1] than the
+JSON string, is starting to become unreadable already and it will become
+worse once the JSON object is more complicated.
+
+It’s worth noting that all serialised data ends up being bytes once on
+disk or sent over the network. So in a sense one could argue that the
+reason JSON is human-readable, is because these bytes get displayed as
+ASCII or UTF-8 by our editors and the standard terminal utilities.
+Another way to think about it is that ASCII and UTF-8 are encodings as
+well, which would be unreadable without tool support. This isn’t a new
+argument, people like Joe Armstrong and Martin Thompson have separately
+and on multiple occasions pointed this out. Both stress that we are
+wasting massive amounts of CPU cycles on parsing JSON.
+
+It’s not just that it’s less space efficient, as we saw with "foo" vs
+£foo, it’s also because with JSON we need to inspect every single
+character after the first " in order to determine when the string ends,
+i.e. finding the closing ". Whereas in, for example, the MessagePack
+case the length of the string is encoded in the a3 byte so we can jump
+forward and just copy the three bytes (without looking at them). Joe
+calls this reconstructing as opposed to parsing.
+
+So if JSON is merely human-readable because of our application-level
+tooling, this raises the question: what would it take to make binary
+encodings “human-readable”?
+
+For starters I think we’d need to make it easier to work with binary
+data in our programming languages. I believe Erlang’s bit syntax, which
+lets us do bit-level pattern-matching, is a good example of what better
+language support for working with binary data looks like. Even though
+Erlang’s way ahead most programming languages on this front, there are
+important use cases which are not possible to express efficiently using
+bit syntax though, e.g. in-place updates, leaving more to be desired.
+
+In the rest of this post we’ll have first have a look at how Erlang’s
+bit syntax works, then we’ll turn to its shortcomings and try to start
+addressing them by means of implementing a library.
+
+Erlang’s bit syntax
+
+Erlang has a feature called bit syntax which allows the user to encode
+and decode data at the bit-level. Here’s an example, where we encode
+three integers into two bytes:
+
+    1>​ Red = 2.
+    2
+    2>​ Green = 61.
+    61
+    3>​ Blue = 20.
+    20
+    4>​ Mem = <<Red:5, Green:6, Blue:5>>.
+    <<23,180>>
+
+Normally, even the smallest integer takes up one byte (e.g. char in C or
+Int8 in Haskell) but Erlang’s bit syntax lets us encode, e.g., Red using
+only 5 bits (rather than the default 8 bits) and thus we can fit all
+three integers in 5 + 6 + 5 = 16 bits or two bytes.
+
+We can also pattern match at the bit-level using sizes to get our
+integers back:
+
+    5>​ <<R1:5, G1:6, B1:5>> = Mem.
+    <<23,180>>
+    6>​ R1.
+    2
+    7>​ G1.
+    61
+    8>​ B1.
+    20
+
+For larger integer types, e.g. 0x12345678 :: Int32, we can also specify
+the byte order or endianness:
+
+    1>​ {<<16#12345678:32/big>>,<<16#12345678:32/little>>,
+    ​<<16#12345678:32/native>>,<<16#12345678:32>>}.
+    {<<18,52,86,120>>,<<120,86,52,18>>,
+    <<120,86,52,18>>,<<18,52,86,120>>}
+
+For a slightly larger example, here’s pattern-matching on an IP datagram
+of IP protocol version 4:
+
+    -define​(IP_VERSION, 4).
+    ​-define​(IP_MIN_HDR_LEN, 5).
+
+    ...
+    DgramSize = ​byte_size​(Dgram),
+    ​case​ Dgram ​of
+      <<?IP_VERSION:4, HLen:4, SrvcType:8, TotLen:16,
+        ID:16, Flags:3, FragOff:13,
+        TTL:8, Proto:8, HdrChkSum:16,
+        SrcIP:32,
+        DestIP:32, RestDgram/binary>> ​when​ HLen >= 5, 4*HLen =< DgramSize ->
+            OptsLen = 4*(HLen - ?IP_MIN_HDR_LEN),
+            <<Opts:OptsLen/binary,Data/binary>> = RestDgram,
+            ...
+
+Note how we can match on the header length, HLen, and later use the
+value of that match as the size when pattern matching on later values.
+
+Usage
+
+We can implement a library that lets us do similar things to Erlang’s
+bit syntax, but in a more clunky way (it’s difficult to beat native
+syntax support).
+
+    import BitsAndBobs
+
+    let
+      pattern0    = sized word32 5 ::: sized word32 6 ::: sized word32 5 ::: Nil
+      bytestring0 = byteString [2 :. sized word32 5, 61 :. sized word32 6, 20 :. sized word32 5]
+    bitMatch pattern0 bytestring0
+      -- => (2,(61,(20,())))
+
+    let
+      pattern1    = word8 :>>= \sz -> sized bytes sz ::: bytes ::: Nil
+      bytestring1 = byteString [5 :. word8, "hello, rest" :. bytes]
+    bitMatch pattern1 bytestring1
+      -- => (5,("hello",(", rest",())))
+
+The above is implemented in Haskell, but should be straightforward to
+port to most languages using the following recipe.
+
+How it works
+
+The high-level idea when encoding a bunch of, possibly sized, values
+into a ByteString is as follows:
+
+1.  For each value convert the value into a list of booleans (or bits);
+2.  If the value is sized then only take that many bits, otherwise if it
+    isn’t sized use the default value, e.g. Int8 = 8 bits, Float = 32
+    bits, etc;
+3.  Concatenate the lists of booleans for each value into a single list
+    of booleans;
+4.  Split the list in groups of 8 bits;
+5.  Convert each 8 bits into a byte (UInt8);
+6.  Create a ByteString from list of UInt8s.
+
+For decoding or pattern-matching a, possibly sized, pattern against a
+ByteString the idea is:
+
+1.  Convert ByteString into list of booleans (or bits);
+2.  For each pattern take its size many bits from the list;
+3.  Convert the bits into the value type of the pattern;
+4.  Continue matching the remaining patterns against the remaining bits.
+
+Float and Doubles get converted into UInt32 and UInt64 respectively
+before converted into bits, and Integers are encoding using zigzag
+encoding[2].
+
+Extending Erlang’s bit syntax
+
+Erlang’s bit syntax makes it possible to decode binary data into the
+host languague’s types, which can then be manipulated, and finally
+encoded back to binary.
+
+While already useful, it doesn’t cover some interesting use cases. Let
+me try to explain the use cases and at the same time sketch possible
+ways we can extend Erlang’s bit syntax to cover those.
+
+In-place updates
+
+What if we merely want to update some binary in-place without reading it
+all in and writing it all back out?
+
+For example, the de facto standard for metadata format for mp3 files is
+called ID3. This was never part of the mp3 specification, but rather
+added afterwards and so in order to not break backwards-compatibility
+with old media players they added it at the end of the file.
+
+Lets imagine we wanted to write a metadata editor for mp3 files using
+Erlang’s bit syntax. I think no matter how smart the Erlang run-time is
+about bit syntax, it’s hard to imagine that it wouldn’t need to
+deserialse and serialise more data than necessary. Worst case it would
+deserialise all of the audio that leads up to where the metadata starts,
+but even if it’s somehow clever and starts from the back then we’d still
+probably need to at least deserialise all fields preceding the field we
+want to update.
+
+Inspired by this problem and how tools like poke work, I’ve started
+another experiment based on Schemas with this use case in mind, here’s
+an example session of editing the metadata of an mp3 file:
+
+    $ cabal run mp3 -- /tmp/test.mp3
+
+    mp3> help
+    schema | read <field> | write <field> <value> | list | q(uit)
+
+    mp3> schema
+    audio   : Binary
+    header  : Magic "TAG"
+    title   : ByteString (Fixed 30)
+    artist  : ByteString (Fixed 30)
+    album   : ByteString (Fixed 30)
+    year    : ByteString (Fixed 4)
+    comment : ByteString (Fixed 30)
+    genre   : UInt8
+
+    mp3> read title
+    Unknown
+
+    mp3> write title "Bits and Bobs"
+
+    mp3> read title
+    Bits and Bobs
+
+    mp3> list
+    Right (Id3V1 {title = "Bits and Bobs", artist = "", album = "", year = "2023", comment = ""})
+    mp3> quit
+
+The user needs to specify the Schema, which is closely mapped to the
+ID3v1 specficiation and the rest is provided by the library. In
+particular all the offsets to the different fields are calculated from
+the schema[3], which allow us to jump straight to the field of interest
+and reconstruct it without parsing. The above interactive editor is
+completely generic and works for any Schema!
+
+If we can read and update fields, it should also be possible to get
+diffs and patches for cheap.
+
+On-disk data structures
+
+Now that we can edit files in-place on the disk it would be nice to use
+this in order to implement on-disk data structures. For example imagine
+we’d like to do some kind of logging. If our schemas could express
+arrays and records we could define our log to be an a struct with a
+length field and an array of records field that of size length. In
+addition to extending the schema with arrays and records, we’d also need
+atomic increments of the length field so that we can in a thread-safe
+manner allocate space in our array. B-trees or Aeron’s log buffers would
+be other interesting on-disk data structures to implement.
+
+The generic editor would be useful for debugging and manipulating such
+data structures, but we’d probably want more tooling. For logging we
+probably want something like cat and grep but generic in Schema.
+
+Zero-copy
+
+When we read a ByteString field in the mp3 metadata example above, we
+copied the bytes from the underlying file. Sometimes we might want to
+avoid doing that.
+
+For example imagine we are implementing some network protocol. We can
+use a pre-allocated buffer and recv bytes from a socket into this buffer
+(avoiding allocating memory while handling requests), once the request
+is inside our buffer we can decode individual fields (without parsing)
+and from that we can determine what kind of request it is. Let’s imagine
+it’s some kind of write request where we want to save the payload of
+some field to disk. It would be a waste to copy the bytestring of the
+payload only to write it disk immediately after, since the network
+request consists of raw bytes and that’s what we want to write to the
+disk anyway. Instead we’d like to be able to decode the payload field as
+a pointer/slice of the buffer which we pass to write (thus avoiding
+copying aka “zero-copy”).
+
+Backward- and forward-compatiability and migrations
+
+Another big topic is schema evolution. How can we maintain backward- and
+forward-compatibility as our software evolves? We probably want to be
+able to migrate old formats into newer ones somehow also.
+
+Compression
+
+Currently our schemas cannot express how to compress fields on disk, or
+how to avoid sending unnecessary data in consecutive network messages.
+
+An example of the former might be to compress a bytestring field, using
+say deflate, before writing it to disk. While an example of the former
+might be to only send the difference or change of some integer field,
+instead of sending the whole integer again. To make things more
+concrete, lets say the integer represents epoch time and we send
+messages several times per second, then by only sending the difference
+or delta in time since the last message we can save space. Other
+examples of compression include dictionary compression, run-length
+encoding, bit packing and Huffman coding.
+
+It would be neat if encoding and decoding fields could be done modulo
+compression! Likewise the schema-based cat and grep could also work
+modulo compression.
+
+A related topic is storing our data in a row-based or columnar fashion.
+Take the example of a logging library we discussed earlier with a schema
+that’s an array of records, i.e. each log call adds a new record to the
+array. This is nice in terms of writing efficiency, but if we wanted to
+do a lot of grepping or some aggregation on some field in the record
+then we’d have to jump around a lot in the file (jumping over the other
+fields that we are not interested in). It could be more efficient to
+restructure our data into a record of arrays instead, where each array
+only has data from one field, that way searching or aggregating over
+that field would be much more efficient (no jumping around). Some
+compression is also a lot easier to apply on columnar data, e.g. delta
+and run-length encoding. Perhaps it would make sense if the schema-based
+tools could do such data transformations in order to optimise for reads
+or archiving?
+
+Checksums
+
+If we can do encoding and decoding fields modulo compression, why not
+also handle checksums transparently? When we update a field which is
+part of a checksum, we’d probably want to check the checksum beforehand
+and recompute it afterwards.
+
+Validation
+
+What if some input bytes don’t match the schema? Currently all magic
+tags in a schema get verified, but sometimes we might want to be able to
+edit incomplete or malformed inputs.
+
+Can we add refinements to the schema which allow us to express things
+like, integer between 18 and 150 or bytestring containing only
+alphanumeric characters, etc?
+
+Protocols
+
+So far we’ve looked at how to specify what data our programs use and how
+it’s transformed to and from bytes on disk or over the network. Another
+important aspect is what protocol is followed when said data is sent
+between components in the system.
+
+For example consider some client-server application where our schema
+describes the request and responses:
+
+    flowchart LR
+        Client -- request --> Server
+        Server -- response --> Client
+
+The schema doesn’t say anything about in which order requests are legal.
+For example, we might want to always requrie a login-like request at the
+start of a session. Or let’s say we are describing a POSIX-like
+filesystem API, then reads and writes must only be made on open (and not
+yet closed) file descriptors.
+
+Joe Armstrong wrote a paper called Getting Erlang to talk to the outside
+world (2002) which discusses this problem. He proposed a language for
+describing protocols and a dynamic sessions type checker, it never
+seemed to have got much traction though even though he gave several
+talks about it. One implementation can be found here.
+
+Pandoc for binary encodings
+
+There’s this neat tool called pandoc that makes possible to convert
+between different text formats, e.g. from Markdown to HTML.
+
+The list of supported formats to convert from and to is pretty long. If
+we were to convert to and from each pair of possibilities would require
+O(N²) work. So what pandoc does instead is to convert each format to and
+from its internal abstract representation, thereby reducing the problem
+to O(N).
+
+Could we do something similar for binary encodings?
+
+In the book Development and Deployment of Multiplayer Online Games, Vol.
+I by Sergey Ignatchenko (pp. 259-285, 2017) the author talks about how
+most IDLs, e.g. Protobufs, have the same language for describing what
+the abstract data which we want to serialise and how we actually want
+the data to be serialised. By separating the two, we could change the
+binary format “on the wire” without changing the application which
+operates on the abstract data (the what part). A clearer separation
+between IDL and its encoding could perhaps be useful when trying to
+solve the pandoc problem for binary.
+
+Another way to think of this is: can we make a DSL for IDLs?
+
+Discussion
+
+-   Q: Why not just use Protobuf?
+
+    A: Except for backward- and forward-compatibility, I don’t think
+    Protobufs can handle any of the above listed use cases. Also the way
+    it handles compatibility with it’s numbered and optional fields is
+    quite ugly[4].
+
+-   Q: Writing safely to disk without going via a database is almost
+    impossible!?
+
+    A: Dan Luu has written about this on several occasions. Short
+    answer: don’t store anything you are worried about losing using this
+    library. Longer answer: I’d like to revisit this topic from the
+    point of view of testing at some later point in time. In particular
+    I’m interested in how we can make the results from the paper All
+    File Systems Are Not Created Equal: On the Complexity of Crafting
+    Crash-Consistent Applications
+
+    1.  more accessible, especially their tool ALICE: Application-Level
+        Intelligent Crash Explorer.
+
+Contributing
+
+The current implementation is in Haskell, but I’d really like to
+encourage a discussion beyond specific languages. In order to make
+binary “human-readable” we need solutions that are universal, i.e. work
+in any language, or perhaps better yet than libraries – extend
+programming languages with something like Erlang’s bit syntax.
+
+-   Do you have use cases that are not listed above?
+-   Do you know of tools, libraries or solutions any of the above use
+    cases that have already not been discussed or are not listed below
+    in the “see also” section?
+-   Do you know if some use cases impossible in general or incompatible
+    with each other?
+-   Interested in porting any of these ideas to your favorite language?
+
+If so, feel free to get in touch!
+
+See also
+
+-   The Erlang reference manual on bit syntax;
+-   Programming examples of bit syntax from the Erlang user’s guide;
+-   Joe Armstrong’s PhD thesis
+    1.  also has a section on bit syntax on p. 60;
+-   Native Code Compilation of Erlang’s Bit Syntax (2002);
+-   Cap’n Proto;
+-   Simple Binary Encoding (SBE) by Martin Thompson et al;
+-   GNU poke, extensible editor for structured binary data;
+-   fq: jq for binary formats also described in this talk;
+-   Terminal JSON viewer;
+-   Rust’s binrw crate;
+-   Designing Data-Intensive Applications by Martin Kleppmann (chapter
+    3-4, 2017);
+-   Development and Deployment of Multiplayer Online Games, Vol. I by
+    Sergey Ignatchenko (pp. 200-216 and 259-285, 2017).
+
+[1] The savings are greater for more complicated JSON objects,
+especially considering JSON doesn’t support binary data which needs to
+be either escaped or base64 encoded before used as a string.
+
+[2] I don’t think Erlang uses zig-zag encoding of integers, in fact I’m
+not sure what it does with them.
+
+[3] The library tries to calculate the offset of a field from the start
+of the file, in this case the beginning of the file contains an audio
+binary “field” of unknown length, so it fails and retries calculating
+the offset from the end of the file instead.
+
+[4] Avro has a nicer story for compatibility.
+]]></description>
+      <category>Development</category>
+    </item>
+
+    <item>
+      <title>State machines with of async I/O</title>
+      <link>https://stevana.github.io/state_machines_with_of_async_io.html</link>
+      <pubDate>Sat,  7 Jan 2023 00:00:00 UTC</pubDate>
+      <description><![CDATA[State machines of the type Input -> State -> (Output, State) are great.
+They are easy to reason about, and if run on a separate thread with
+access to a queue of Inputs they perform well too.
+
+Sometimes the state machine might need to do some blocking I/O before
+producing the output though, this slows down the processing of inputs.
+
+This repo is an experiment in how we can write the state machine as if
+the I/O is blocking, but actually it’s non-blocking and inputs can
+continue to be processes while we wait for the I/O action to complete.
+
+Usage
+
+To make things more concrete we will be implementing a key-value store
+as a state machine.
+
+To start the key-value store in a terminal issue:
+
+    cabal run app
+
+Then interact with the key-value store from another terminal using Write
+and Read commands as follows:
+
+    $ http POST :8080 --raw 'Write "x" 1'
+    HTTP/1.1 200 OK
+    Date: Thu, 05 Jan 2023 08:47:03 GMT
+    Server: Warp/3.3.23
+    Transfer-Encoding: chunked
+
+    Ok
+
+    $ http POST :8080 --raw 'Read "x"'
+    HTTP/1.1 200 OK
+    Date: Thu, 05 Jan 2023 08:47:04 GMT
+    Server: Warp/3.3.23
+    Transfer-Encoding: chunked
+
+    Result 1
+
+How it works
+
+The state machine for the key-value store example looks like this:
+
+    data Input = Write String Int | Read String
+      deriving stock (Show, Read)
+
+    data Output = Ok | Result (Maybe Int)
+      deriving stock Show
+
+    sm :: SM (Map String Int) Input Output
+    sm = do
+      i <- ask
+      case i of
+        Write k v -> do
+          fsAppend k v
+          modify (Map.insert k v)
+          return Ok
+        Read k -> do
+          m <- get
+          return (Result (m Map.!? k))
+
+Where fsAppend appends the key-value pair to a file, so that we can
+recover in in-memory state in case of a crash.
+
+The program looks sequential, but once the state machine hits the
+fsAppend it will suspend using a coroutine monad, yielding control back
+to the event loop which feeds it inputs, the event loop will enqueue the
+I/O action to a separate thread that deals with I/O and continue feeding
+the state machine new inputs, until the I/O thread completes the write
+to disk, at which point the state machine will be resumed with the
+latest state.
+
+Contributing
+
+Any feedback, comments or suggestions are most welcome!
+
+In particular if you know how to solve this problem in a different or
+better way.
+
+A potential source of confusion and bugs might be the fact that once we
+resume the state might not be the same as it was before we suspended.
+It’s not clear to me how big of a problem this is in practice, or if
+anything can be done about it without sacrificing either the “sequential
+feel” or the parallelism?
+
+One possible generalisation that seems feasible is to not suspend
+immediately upon the I/O action, but rather merely return a “future”
+which we later can await for. This would allow us to do suspend and do
+multiple I/O actions before resuming, something like:
+
+      a1 <- fsAppend k v
+      a2 <- someOtherIOAction
+      awaitBoth a1 a2 -- or awaitEither a1 a2
+
+Arguably the await makes it more clear where the suspension and
+resumption happen, which could help against the confusion regarding that
+the state might change.
+
+See also
+
+-   Development and Deployment of Multiplayer Online Games, Vol. II by
+    Sergey Ignatchenko (2020), especially chapter 5;
+-   Implementing Co, a Small Language With Coroutines #3: Adding
+    Coroutines;
+-   A Lambda Calculus With Coroutines and Heapless, Directly-Called
+    Closures;
+-   Small VMs & Coroutines;
+-   Tina is a teeny tiny, header only, coroutine and job library;
+-   Protothreads;
+-   Proactor pattern;
+-   WebAssembly Reactors.
+]]></description>
+      <category>Development</category>
+    </item>
+
+
+  </channel>
+</rss>

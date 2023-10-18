@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Stevan Andjelkovic" />
+  <title>Stevan's notes – coroutine-state-machines</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="alternate" type="application/rss+xml"
+        title="RSS feed"
+        href="rss.xml" />
+  <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+  <nav id="nav">
+    <span class="title">Stevan's notes...</span>
+    <a href="index.html">sorted by topic,</a>
+    <a href="chronological.html">by time,</a>
+    <a href="rss.xml">or as a feed <img height="10px" src="rss.svg" />!</a>
+    <a href="about.html">What's this about?</a>
+  </nav>
+</header>
+<hr />
+<main>
+<h1>coroutine-state-machines</h1>
+<nav id="TOC" class="sidenote" role="doc-toc">
+<h2 id="toc-title">Table of contents</h2>
+<ul>
+<li><a href="#usage" id="toc-usage">Usage</a></li>
+<li><a href="#how-it-works" id="toc-how-it-works">How it works</a></li>
+<li><a href="#contributing" id="toc-contributing">Contributing</a></li>
+<li><a href="#see-also" id="toc-see-also">See also</a></li>
+</ul>
+</nav>
+<div class="date">Posted on Jan  7, 2023</div>
+<p>State machines of the type
+<code>Input -&gt; State -&gt; (Output, State)</code> are great. They are
+easy to reason about, and if run on a separate thread with access to a
+queue of <code>Input</code>s they perform well too.</p>
+<p>Sometimes the state machine might need to do some blocking I/O before
+producing the output though, this slows down the processing of
+inputs.</p>
+<p>This repo is an experiment in how we can write the state machine as
+if the I/O is blocking, but actually it’s non-blocking and inputs can
+continue to be processes while we wait for the I/O action to
+complete.</p>
+<h2 id="usage">Usage</h2>
+<p>To make things more concrete we will be implementing a key-value
+store as a state machine.</p>
+<p>To start the key-value store in a terminal issue:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">cabal</span> run app</span></code></pre></div>
+<p>Then interact with the key-value store from another terminal using
+<code>Write</code> and <code>Read</code> commands as follows:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> http POST :8080 <span class="at">--raw</span> <span class="st">&#39;Write &quot;x&quot; 1&#39;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ex">HTTP/1.1</span> 200 OK</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="ex">Date:</span> Thu, 05 Jan 2023 08:47:03 GMT</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="ex">Server:</span> Warp/3.3.23</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="ex">Transfer-Encoding:</span> chunked</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="ex">Ok</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> http POST :8080 <span class="at">--raw</span> <span class="st">&#39;Read &quot;x&quot;&#39;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="ex">HTTP/1.1</span> 200 OK</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="ex">Date:</span> Thu, 05 Jan 2023 08:47:04 GMT</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="ex">Server:</span> Warp/3.3.23</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="ex">Transfer-Encoding:</span> chunked</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="ex">Result</span> 1</span></code></pre></div>
+<h2 id="how-it-works">How it works</h2>
+<p>The state machine for the key-value store example looks like
+this:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Input</span> <span class="ot">=</span> <span class="dt">Write</span> <span class="dt">String</span> <span class="dt">Int</span> <span class="op">|</span> <span class="dt">Read</span> <span class="dt">String</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> stock (<span class="dt">Show</span>, <span class="dt">Read</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Output</span> <span class="ot">=</span> <span class="dt">Ok</span> <span class="op">|</span> <span class="dt">Result</span> (<span class="dt">Maybe</span> <span class="dt">Int</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> stock <span class="dt">Show</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="ot">sm ::</span> <span class="dt">SM</span> (<span class="dt">Map</span> <span class="dt">String</span> <span class="dt">Int</span>) <span class="dt">Input</span> <span class="dt">Output</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>sm <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  i <span class="ot">&lt;-</span> ask</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> i <span class="kw">of</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Write</span> k v <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>      fsAppend k v</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>      modify (Map.insert k v)</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>      <span class="fu">return</span> <span class="dt">Ok</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Read</span> k <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>      m <span class="ot">&lt;-</span> get</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>      <span class="fu">return</span> (<span class="dt">Result</span> (m <span class="op">Map.!?</span> k))</span></code></pre></div>
+<p>Where <code>fsAppend</code> appends the key-value pair to a file, so
+that we can recover in in-memory state in case of a crash.</p>
+<p>The program looks sequential, but once the state machine hits the
+<code>fsAppend</code> it will suspend using a coroutine monad, yielding
+control back to the event loop which feeds it inputs, the event loop
+will enqueue the I/O action to a separate thread that deals with I/O and
+continue feeding the state machine new inputs, until the I/O thread
+completes the write to disk, at which point the state machine will be
+resumed with the latest state.</p>
+<h2 id="contributing">Contributing</h2>
+<p>Any feedback, comments or suggestions are most welcome!</p>
+<p>In particular if you know how to solve this problem in a different or
+better way.</p>
+<p>A potential source of confusion and bugs might be the fact that once
+we resume the state might not be the same as it was before we suspended.
+It’s not clear to me how big of a problem this is in practice, or if
+anything can be done about it without sacrificing either the “sequential
+feel” or the parallelism?</p>
+<p>One possible generalisation that seems feasible is to not suspend
+immediately upon the I/O action, but rather merely return a “future”
+which we later can <code>await</code> for. This would allow us to do
+suspend and do multiple I/O actions before resuming, something like:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>  a1 <span class="ot">&lt;-</span> fsAppend k v</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  a2 <span class="ot">&lt;-</span> someOtherIOAction</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  awaitBoth a1 a2 <span class="co">-- or awaitEither a1 a2</span></span></code></pre></div>
+<p>Arguably the await makes it more clear where the suspension and
+resumption happen, which could help against the confusion regarding that
+the state might change.</p>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><em>Development and Deployment of Multiplayer Online Games, Vol.
+II</em> by Sergey Ignatchenko (2020), especially chapter 5;</li>
+<li><a
+href="https://abhinavsarkar.net/posts/implementing-co-3/"><em>Implementing
+Co, a Small Language With Coroutines #3: Adding
+Coroutines</em></a>;</li>
+<li><a
+href="https://ayazhafiz.com/articles/23/a-lambda-calculus-with-coroutines-and-heapless-closures"><em>A
+Lambda Calculus With Coroutines and Heapless, Directly-Called
+Closures</em></a>;</li>
+<li><a href="https://blog.dziban.net/coroutines/">Small VMs &amp;
+Coroutines</a>;</li>
+<li><a href="https://github.com/slembcke/Tina">Tina is a teeny tiny,
+header only, coroutine and job library</a>;</li>
+<li><a href="http://dunkels.com/adam/pt/">Protothreads</a>;</li>
+<li><a href="https://en.wikipedia.org/wiki/Proactor_pattern">Proactor
+pattern</a>;</li>
+<li><a
+href="https://github.com/bytecodealliance/wasmtime/blob/main/docs/WASI-rationale.md#why-not-async">WebAssembly
+Reactors</a>.</li>
+</ul>
+</main>
+</body>
+</html>

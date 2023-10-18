@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Stevan Andjelkovic" />
+  <title>Stevan's notes – Modular state machines</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="alternate" type="application/rss+xml"
+        title="RSS feed"
+        href="rss.xml" />
+  <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+  <nav id="nav">
+    <span class="title">Stevan's notes...</span>
+    <a href="index.html">sorted by topic,</a>
+    <a href="chronological.html">by time,</a>
+    <a href="rss.xml">or as a feed <img height="10px" src="rss.svg" />!</a>
+    <a href="about.html">What's this about?</a>
+  </nav>
+</header>
+<hr />
+<main>
+<h1>Modular state machines</h1>
+<nav id="TOC" class="sidenote" role="doc-toc">
+<h2 id="toc-title">Table of contents</h2>
+<ul>
+<li><a href="#motivation" id="toc-motivation">Motivation</a></li>
+<li><a href="#products-of-states" id="toc-products-of-states">Products
+of states</a></li>
+<li><a href="#the-state-pattern" id="toc-the-state-pattern">The state
+pattern</a></li>
+<li><a href="#hierarchical-states"
+id="toc-hierarchical-states">Hierarchical states</a></li>
+<li><a href="#stack-of-states--pushdown-automaton"
+id="toc-stack-of-states--pushdown-automaton">Stack of states / pushdown
+automaton</a></li>
+<li><a href="#see-also" id="toc-see-also">See also</a></li>
+</ul>
+</nav>
+<h2 id="motivation">Motivation</h2>
+<ul>
+<li><p>One big state machine can become difficult to understand</p></li>
+<li><p>How can we break a state machine into parts such that when
+combined they form the whole?</p></li>
+</ul>
+<h2 id="products-of-states">Products of states</h2>
+<ul>
+<li><p>The Cartesian product of states can be used when we need to keep
+track of two states running in parallel.</p></li>
+<li><p>There are different two different ways we can advance two state
+machines that run in parallel, either by stepping one of them and
+leaving the other alone or stepping both of them in lockstep.</p></li>
+<li><p>Angelic product, allows of stepping one of the state
+machines:</p></li>
+</ul>
+<pre><code>type SM s i o = i -&gt; s -&gt; (s, o)
+
+angelic : SM s i o -&gt; SM t j p -&gt; SM (s, t) (i + j) (o + p)
+angelic f g ij (s, t) case ij of
+  Left i  -&gt; let (s&#39;, o) = f i s in ((s&#39;, t), Left o)
+  Right j -&gt; let (t&#39;, p) = g j t in ((s, t&#39;), Right p)
+
+video : SM {playing, stopped} {stop, play} ()
+audio : SM {mutued, unmuted} {mute, unmute} ()
+
+player = angelic video audio</code></pre>
+<ul>
+<li>Tensor product, allows us to step both state machines in
+lockstep:</li>
+</ul>
+<pre><code>tensor : SM s i o -&gt; SM t j p -&gt; SM (s, t) (i, j) (o, p)
+tensor f g (i, j) (s, t) =
+  let
+    (o, s&#39;) = f i s
+    (p, t&#39;) = g j t
+  in
+    ((s&#39;, t&#39;), (o, p))</code></pre>
+<p>See also:</p>
+<ul>
+<li><a
+href="http://gameprogrammingpatterns.com/state.html#concurrent-state-machines">“Concurrent
+state machines”</a> in Nystrom;</li>
+<li><a
+href="https://en.wikipedia.org/wiki/UML_state_machine#Orthogonal_regions">Orthogonal
+regions</a> in UML state machines;</li>
+<li><a href="https://arxiv.org/abs/0905.4063">Programming interfaces and
+basic topology</a> by Peter Hancock and Pierre Hyvernat (2009).</li>
+</ul>
+<h2 id="the-state-pattern">The state pattern</h2>
+<ul>
+<li><a
+href="http://gameprogrammingpatterns.com/state.html#the-state-pattern"
+class="uri">http://gameprogrammingpatterns.com/state.html#the-state-pattern</a></li>
+</ul>
+<h2 id="hierarchical-states">Hierarchical states</h2>
+<ul>
+<li><p><a
+href="http://gameprogrammingpatterns.com/state.html#hierarchical-state-machines"
+class="uri">http://gameprogrammingpatterns.com/state.html#hierarchical-state-machines</a></p></li>
+<li><p><a
+href="https://en.wikipedia.org/wiki/UML_state_machine#Hierarchically_nested_states">Hierarchically
+nested states</a> in UML state machines</p></li>
+</ul>
+<h2 id="stack-of-states--pushdown-automaton">Stack of states / pushdown
+automaton</h2>
+<ul>
+<li><a
+href="http://gameprogrammingpatterns.com/state.html#pushdown-automata"
+class="uri">http://gameprogrammingpatterns.com/state.html#pushdown-automata</a></li>
+</ul>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="http://gameprogrammingpatterns.com/state.html">Game
+Programming Patterns</a> by Robert Nystrom (2014, chapter 7);</li>
+<li>Development and Deployment of Multiplayer Online Games, Vol. II by
+Sergey Ignatchenko (2020, chapter 5);</li>
+<li><a
+href="http://www.wisdom.weizmann.ac.il/~dharel/SCANNED.PAPERS/Statecharts.pdf"><em>Statecharts:
+A visual formalism for complex systems</em></a> by David Harel
+(1987);</li>
+<li><a href="https://en.wikipedia.org/wiki/UML_state_machine">UML state
+machines</a>.</li>
+</ul>
+</main>
+</body>
+</html>
