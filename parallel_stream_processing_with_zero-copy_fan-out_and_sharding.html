@@ -56,7 +56,7 @@ contributing</a></li>
 <div class="date">Posted on Oct 11, 2023</div>
 <p><em>Work in progress, please don’t share yet</em></p>
 <p>In a previous <a
-href="https://github.com/stevana/pipelined-state-machines#pipelined-state-machines">post</a>
+href="https://stevana.github.io/pipelined_state_machines.html">post</a>
 I explored how we can make better use of our parallel hardware by means
 of pipelining.</p>
 <p>In a nutshell the idea of pipelining is to break up the problem in
@@ -559,7 +559,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb17-1"><a
 <p>This is pretty much where we left off in my previous post. If the
 speed ups we are seeing from pipelining don’t make sense, it might help
 to go back and reread the <a
-href="https://github.com/stevana/pipelined-state-machines#pipelined-state-machines">old
+href="https://stevana.github.io/pipelined_state_machines.html">old
 post</a>, as I spent some more time constructing an intuitive example
 there.</p>
 <h2 id="disruptor">Disruptor</h2>
@@ -898,7 +898,7 @@ library), but it would probably be too expensive to enable this when
 there’s a lot of items to be processed.</p>
 <p>I have written a separate write up on how to make the SVG interactive
 over <a
-href="https://github.com/stevana/svg-viewer-in-svg#svg-viewer-written-in-svg">here</a>.</p>
+href="https://stevana.github.io/visualising_datastructures_over_time_using_svg.html">here</a>.</p>
 <h2 id="running">Running</h2>
 <p>All of the above Haskell code is available on <a
 href="https://github.com/stevana/pipelining-with-disruptor/">GitHub</a>.
@@ -985,7 +985,7 @@ random pipelines?</li>
 <li><input type="checkbox" />Deploy across network of computers?</li>
 <li><input type="checkbox" />Hot-code upgrades of workers/stages with
 zero downtime, perhaps continuing on my earlier <a
-href="https://github.com/stevana/hot-swapping-state-machines">attempt</a>?</li>
+href="https://stevana.github.io/hot-code_swapping_a_la_erlang_with_arrow-based_state_machines.html">attempt</a>?</li>
 <li><input type="checkbox" />In addition to upgrading the
 workers/stages, one might also want to rewire the pipeline itself. Doug
 made me aware of an old <a
@@ -996,7 +996,7 @@ fly. Perhaps some ideas can be stole from there?</li>
 shard/scale/reroute pipelines and add more machines without downtime.
 Can we do this automatically based on our monitoring? Perhaps building
 upon my earlier <a
-href="https://github.com/stevana/elastically-scalable-thread-pools">attempt</a>?</li>
+href="https://stevana.github.io/elastically_scalable_thread_pools.html">attempt</a>?</li>
 <li><input type="checkbox" />More benchmarks, in particular trying to
 confirm that we indeed don’t allocate when fanning out and sharding<a
 href="#fn8" class="footnote-ref" id="fnref8"
