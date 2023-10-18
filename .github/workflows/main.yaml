@@ -8,7 +8,8 @@ on:
     branches: main
   pull_request:
     branches: main
-  workflow_dispatch:
+  repository_dispatch:
+    types: [dependency_update]
 
 permissions:
   contents: write
