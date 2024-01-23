@@ -315,7 +315,7 @@ I’d like to go.</p>
 <p>The rest of this post is organised as follows.</p>
 <p>First we’ll have a look at how to model pipelines as a transformation
 of lists. The purpose of this is to give us an easy to understand
-sequential specification of we would like our pipelines to do.</p>
+sequential specification of what we would like our pipelines to do.</p>
 <p>We’ll then give our first parallel implementation of pipelines using
 “normal” queues. The main point here is to recap of the problem with
 copying data that arises from using “normal” queues, but we’ll also
@@ -415,28 +415,33 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a 
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>deploy (f <span class="op">:&gt;&gt;&gt;</span> g) xs <span class="ot">=</span> deploy g <span class="op">=&lt;&lt;</span> deploy f xs</span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>deploy (<span class="dt">Map</span> f)    xs <span class="ot">=</span> deploy (<span class="dt">MapM</span> (<span class="fu">return</span> <span class="op">.</span> f)) xs</span>
 <span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>deploy (<span class="dt">MapM</span> f)   xs <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  ys <span class="ot">&lt;-</span> newTQueueIO</span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  forkIO <span class="op">$</span> forever <span class="op">$</span> <span class="kw">do</span></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    x <span class="ot">&lt;-</span> atomically (readTQueue xs)</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    y <span class="ot">&lt;-</span> f x</span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    atomically (writeTQueue ys y)</span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> ys</span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>deploy (f <span class="op">:&amp;&amp;&amp;</span> g) xs <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  xs1 <span class="ot">&lt;-</span> newTQueueIO</span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  xs2 <span class="ot">&lt;-</span> newTQueueIO</span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>  forkIO <span class="op">$</span> forever <span class="op">$</span> <span class="kw">do</span></span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    x <span class="ot">&lt;-</span> atomically (readTQueue xs)</span>
-<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    atomically <span class="op">$</span> <span class="kw">do</span></span>
-<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>      writeTQueue xs1 x</span>
-<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>      writeTQueue xs2 x</span>
-<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>  ys <span class="ot">&lt;-</span> deploy f xs1</span>
-<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>  zs <span class="ot">&lt;-</span> deploy g xs2</span>
-<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>  yzs <span class="ot">&lt;-</span> newTQueueIO</span>
-<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>  forkIO <span class="op">$</span> forever <span class="op">$</span> <span class="kw">do</span></span>
-<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>    y <span class="ot">&lt;-</span> atomically (readTQueue ys)</span>
-<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>    z <span class="ot">&lt;-</span> atomically (readTQueue zs)</span>
-<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>    atomically (writeTQueue yzs (y, z))</span>
-<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> yzs</span></code></pre></div>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- (Where `MapM :: (a -&gt; IO b) -&gt; P a b` is the monadic generalisation of</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- `Map` from the list model that we saw earlier.)</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  ys <span class="ot">&lt;-</span> newTQueueIO</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  forkIO <span class="op">$</span> forever <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    x <span class="ot">&lt;-</span> atomically (readTQueue xs)</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    y <span class="ot">&lt;-</span> f x</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    atomically (writeTQueue ys y)</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> ys</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>deploy (f <span class="op">:&amp;&amp;&amp;</span> g) xs <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>  xs1 <span class="ot">&lt;-</span> newTQueueIO</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>  xs2 <span class="ot">&lt;-</span> newTQueueIO</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>  forkIO <span class="op">$</span> forever <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>    x <span class="ot">&lt;-</span> atomically (readTQueue xs)</span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>    atomically <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>      writeTQueue xs1 x</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>      writeTQueue xs2 x</span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>  ys <span class="ot">&lt;-</span> deploy f xs1</span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>  zs <span class="ot">&lt;-</span> deploy g xs2</span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>  yzs <span class="ot">&lt;-</span> newTQueueIO</span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>  forkIO <span class="op">$</span> forever <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>    y <span class="ot">&lt;-</span> atomically (readTQueue ys)</span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>    z <span class="ot">&lt;-</span> atomically (readTQueue zs)</span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>    atomically (writeTQueue yzs (y, z))</span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> yzs</span></code></pre></div>
+<p>(I’ve omitted the cases for <code>:|||</code> and <code>:+++</code>
+to not take up too much space. We’ll come back and handle
+<code>Shard</code> separately later.)</p>
 <div class="sourceCode" id="cb7"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ot">example&#39; ::</span> [<span class="dt">Int</span>] <span class="ot">-&gt;</span> <span class="dt">IO</span> [(<span class="dt">Int</span>, <span class="dt">Bool</span>)]</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>example&#39; xs0 <span class="ot">=</span> <span class="kw">do</span></span>
@@ -757,51 +762,11 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb30-1"><a
 <span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>  ys1 <span class="ot">&lt;-</span> deploy f p1 xs</span>
 <span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>  ys2 <span class="ot">&lt;-</span> deploy f p2 xs</span>
 <span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> (<span class="dt">RBShard</span> p1 p2 ys1 ys2)</span></code></pre></div>
-<p>The partitioning information consists of the total number of
-partitions and the index of the current partition.</p>
-<div class="sourceCode" id="cb31"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Partition</span> <span class="ot">=</span> <span class="dt">Partition</span></span>
-<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> pIndex ::</span> <span class="dt">Int</span></span>
-<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> pTotal ::</span> <span class="dt">Int</span></span>
-<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
-<p>No partitioning is represented as follows:</p>
-<div class="sourceCode" id="cb32"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="ot">noPartition ::</span> <span class="dt">Partition</span></span>
-<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>noPartition <span class="ot">=</span> <span class="dt">Partition</span> <span class="dv">0</span> <span class="dv">1</span></span></code></pre></div>
-<p>While creating a new partition is done as follows:</p>
-<div class="sourceCode" id="cb33"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="ot">addPartition ::</span> <span class="dt">Partition</span> <span class="ot">-&gt;</span> (<span class="dt">Partition</span>, <span class="dt">Partition</span>)</span>
-<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>addPartition (<span class="dt">Partition</span> i total) <span class="ot">=</span></span>
-<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>  ( <span class="dt">Partition</span> i (total <span class="op">*</span> <span class="dv">2</span>)</span>
-<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>  , <span class="dt">Partition</span> (i <span class="op">+</span> total) (total <span class="op">*</span> <span class="dv">2</span>)</span>
-<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div>
-<p>So, for example, if we partition twice we get:</p>
-<pre><code>&gt; let (p1, p2) = addPartition noPartition in (addPartition p1, addPartition p2)
-((Partition 0 4, Partition 2 4), (Partition 1 4, Partition 3 4))</code></pre>
-<p>From this information we can compute if an index is in an partition
-or not as follows:</p>
-<div class="sourceCode" id="cb35"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="ot">partition ::</span> <span class="dt">SequenceNumber</span> <span class="ot">-&gt;</span> <span class="dt">Partition</span> <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
-<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>partition i (<span class="dt">Partition</span> n total) <span class="ot">=</span> i <span class="ot">`mod`</span> total <span class="op">==</span> <span class="dv">0</span> <span class="op">+</span> n</span></code></pre></div>
-<p>To understand why this works, it might be helpful to consider the
-case where we only have two partitions. We can partition on even or odd
-indices as follows: <code>even i = i `mod` 2 == 0 + 0</code> and
-<code>odd i = i `mod` 2 == 0 + 1</code>. Written this way we can easier
-see how to generalise to <code>total</code> partitions:
-<code>partition i (Partition n total) = i `mod` total == 0 + n</code>.
-So for <code>total = 2</code> then
-<code>partition i (Partition 0 2) == even</code> while
-<code>partition i (Partition 1 2) == odd</code>.</p>
-<p>Since partitioning and partitioning a partition, etc, always
-introduce a power of two we can further optimise to use bitwise or as
-follows:
-<code>partition i (Partition n total) = i .|. (total - 1) == 0 + n</code>
-thereby avoiding the expensive modulus computation. This is a trick used
-in Disruptor as well, and the reason why the capacity of a Disruptor
-always needs to be a power of two.</p>
-<p>See the <code>HasRB (Sharded a)</code> instance in the following <a
-href="https://github.com/stevana/pipelining-with-disruptor/blob/main/src/RingBufferClass.hs">module</a>
-for the details.</p>
+<p>For the details of how this works see the following footnote<a
+href="#fn7" class="footnote-ref" id="fnref7"
+role="doc-noteref"><sup>7</sup></a> and the
+<code>HasRB (Sharded a)</code> instance in the following <a
+href="https://github.com/stevana/pipelining-with-disruptor/blob/main/src/RingBufferClass.hs">module</a>.</p>
 <p>If we <a
 href="https://github.com/stevana/pipelining-with-disruptor/blob/main/src/LibMain/Sleep.hs">run</a>
 our sleep pipeline from before using the Disruptor <a
@@ -867,8 +832,8 @@ user    0m10.647s
 sys     0m0.778s</code></pre>
 <p>So it seems that the gap between the two deployments widens as we
 introduce more fan-out, this expected as the queue implementation will
-have more copying of data to do<a href="#fn7" class="footnote-ref"
-id="fnref7" role="doc-noteref"><sup>7</sup></a>.</p>
+have more copying of data to do<a href="#fn8" class="footnote-ref"
+id="fnref8" role="doc-noteref"><sup>8</sup></a>.</p>
 <h2 id="observability">Observability</h2>
 <p>Given that pipelines are directed acyclic graphs and that we have a
 concrete datatype constructor for each pipeline combinator, it’s
@@ -999,8 +964,8 @@ upon my earlier <a
 href="https://stevana.github.io/elastically_scalable_thread_pools.html">attempt</a>?</li>
 <li><input type="checkbox" />More benchmarks, in particular trying to
 confirm that we indeed don’t allocate when fanning out and sharding<a
-href="#fn8" class="footnote-ref" id="fnref8"
-role="doc-noteref"><sup>8</sup></a>, as well as benchmarks against other
+href="#fn9" class="footnote-ref" id="fnref9"
+role="doc-noteref"><sup>9</sup></a>, as well as benchmarks against other
 streaming libraries.</li>
 </ul>
 <p>If any of this seems interesting, feel free to get involved.</p>
@@ -1041,7 +1006,10 @@ a framework for fast packet I/O;</li>
 href="https://www.gibney.org/the_output_of_linux_pipes_can_be_indeter">The
 output of Linux pipes can be indeterministic</a> (2019);</li>
 <li><a href="https://www.youtube.com/watch?v=Mc3tTRkjCvE">Programming
-Distributed Systems</a> by Mae Milano (Strange Loop, 2023).</li>
+Distributed Systems</a> by Mae Milano (Strange Loop, 2023);</li>
+<li><a
+href="https://www.youtube.com/watch?v=ipceTuJlw-M">Pipeline-oriented
+programming</a> by Scott Wlaschin (NDC Porto, 2023).</li>
 </ul>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
@@ -1117,12 +1085,95 @@ class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 href="https://en.wikipedia.org/wiki/AoS_and_SoA">array of structures vs
 structure of arrays</a> in other programming languages.<a href="#fnref6"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn7"><p>I’m not sure why “bytes allocated in the heap” gets
-doubled in the Disruptor case and tripled in the queue cases though?<a
-href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7"><p>The partitioning information consists of the total
+number of partitions and the index of the current partition.</p>
+<div class="sourceCode" id="cb31"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Partition</span> <span class="ot">=</span> <span class="dt">Partition</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> pIndex ::</span> <span class="dt">Int</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> pTotal ::</span> <span class="dt">Int</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
+<p>No partitioning is represented as follows:</p>
+<div class="sourceCode" id="cb32"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="ot">noPartition ::</span> <span class="dt">Partition</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>noPartition <span class="ot">=</span> <span class="dt">Partition</span> <span class="dv">0</span> <span class="dv">1</span></span></code></pre></div>
+<p>While creating a new partition is done as follows:</p>
+<div class="sourceCode" id="cb33"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="ot">addPartition ::</span> <span class="dt">Partition</span> <span class="ot">-&gt;</span> (<span class="dt">Partition</span>, <span class="dt">Partition</span>)</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>addPartition (<span class="dt">Partition</span> i total) <span class="ot">=</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>  ( <span class="dt">Partition</span> i (total <span class="op">*</span> <span class="dv">2</span>)</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>  , <span class="dt">Partition</span> (i <span class="op">+</span> total) (total <span class="op">*</span> <span class="dv">2</span>)</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div>
+<p>So, for example, if we partition twice we get:</p>
+<pre><code>&gt; let (p1, p2) = addPartition noPartition in (addPartition p1, addPartition p2)
+((Partition 0 4, Partition 2 4), (Partition 1 4, Partition 3 4))</code></pre>
+<p>From this information we can compute if an index is in an partition
+or not as follows:</p>
+<div class="sourceCode" id="cb35"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="ot">partition ::</span> <span class="dt">SequenceNumber</span> <span class="ot">-&gt;</span> <span class="dt">Partition</span> <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>partition i (<span class="dt">Partition</span> n total) <span class="ot">=</span> i <span class="ot">`mod`</span> total <span class="op">==</span> <span class="dv">0</span> <span class="op">+</span> n</span></code></pre></div>
+<p>To understand why this works, it might be helpful to consider the
+case where we only have two partitions. We can partition on even or odd
+indices as follows: <code>even i = i `mod` 2 == 0 + 0</code> and
+<code>odd i = i `mod` 2 == 0 + 1</code>. Written this way we can easier
+see how to generalise to <code>total</code> partitions:
+<code>partition i (Partition n total) = i `mod` total == 0 + n</code>.
+So for <code>total = 2</code> then
+<code>partition i (Partition 0 2) == even</code> while
+<code>partition i (Partition 1 2) == odd</code>.</p>
+<p>Since partitioning and partitioning a partition, etc, always
+introduce a power of two we can further optimise to use bitwise or as
+follows:
+<code>partition i (Partition n total) = i .|. (total - 1) == 0 + n</code>
+thereby avoiding the expensive modulus computation. This is a trick used
+in Disruptor as well, and the reason why the capacity of a Disruptor
+always needs to be a power of two.<a href="#fnref7"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn8"><p>I’m not sure why “bytes allocated in the heap” gets
 doubled in the Disruptor case and tripled in the queue cases though?<a
 href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9"><p>The partitioning information consists of the total
+number of partitions and the index of the current partition.</p>
+<div class="sourceCode" id="cb45"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Partition</span> <span class="ot">=</span> <span class="dt">Partition</span></span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> pIndex ::</span> <span class="dt">Int</span></span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> pTotal ::</span> <span class="dt">Int</span></span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
+<p>No partitioning is represented as follows:</p>
+<div class="sourceCode" id="cb46"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="ot">noPartition ::</span> <span class="dt">Partition</span></span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>noPartition <span class="ot">=</span> <span class="dt">Partition</span> <span class="dv">0</span> <span class="dv">1</span></span></code></pre></div>
+<p>While creating a new partition is done as follows:</p>
+<div class="sourceCode" id="cb47"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="ot">addPartition ::</span> <span class="dt">Partition</span> <span class="ot">-&gt;</span> (<span class="dt">Partition</span>, <span class="dt">Partition</span>)</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>addPartition (<span class="dt">Partition</span> i total) <span class="ot">=</span></span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>  ( <span class="dt">Partition</span> i (total <span class="op">*</span> <span class="dv">2</span>)</span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>  , <span class="dt">Partition</span> (i <span class="op">+</span> total) (total <span class="op">*</span> <span class="dv">2</span>)</span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div>
+<p>So, for example, if we partition twice we get:</p>
+<pre><code>&gt; let (p1, p2) = addPartition noPartition in (addPartition p1, addPartition p2)
+((Partition 0 4, Partition 2 4), (Partition 1 4, Partition 3 4))</code></pre>
+<p>From this information we can compute if an index is in an partition
+or not as follows:</p>
+<div class="sourceCode" id="cb49"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="ot">partition ::</span> <span class="dt">SequenceNumber</span> <span class="ot">-&gt;</span> <span class="dt">Partition</span> <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>partition i (<span class="dt">Partition</span> n total) <span class="ot">=</span> i <span class="ot">`mod`</span> total <span class="op">==</span> <span class="dv">0</span> <span class="op">+</span> n</span></code></pre></div>
+<p>To understand why this works, it might be helpful to consider the
+case where we only have two partitions. We can partition on even or odd
+indices as follows: <code>even i = i `mod` 2 == 0 + 0</code> and
+<code>odd i = i `mod` 2 == 0 + 1</code>. Written this way we can easier
+see how to generalise to <code>total</code> partitions:
+<code>partition i (Partition n total) = i `mod` total == 0 + n</code>.
+So for <code>total = 2</code> then
+<code>partition i (Partition 0 2) == even</code> while
+<code>partition i (Partition 1 2) == odd</code>.</p>
+<p>Since partitioning and partitioning a partition, etc, always
+introduce a power of two we can further optimise to use bitwise or as
+follows:
+<code>partition i (Partition n total) = i .|. (total - 1) == 0 + n</code>
+thereby avoiding the expensive modulus computation. This is a trick used
+in Disruptor as well, and the reason why the capacity of a Disruptor
+always needs to be a power of two.<a href="#fnref9"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
 </main>
