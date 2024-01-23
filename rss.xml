@@ -37,7 +37,6 @@ contributing</a></li>
 </ul>
 </nav>
 <div class="date">Posted on Oct 11, 2023</div>
-<p><em>Work in progress, please don’t share yet</em></p>
 <p>In a previous <a
 href="https://stevana.github.io/pipelined_state_machines.html">post</a>
 I explored how we can make better use of our parallel hardware by means
@@ -1114,49 +1113,9 @@ class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn8"><p>I’m not sure why “bytes allocated in the heap” gets
 doubled in the Disruptor case and tripled in the queue cases though?<a
 href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn9"><p>The partitioning information consists of the total
-number of partitions and the index of the current partition.</p>
-<div class="sourceCode" id="cb45"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Partition</span> <span class="ot">=</span> <span class="dt">Partition</span></span>
-<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> pIndex ::</span> <span class="dt">Int</span></span>
-<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> pTotal ::</span> <span class="dt">Int</span></span>
-<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
-<p>No partitioning is represented as follows:</p>
-<div class="sourceCode" id="cb46"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="ot">noPartition ::</span> <span class="dt">Partition</span></span>
-<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>noPartition <span class="ot">=</span> <span class="dt">Partition</span> <span class="dv">0</span> <span class="dv">1</span></span></code></pre></div>
-<p>While creating a new partition is done as follows:</p>
-<div class="sourceCode" id="cb47"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="ot">addPartition ::</span> <span class="dt">Partition</span> <span class="ot">-&gt;</span> (<span class="dt">Partition</span>, <span class="dt">Partition</span>)</span>
-<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>addPartition (<span class="dt">Partition</span> i total) <span class="ot">=</span></span>
-<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>  ( <span class="dt">Partition</span> i (total <span class="op">*</span> <span class="dv">2</span>)</span>
-<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>  , <span class="dt">Partition</span> (i <span class="op">+</span> total) (total <span class="op">*</span> <span class="dv">2</span>)</span>
-<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div>
-<p>So, for example, if we partition twice we get:</p>
-<pre><code>&gt; let (p1, p2) = addPartition noPartition in (addPartition p1, addPartition p2)
-((Partition 0 4, Partition 2 4), (Partition 1 4, Partition 3 4))</code></pre>
-<p>From this information we can compute if an index is in an partition
-or not as follows:</p>
-<div class="sourceCode" id="cb49"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="ot">partition ::</span> <span class="dt">SequenceNumber</span> <span class="ot">-&gt;</span> <span class="dt">Partition</span> <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
-<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>partition i (<span class="dt">Partition</span> n total) <span class="ot">=</span> i <span class="ot">`mod`</span> total <span class="op">==</span> <span class="dv">0</span> <span class="op">+</span> n</span></code></pre></div>
-<p>To understand why this works, it might be helpful to consider the
-case where we only have two partitions. We can partition on even or odd
-indices as follows: <code>even i = i `mod` 2 == 0 + 0</code> and
-<code>odd i = i `mod` 2 == 0 + 1</code>. Written this way we can easier
-see how to generalise to <code>total</code> partitions:
-<code>partition i (Partition n total) = i `mod` total == 0 + n</code>.
-So for <code>total = 2</code> then
-<code>partition i (Partition 0 2) == even</code> while
-<code>partition i (Partition 1 2) == odd</code>.</p>
-<p>Since partitioning and partitioning a partition, etc, always
-introduce a power of two we can further optimise to use bitwise or as
-follows:
-<code>partition i (Partition n total) = i .|. (total - 1) == 0 + n</code>
-thereby avoiding the expensive modulus computation. This is a trick used
-in Disruptor as well, and the reason why the capacity of a Disruptor
-always needs to be a power of two.<a href="#fnref9"
-class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9"><p>I’m not sure why “bytes allocated in the heap” gets
+doubled in the Disruptor case and tripled in the queue cases though?<a
+href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
 ]]></description>
