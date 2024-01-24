@@ -5,31 +5,33 @@ module Download where
 import Control.Monad
 import qualified Data.ByteString.Lazy as LBS
 import Data.Char
+import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Time
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS
 import Network.HTTP.Types.Status (ok200)
+import System.Directory
 import System.FilePath
 
 import Types
 
 ------------------------------------------------------------------------
 
-downloadMarkdown :: Bool -> FilePath -> Site -> IO [(FilePath, Maybe UTCTime)]
-downloadMarkdown skip dir
-  = fmap concat
+downloadMarkdown :: Bool -> FilePath -> Site -> IO [FilePath]
+downloadMarkdown skipDownload dir
+  = fmap catMaybes
   . mapM go -- XXX: Can be done concurrenctly.
-  . concatMap (map (\post -> (_title post, _content post, _date post)))
+  . concatMap (map (\post -> (_title post, _content post)))
   . map _posts
   . _topics
   where
-    go :: (Text, Maybe Text, Maybe UTCTime) -> IO [(FilePath, Maybe UTCTime)]
-    go (_title, Nothing, _mDate) = return []
-    go (title, Just url, mDate) = do
+    go :: (Text, Maybe Text) -> IO (Maybe FilePath)
+    go (_title, Nothing) = return Nothing
+    go (title, Just url) = do
       let fp = dir </> T.unpack (titleToFileName title) <.> "md"
-      if skip then return [(fp, mDate)]
+      exists <- doesFileExist fp
+      if skipDownload && exists then return (Just fp)
       else do
         mgr <- newManager tlsManagerSettings
         req <- parseRequest (T.unpack url)
@@ -37,7 +39,7 @@ downloadMarkdown skip dir
         when (responseStatus resp /= ok200) $
           error ("downloadMarkdown: failed to download: " ++ T.unpack url)
         LBS.writeFile fp (responseBody resp)
-        return [(fp, mDate)]
+        return (Just fp)
 
 titleToFileName :: Text -> Text
 titleToFileName

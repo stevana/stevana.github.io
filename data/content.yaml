@@ -1,5 +1,5 @@
 name: Stevan's notes
-author: Stevan Andjelkovic
+author: Stevan A
 synopsis: Collection of notes on distributed systems.
 url: https://stevana.github.io
 topics:
@@ -31,7 +31,8 @@ topics:
     status: Done
 
   - title: Parallel stream processing with zero-copy fan-out and sharding
-    date: 2023-10-11T00:00:00Z
+    # date: 2023-10-11T00:00:00Z
+    date: 2024-01-23T00:00:00Z
     content: https://raw.githubusercontent.com/stevana/pipelining-with-disruptor/main/README.md
     status: Done
 

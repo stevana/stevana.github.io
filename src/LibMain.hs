@@ -8,7 +8,6 @@ import Download
 import Generate
 import Parse
 import RssFeed
-import Types
 
 ------------------------------------------------------------------------
 
@@ -18,16 +17,18 @@ libMain inputFile outputDir skipDownload = do
   createDirectoryIfMissing True outputDir
   markdowns <- downloadMarkdown skipDownload outputDir site
   writeIndex site outputDir
-  writeReverseChronologicalIndex site outputDir
+  -- writeReverseChronologicalIndex site outputDir
   writeAbout site outputDir
-  mapM_ (markdownToHtml (_name site) (_author site)) markdowns
+  mapM_ (markdownToHtml site) markdowns
   installCssAndSvg outputDir
   installRssFeed site outputDir
-  cleanUp outputDir
+  cleanUp outputDir skipDownload
 
-cleanUp :: FilePath -> IO ()
-cleanUp outputDir = do
-  files <- getDirectoryContents outputDir
-  forM_ files $ \file ->
-    when (takeExtension file == ".md") $
-      removeFile (outputDir </> file)
+cleanUp :: FilePath -> Bool -> IO ()
+cleanUp outputDir skipDownload
+  | skipDownload =  return ()
+  | otherwise    = do
+      files <- getDirectoryContents outputDir
+      forM_ files $ \file ->
+        when (takeExtension file == ".md") $
+          removeFile (outputDir </> file)

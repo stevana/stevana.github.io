@@ -9,7 +9,7 @@ license:         ISC
 license-file:    LICENSE
 author:          Stevan Andjelkovic
 maintainer:      stevana@users.noreply.github.com
-copyright:       Copyright (c) 2023 Stevan Andjelkovic
+copyright:       Copyright (c) 2023-2024 Stevan Andjelkovic
 category:        Web
 build-type:      Simple
 extra-doc-files:

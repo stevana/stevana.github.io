@@ -46,11 +46,11 @@ rSS_SVG_FILE = "rss.svg"
 
 writeIndex :: Site -> FilePath -> IO ()
 writeIndex site outputDir =
-  T.writeFile (outputDir </> iNDEX_FILE) =<< generateIndex site
+  T.writeFile (outputDir </> iNDEX_FILE) =<< generateReverseChronologicalIndex  site
 
-writeReverseChronologicalIndex :: Site -> FilePath -> IO ()
-writeReverseChronologicalIndex site outputDir =
-  T.writeFile (outputDir </> cHRONOLOGICAL_FILE) =<< generateReverseChronologicalIndex site
+-- writeReverseChronologicalIndex :: Site -> FilePath -> IO ()
+-- writeReverseChronologicalIndex site outputDir =
+--   T.writeFile (outputDir </> cHRONOLOGICAL_FILE) =<< generateReverseChronologicalIndex site
 
 writeAbout :: Site -> FilePath -> IO ()
 writeAbout site outputDir =
@@ -86,8 +86,22 @@ extractTitle md
                   | otherwise -> l :| ls
       _otherwise -> error "extractTitle: no title"
 
-markdownToHtml :: Text -> Text -> (FilePath, Maybe UTCTime) -> IO ()
-markdownToHtml titlePrefix author (markdownFile, mDate) = do
+lookupDate :: FilePath -> Site -> Maybe UTCTime
+lookupDate markdownFile
+  = go
+  . concatMap _posts
+  . _topics
+  where
+    go [] = Nothing
+    go (post : posts)
+      | T.unpack (titleToFileName (_title post)) <.> "md" == markdownFile = _date post
+      | otherwise = go posts
+
+markdownToHtml :: Site -> FilePath -> IO ()
+markdownToHtml site markdownFile = do
+  let titlePrefix = _name site
+      author      = _author site
+      mDate       = lookupDate markdownFile site
   markdown <- T.readFile markdownFile
   let (title :| rest) = extractTitle markdown
       markdown' = T.unlines rest
@@ -134,9 +148,9 @@ generatePage site body = do
           }
     writeHtml5String writerOpts pandoc
 
-generateIndex :: Site -> IO Text
-generateIndex s = generatePage s
-  (ul (map (\t -> _topic t <> ul (concatMap displayPost (_posts t))) (_topics s)))
+-- generateIndex :: Site -> IO Text
+-- generateIndex s = generatePage s
+--   (ul (map (\t -> _topic t <> ul (concatMap displayPost (_posts t))) (_topics s)))
 
 generateReverseChronologicalIndex :: Site -> IO Text
 generateReverseChronologicalIndex s = generatePage s
@@ -166,6 +180,9 @@ generateAbout s = generatePage s $ T.unlines $ map p $
     \ others, many from Erlang and Joe Armstrong. Over time I hope to turn this \
     \ into a more coherent text, for now think of it as a crude blog or some basic \
     \ scaffolding for me to hang my thoughts on."
+
+  , "If you got comments, feedback or questions then feel free to get in \
+    \ touch via <a href=\"mailto:4hsz4ji43@mozmail.com\">email</a>!"
   ]
 
 ------------------------------------------------------------------------
