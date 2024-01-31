@@ -49,6 +49,7 @@ id="toc-observability">Observability</a></li>
 id="toc-further-work-and-contributing">Further work and
 contributing</a></li>
 <li><a href="#see-also" id="toc-see-also">See also</a></li>
+<li><a href="#discussion" id="toc-discussion">Discussion</a></li>
 </ul>
 </nav>
 <p>In a previous <a
@@ -903,8 +904,12 @@ for Disruptor <code>P</code>ipelines, this isn’t as straightforward as
 in the model case, because the combinators are littered with
 <code>HasRB</code> constraints, e.g.:
 <code>(:&amp;&amp;&amp;) :: (HasRB b, HasRB c) =&gt; P a b -&gt;       P a c -&gt; P a (b, c)</code>.
-Perhaps taking inspiration from constrained/restricted monads? This
-would allow us to specify pipelines using the <a
+Perhaps taking inspiration from constrained/restricted monads? In the
+<code>r/haskell</code> discussion, the user <code>ryani</code> <a
+href="https://old.reddit.com/r/haskell/comments/19ef2b6/parallel_stream_processing_with_zerocopy_fanout/kjhfyfk/">pointed
+out</a> a promising solution involving adding <code>Constraint</code>s
+to the <code>HasRB</code> class. This would allow us to specify
+pipelines using the <a
 href="https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/arrows.html">arrow
 notation</a>.</li>
 <li><input type="checkbox" />I believe the current pipeline combinator
@@ -1006,6 +1011,15 @@ Distributed Systems</a> by Mae Milano (Strange Loop, 2023);</li>
 <li><a
 href="https://www.youtube.com/watch?v=ipceTuJlw-M">Pipeline-oriented
 programming</a> by Scott Wlaschin (NDC Porto, 2023).</li>
+</ul>
+<h2 id="discussion">Discussion</h2>
+<ul>
+<li><a
+href="https://discourse.haskell.org/t/parallel-stream-processing-with-zero-copy-fan-out-and-sharding/8632">discourse.haskell.org</a>;</li>
+<li><a
+href="https://old.reddit.com/r/haskell/comments/19ef2b6/parallel_stream_processing_with_zerocopy_fanout/">r/haskell</a>;</li>
+<li><a
+href="https://lobste.rs/s/mvgdev/parallel_stream_processing_with_zero">lobste.rs</a>.</li>
 </ul>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
