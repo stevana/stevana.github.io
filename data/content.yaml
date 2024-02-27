@@ -14,7 +14,7 @@ topics:
 
   - title: Implementing behaviours
     content: https://raw.githubusercontent.com/stevana/armstrong-distributed-systems/implementing-behaviours/docs/implementing-behaviours.md
-    status: FirstDraft
+    status: Research
 
   - title: Working with binary data
     content: https://raw.githubusercontent.com/stevana/bits-and-bobs/main/README.md
@@ -44,6 +44,11 @@ topics:
   - title: Modular state machines
     status: Research
     content: https://raw.githubusercontent.com/stevana/armstrong-distributed-systems/main/docs/modular-state-machines.md
+
+  - title: Towards zero-downtime upgrades of stateful systems
+    status: FirstDraft
+    content: https://raw.githubusercontent.com/stevana/hot-swapping-state-machines2/main/README.md
+    date: 2024-02-27T00:00:00Z
 
 # ----------------------------------------------------------------------
 - topic: Documentation

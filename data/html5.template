@@ -16,7 +16,7 @@ $endif$
 $if(description-meta)$
   <meta name="description" content="$description-meta$" />
 $endif$
-  <title>$if(title-prefix)$$title-prefix$ – $endif$$pagetitle$</title>
+  <title>$pagetitle$</title>
 $for(css)$
   <link rel="stylesheet" href="$css$" />
 $endfor$
@@ -31,17 +31,11 @@ $endif$
 $endif$
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
-  <!--[if lt IE 9]>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
-  <![endif]-->
 </head>
 <body>
-$for(include-before)$
-$include-before$
-$endfor$
 <header id="title-block-header">
   <nav id="nav">
-    <span class="title"><a href="index.html">Stevan's notes...</a></span>
+    <span class="title"><a href="/">Stevan's notes...</a></span>
     <a href="about.html">About</a>
     <a href="rss.xml">Feed <img height="10px" src="rss.svg" /></a>
   </nav>
@@ -62,8 +56,5 @@ $if(date)$
 $endif$
 $body$
 </main>
-$for(include-after)$
-$include-after$
-$endfor$
 </body>
 </html>

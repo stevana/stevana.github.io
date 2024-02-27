@@ -94,14 +94,13 @@ lookupDate markdownFile
   where
     go [] = Nothing
     go (post : posts)
-      | T.unpack (titleToFileName (_title post)) <.> "md" == markdownFile = _date post
+      | T.unpack (titleToFileName (_title post)) <.> "md" == takeFileName markdownFile = _date post
       | otherwise = go posts
 
 markdownToHtml :: Site -> FilePath -> IO ()
 markdownToHtml site markdownFile = do
-  let titlePrefix = _name site
-      author      = _author site
-      mDate       = lookupDate markdownFile site
+  let mDate = lookupDate markdownFile site
+  print (markdownFile, mDate)
   markdown <- T.readFile markdownFile
   let (title :| rest) = extractTitle markdown
       markdown' = T.unlines rest
@@ -117,8 +116,7 @@ markdownToHtml site markdownFile = do
           , writerVariables = context $
               [ ("lang", "en")
               , ("title", title)
-              , ("author-meta", author)
-              , ("title-prefix", titlePrefix)
+              , ("author-meta", _author site)
               , ("pagetitle", title)
               , ("css", T.pack cSS_FILE)
               , ("toc-title", "Table of contents")
@@ -158,10 +156,15 @@ generateReverseChronologicalIndex s = generatePage s
 
 displayPost :: Post -> [Text]
 displayPost post =
-  case _status post of
-    Done -> [ahref (titleToFileName (_title post) <> ".html") (_title post) <>
-             maybe "" displayDate (_date post)]
-    _otherwise -> []
+  let
+    link :: Text
+    link = ahref (titleToFileName (_title post) <> ".html") (_title post) <>
+           maybe "" displayDate (_date post)
+  in
+    case _status post of
+      Done -> [link]
+      FirstDraft -> ["Draft: " <> link]
+      _otherwise -> []
 
 displayDate :: UTCTime -> Text
 displayDate d = mconcat
