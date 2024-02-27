@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Stevan A" />
+  <title>Towards zero-downtime upgrades of stateful systems</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="alternate" type="application/rss+xml"
+        title="RSS feed"
+        href="rss.xml" />
+  <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+</head>
+<body>
+<header id="title-block-header">
+  <nav id="nav">
+    <span class="title"><a href="/">Stevan's notes...</a></span>
+    <a href="about.html">About</a>
+    <a href="rss.xml">Feed <img height="10px" src="rss.svg" /></a>
+  </nav>
+</header>
+<hr />
+<main>
+<h1>Towards zero-downtime upgrades of stateful systems</h1>
+<nav id="TOC" class="sidenote" role="doc-toc">
+<h2 id="toc-title">Table of contents</h2>
+<ul>
+<li><a href="#motivation" id="toc-motivation">Motivation</a></li>
+<li><a href="#terminology" id="toc-terminology">Terminology</a>
+<ul>
+<li><a href="#software-systems" id="toc-software-systems">Software
+systems</a></li>
+<li><a href="#programs-and-their-upgrades"
+id="toc-programs-and-their-upgrades">Programs and their
+upgrades</a></li>
+</ul></li>
+<li><a href="#implementation" id="toc-implementation">Implementation</a>
+<ul>
+<li><a href="#state-machines" id="toc-state-machines">State
+machines</a></li>
+<li><a href="#example" id="toc-example">Example</a></li>
+<li><a href="#semantics" id="toc-semantics">Semantics</a></li>
+<li><a href="#pipelines" id="toc-pipelines">Pipelines</a></li>
+<li><a href="#deployment" id="toc-deployment">Deployment</a></li>
+<li><a href="#upgrades" id="toc-upgrades">Upgrades</a></li>
+<li><a href="#sources-and-sinks" id="toc-sources-and-sinks">Sources and
+sinks</a></li>
+<li><a href="#remote-upgrades" id="toc-remote-upgrades">Remote
+upgrades</a></li>
+</ul></li>
+<li><a href="#discussion-and-future-work"
+id="toc-discussion-and-future-work">Discussion and future work</a></li>
+<li><a href="#running-the-code" id="toc-running-the-code">Running the
+code</a></li>
+<li><a href="#see-also" id="toc-see-also">See also</a></li>
+</ul>
+</nav>
+<div class="date">Posted on Feb 27, 2024</div>
+<p><em>Work in progress, please don’t share, but do feel free to get
+involved!</em></p>
+<p>In this post I’d like to explore one possible way we might be able to
+achieve zero-downtime upgrades of stateful systems.</p>
+<h2 id="motivation">Motivation</h2>
+<p>Most deployed programs need to be upgraded at some point. The reasons
+vary from adding new features to patching a bug and potentially fixing a
+broken state. Even though upgrades are an essential part of software
+development and maintenance, programming languages tend to not help the
+programmer deal with them in any way.</p>
+<p>The situation reminds me of a remark made by Barbara Liskov about
+deployment of software (which is related to upgrades) in her Turing
+award <a href="https://youtu.be/qAKrMdUycb8?t=3058">lecture</a>
+(2009):</p>
+<blockquote>
+<p>“There’s a funny disconnect in how we write distributed programs. You
+write your individual modules, but then when you want to connect them
+together you’re out of the programming language and into this other
+world. Maybe we need languages that are a little bit more complete now,
+so that we can write the whole thing in the language.”</p>
+</blockquote>
+<p>There’s one exception, that I know of, where upgrades are talked
+about from within the language: Erlang/OTP. In OTP there’s a library
+construct called <a
+href="https://www.erlang.org/doc/design_principles/release_structure"><em>release</em></a>,
+which can be used to perform up- and downgrades. Furthermore, these up-
+and downgrades can hot swap the running code resulting in zero-downtime
+and no interruption of the service of connected clients.</p>
+<p>If you haven’t seen Erlang’s hot swapping feature before, then you
+might want to have a look at the classic <a
+href="https://www.youtube.com/watch?v=xrIjfIjssLE">Erlang the movie</a>,
+which contains a telecommunications example of this. If you prefer
+reading over watching, then I’ve written an earlier <a
+href="https://stevana.github.io/hot-code_swapping_a_la_erlang_with_arrow-based_state_machines.html">post</a>
+which starts off by explaining a REPL session which performs an upgrade
+(my example isn’t nearly as cool as in the movie though).</p>
+<p>What is it that Erlang’s releases and hot swapping facilities do? Can
+we steal those ideas and build upon them? These are the main questions
+that motivated me in writing this post.</p>
+<p>Let’s take a step back, ignoring Erlang for a moment, and ask
+ourselves: what would good support for upgrades look like?</p>
+<ul>
+<li>Zero-downtime: seamless, don’t interrupt existing client connections
+or sessions;</li>
+<li>If there’s any state then migrate it in a type-safe way;</li>
+<li>Backwards and forwards compatibility: old clients should be able to
+talk to newer servers, and newer clients should be able to talk to old
+servers;</li>
+<li>Atomicity: upgrades either succeed, or fail and rollback any
+changes;</li>
+<li>Downgrades: even if an upgrade succeeds we might want to rollback to
+an earlier version.</li>
+</ul>
+<p>In the rest of this post I’d like to explore how we can achieve some
+of this.</p>
+<h2 id="terminology">Terminology</h2>
+<p>Having defined some desirable characteristics of upgrades, let’s move
+on to defining what we mean by upgrades.</p>
+<p>There are two notions I’d like clarify: what kind of software systems
+the upgrades are targeting, and then how we represent programs and their
+upgrades.</p>
+<h3 id="software-systems">Software systems</h3>
+<p>There’s different kinds of software systems one might want to
+upgrade.</p>
+<ol type="1">
+<li><p>Client-only, e.g. a compiler, editor, or some command line
+utility which runs locally on your computer and doesn’t interact with
+any server. Downtime is typically not a problem, and the state of the
+program is typically saved to disk. The operating system’s package
+manager typically takes care of the upgrades, with minimal user
+involvement. However there are situations where one might like to
+perform an upgrade without first terminating the old version of a
+client-only application, e.g. the fix-and-continue debugging <a
+href="https://lispcookbook.github.io/cl-cookbook/debugging.html#resume-a-program-execution-from-anywhere-in-the-stack">workflow</a>
+from Lisp and Smalltalk, <a
+href="https://en.wikipedia.org/wiki/TidalCycles">live coding music</a>,
+or when working with large data sets, e.g. in <a
+href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1386713/">bioinformatics</a>;</p></li>
+<li><p>Client-server applications where the target of the upgrade is a
+<em>stateless</em> component of the server, e.g. a front-end or a REST
+API. The stateless components typically retrieve the state they need to
+service a request from a stateful component, e.g. a database, but they
+don’t maintain any state of their own, which makes stateless components
+easier to upgrade. A common strategy is to stick a load balancer
+in-front of the stateless component(s), spin up the new version of the
+component while keeping the old version around, and then (slowly)
+migrate traffic over to the new version. Notice that this wouldn’t
+necessarily work if there was state in the components, as then the state
+of the old and new versions of the components might diverge and
+potentially have unexpected results;</p></li>
+<li><p>Client-server applications where the target of the upgrade is a
+<em>stateful</em> component of the server, e.g. a database or a service
+with a stateful protocol like FTP. Databases were designed for
+supporting upgrades, with features like schema migrations and
+replication. The high-level idea would be to spin up the new version,
+take a snapshot of the old database, start logically replicating all new
+requests from the old to the new database while also restoring the
+snapshot to the new database, once the new database has caught up, we
+can switch over and tear down the old database. Depending on the volume
+of the database and the rate of new traffic this can still be a
+difficult operation.</p>
+<p>A service like FTP, where once the user is connected they can “move
+around” by e.g. changing the working directory and list the contents of
+the current working directory, are typically not possible to upgrade
+without downtime. The problem is that the response of one command
+depends on the history of previous commands in that user sessions, and
+this state is transient. If you think FTP is a silly protocol (it’s),
+then consider the similarly stateful POSIX filesystem API, with its file
+handles that can be opened, read, written, and closed;</p></li>
+<li><p>Distributed stateful systems, e.g. a distributed key-value
+database. This is similar to the above, but the replication of data is
+performed all the time rather than only at the moment an upgrade is
+performed. The disadvantage is that we need more hardware and bandwidth,
+but on the other hand it makes upgrades much easier. Distributed systems
+can typically tolerate and repair some amount of faulty replicas, which
+allows for rolling upgrades where we replace one of the server
+components at the time;</p></li>
+<li><p>There’s also <a
+href="https://www.inkandswitch.com/local-first/">local-first</a>
+systems, which are different than all above. I’ve not had a chance to
+think about upgrades in that context, so I won’t talk about them any
+further.</p></li>
+</ol>
+<p>In this post I’d like to focus on upgrading stateful systems, like
+non-distributed databases and stateful services like FTP or
+filesystems.</p>
+<p>Stateful systems arguably have the worst upgrade path of the ones
+listed above, making them more interesting to work on. That said I hope
+that the techniques can be used to simplify upgrades in the other kinds
+of systems too, and potentially enabling other possibilities like better
+debugging experience and live coding.</p>
+<h3 id="programs-and-their-upgrades">Programs and their upgrades</h3>
+<p>Having defined what kind of systems we’d like to upgrade, let’s turn
+our attention to how we can represent programs and their upgrades.</p>
+<p>We could choose to use the syntax of a specific programming language
+to represent programs, but programming languages tend to be too big and
+complicated. Or, we could be general and represent programs as
+λ-calculus terms or equivalently Turing machines, but that would be too
+clumsy and too low-level.</p>
+<p>A happy middle ground, which is easy to implement in any programming
+language while at the same time expressive enough to express any
+algorithm at a desired level of abstraction, is the humble state
+machine<a href="#fn1" class="footnote-ref" id="fnref1"
+role="doc-noteref"><sup>1</sup></a>. There are different ways to define
+state machines, we’ll go for a definition which is a simple function
+from some input and a state to a pair of some output and a new
+state:</p>
+<pre><code>  input -&gt; state -&gt; (state, output)</code></pre>
+<p>where inputs, states and outputs are algebraic datatypes
+(records/structs and tagged unions).</p>
+<p>To make things concrete, let’s consider an example where we represent
+a counter as a state machine. One way to define such a state machine is
+to use the enum <code>{ReadCount, IncrCount}</code> as input, set the
+state to be an integer and the output to be a tagged union where in the
+read case we return an integer and in the increment case we return an
+acknowledgment (unit or void type). Given these types, the state machine
+function of the counter can be defined as follows (in Python):</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> counter(<span class="bu">input</span>: Input, state: <span class="bu">int</span>) <span class="op">-&gt;</span> (<span class="bu">int</span>, <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span>):</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">match</span> <span class="bu">input</span>:</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">case</span> Input.ReadCount: <span class="cf">return</span> (state, state)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">case</span> Input.IncrCount: <span class="cf">return</span> (state <span class="op">+</span> <span class="dv">1</span>, <span class="va">None</span>)</span></code></pre></div>
+<p>Assuming our programs are such state machines, what would it mean to
+upgrade them? I think this is where having a simple representation of
+programs where all of the state is explicit starts to shine. By merely
+looking at the function type of a state machine, we can see that it
+would make sense to be able to:</p>
+<ol type="1">
+<li>Extend the input type with more cases, e.g. a
+<code>ResetCount</code> which sets the new state to <code>0</code>;</li>
+<li>Refine an existing output with more data, e.g. we could return the
+old count when we increment;</li>
+<li>Extending the state, e.g. we could add a boolean to the state which
+determines if we should increment by +1 or -1 (i.e. decrementing);</li>
+<li>Refine an existing input, e.g. make <code>IncrCount</code> have an
+integer value associated with it which determines by how much we want to
+increment.</li>
+</ol>
+<p>I don’t know if the above list complete, but it’s a start.</p>
+<p>If we go back to the list of criteria for good upgrade support, we
+can see how some of the items there are more tangible now.</p>
+<p>For example, typed state migrations means that if we change the state
+type from <code>state</code> to <code>state'</code> then when we migrate
+to old to the new state using a function of type
+<code>state -&gt; state'</code>.</p>
+<p>Similarly, what it means to support backwards compatibility is more
+clear now. Imagine we upgrade from a server state machine:</p>
+<pre><code>  input -&gt; state -&gt; (output, state)</code></pre>
+<p>to a new version that has the following type:</p>
+<pre><code>  input&#39; -&gt; state&#39; -&gt; (output&#39;, state&#39;)</code></pre>
+<p>What would it take to still be able to serve old clients which make
+requests using the old <code>input</code> type? If we had a function
+from <code>input -&gt; input'</code> we could upgrade the request, feed
+it to the new state machine and get an <code>output'</code> back, we
+then see that we’d also need a way to downgrade the output, i.e. a
+function <code>output' -&gt; output</code><a href="#fn2"
+class="footnote-ref" id="fnref2"
+role="doc-noteref"><sup>2</sup></a>.</p>
+<p>Forward compatibility, i.e. an upgraded client sends an
+<code>input'</code> to a server which haven’t been upgraded yet
+(i.e. expects <code>input</code>), is a bit more tricky, but again at
+least we can now start to be able to talk about these things in a more
+concrete way.</p>
+<p>One last thing with regard to how to represent programs. Our state
+machines run entirely sequentially, which is a problem if we want to
+implement servers that can handle more than one client at the time. A
+simple way adding parallelism is make it possible to construct pipelines
+of state machines, where the state machines run in parallel. Picture the
+state machines as processing stages on a conveyor belt.</p>
+<p><img
+src="https://raw.githubusercontent.com/stevana/hot-swapping-state-machines2/main/data/bottling_factory.png" /></p>
+<p>The conveyor belt in our case, i.e. our pipeline, will be queues
+which connect the state machines.</p>
+<p>A typical TCP-based service can then be composed of a pipeline
+that:</p>
+<ol type="1">
+<li>Accepts new connections/sockets from a client;</li>
+<li>Waits for some of the accepted sockets to be readable (this requires
+some <code>select/poll</code>-like constructs);</li>
+<li><code>recv</code> the bytes of a request;</li>
+<li>Deserialise the request bytes into an input;</li>
+<li>Process the input using the a state machine to produce an output
+(potentially reading and writing to disk);</li>
+<li>Serialise the output into a response in bytes;</li>
+<li>Wait for the socket to be writable;</li>
+<li><code>send</code> the response bytes back to the client and close
+the socket.</li>
+</ol>
+<p>Each of these stages could be a state machine which runs in parallel
+with all the other stages. Structuring services in this pipeline fashion
+was <a
+href="https://www.youtube.com/watch?v=U3eo49nVxcA&amp;t=1949s">advocated</a>
+by the late Jim Gray and more recently Martin Thompson et al have been
+giving <a href="https://www.youtube.com/watch?v=_KvFapRkR9I">talks</a>
+using a similar approach. If a stage is slow, we can shard (or
+partition, using Jim’s terminology) it by dedicating another CPU/core to
+that stage and have even numbered requests to one CPU/core while odd
+numbered requests go to the other. That way we effectively double the
+throughput, without breaking determinism.</p>
+<p>Let me just leave you with one final image. I like to think of state
+machines on top of pipelines as a limited form of actors or Erlang
+processes (<code>gen_server</code>s more precisely) that cannot send
+messages to which other process they like (graph-like structure), but
+rather only downstream (DAG-like structure)<a href="#fn3"
+class="footnote-ref" id="fnref3"
+role="doc-noteref"><sup>3</sup></a>.</p>
+<h2 id="implementation">Implementation</h2>
+<p>I hope that I’ve managed to convey what I’d like to do, why and where
+my inspiration is coming from.</p>
+<p>Next I’d like to make things more concrete with some code. But first
+I’d like to apologies for my choice of using Haskell. I know it’s a
+language that not that many people are comfortable with, but its
+advanced type system (GADTs in particular) helps me express things more
+cleanly. If anything isn’t clear, feel free to ask, I’m happy to try to
+explain things in simpler terms. Also if anyone knows how to express
+this without GADTs, while retaining type safety, then please let me
+know. The code doesn’t add anything new to our previous discussion,
+merely validates that at least some of it can be implemented, so even if
+you can’t follow everything you won’t be missing out on anything
+important.</p>
+<p>A few notes on the implementation:</p>
+<ul>
+<li>To keep things simple we’ll only implement linear pipelines. Each
+stage of the pipeline runs in parallel with all other stages, thus
+giving us pipelining parallelism à la assembly lines;</li>
+<li>The transformation at each stage is done via a state machine. The
+syntax of state machines needs to be easily serialisable, so that we can
+send upgrades over the wire;</li>
+<li>The remote end will need to deserialise and typecheck the receiving
+code in order to assure that it’s compatible with the already deployed
+code.</li>
+</ul>
+<p>In the rest of this section we’ll try to fleshing out details of the
+above.</p>
+<h3 id="state-machines">State machines</h3>
+<p>Typed state machines are represented using a datatyped parametrised
+by the state, <code>s</code>, and indexed by its input type,
+<code>a</code>, and output type <code>b</code><a href="#fn4"
+class="footnote-ref" id="fnref4"
+role="doc-noteref"><sup>4</sup></a>.</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">T</span> s a b <span class="kw">where</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- Identity and composition.</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Id</span><span class="ot">      ::</span> <span class="dt">T</span> s a a</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Compose</span><span class="ot"> ::</span> <span class="dt">T</span> s b c <span class="ot">-&gt;</span> <span class="dt">T</span> s a b <span class="ot">-&gt;</span> <span class="dt">T</span> s a c</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- Introducing and incrementing integers.</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Int</span><span class="ot">     ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">T</span> s () <span class="dt">Int</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Incr</span><span class="ot">    ::</span> <span class="dt">T</span> s <span class="dt">Int</span> <span class="dt">Int</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- Mapping over sum types.</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Case</span><span class="ot">    ::</span> <span class="dt">T</span> s a c <span class="ot">-&gt;</span> <span class="dt">T</span> s b d <span class="ot">-&gt;</span> <span class="dt">T</span> s (<span class="dt">Either</span> a b) (<span class="dt">Either</span> c d)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- Read and update the state.</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Get</span><span class="ot">     ::</span> <span class="dt">T</span> s () s</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Put</span><span class="ot">     ::</span> <span class="dt">T</span> s s ()</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- Converting values from and to strings.</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Read</span><span class="ot">    ::</span> <span class="dt">Read</span> a <span class="ot">=&gt;</span> <span class="dt">T</span> s <span class="dt">String</span> a</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Show</span><span class="ot">    ::</span> <span class="dt">Show</span> a <span class="ot">=&gt;</span> <span class="dt">T</span> s a <span class="dt">String</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a><span class="co">-- Forward composition.</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a><span class="ot">(&gt;&gt;&gt;) ::</span> <span class="dt">T</span> s a b <span class="ot">-&gt;</span> <span class="dt">T</span> s b c <span class="ot">-&gt;</span> <span class="dt">T</span> s a c</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>f <span class="op">&gt;&gt;&gt;</span> g <span class="ot">=</span> g <span class="ot">`Compose`</span> f</span></code></pre></div>
+<h3 id="example">Example</h3>
+<p>To keep things concrete let’s have an example. Here’s how we can
+represent a counter with two operations: read the current value of the
+counter and increment the counter by one.</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">InputV1</span>  <span class="ot">=</span> <span class="dt">Either</span> () ()</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">OutputV1</span> <span class="ot">=</span> <span class="dt">Either</span> <span class="dt">Int</span> ()</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ReadCountV1</span><span class="ot"> ::</span> <span class="dt">InputV1</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ReadCountV1</span> <span class="ot">=</span> <span class="dt">Left</span> ()</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">IncrCountV1</span><span class="ot"> ::</span> <span class="dt">InputV1</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">IncrCountV1</span> <span class="ot">=</span> <span class="dt">Right</span> ()</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="ot">counterV1 ::</span> <span class="dt">T</span> <span class="dt">Int</span> <span class="dt">String</span> <span class="dt">String</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>counterV1 <span class="ot">=</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Read</span> <span class="op">&gt;&gt;&gt;</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Get</span> <span class="ot">`Case`</span> (<span class="dt">Get</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Incr</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Put</span>) <span class="op">&gt;&gt;&gt;</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Show</span></span></code></pre></div>
+<p>Notice how the two operations’ inputs and outputs are represented
+with an <code>Either</code> over which the <code>Case</code> operates.
+The counter does its own deserialisation and serialisation via
+<code>Read</code> and <code>Show</code>, we’ll come back to why in a
+bit.</p>
+<h3 id="semantics">Semantics</h3>
+<p>We can interpret our typed state machines in terms of the
+<code>State</code> monad as follows.</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ot">runT ::</span> <span class="dt">T</span> s a b <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> s <span class="ot">-&gt;</span> (b, s)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>runT f x s <span class="ot">=</span> runState (eval f x) s</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="ot">eval ::</span> <span class="dt">T</span> s a b <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">State</span> s b</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>eval <span class="dt">Id</span>            <span class="ot">=</span> <span class="fu">return</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>eval (<span class="dt">Compose</span> g f) <span class="ot">=</span> eval g <span class="op">&lt;=&lt;</span> eval f</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>eval (<span class="dt">Int</span> i)       <span class="ot">=</span> <span class="fu">return</span> <span class="op">.</span> <span class="fu">const</span> i</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>eval <span class="dt">Incr</span>          <span class="ot">=</span> <span class="fu">return</span> <span class="op">.</span> (<span class="op">+</span> <span class="dv">1</span>)</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>eval (<span class="dt">Case</span> f g)    <span class="ot">=</span> <span class="fu">either</span> (<span class="fu">fmap</span> <span class="dt">Left</span> <span class="op">.</span> eval f) (<span class="fu">fmap</span> <span class="dt">Right</span> <span class="op">.</span> eval g)</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>eval <span class="dt">Get</span>           <span class="ot">=</span> <span class="fu">const</span> get</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>eval <span class="dt">Put</span>           <span class="ot">=</span> put</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>eval <span class="dt">Read</span>          <span class="ot">=</span> <span class="fu">return</span> <span class="op">.</span> <span class="fu">read</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>eval <span class="dt">Show</span>          <span class="ot">=</span> <span class="fu">return</span> <span class="op">.</span> <span class="fu">show</span></span></code></pre></div>
+<p>Using the above interpreter we can run our example from before.</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> runT counterV1 (<span class="fu">show</span> <span class="dt">ReadCountV1</span>) <span class="dv">0</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>(<span class="st">&quot;Left 0&quot;</span>,<span class="dv">0</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> runT counterV1 (<span class="fu">show</span> <span class="dt">IncrCountV1</span>) <span class="dv">0</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>(<span class="st">&quot;Right ()&quot;</span>,<span class="dv">1</span>)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> runT counterV1 (<span class="fu">show</span> <span class="dt">ReadCountV1</span>) <span class="dv">1</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>(<span class="st">&quot;Left 1&quot;</span>,<span class="dv">1</span>)</span></code></pre></div>
+<h3 id="pipelines">Pipelines</h3>
+<p>Pipelines are represented by a type similar to that for typed state
+machines, it’s also indexed by the input and output types.</p>
+<p>We can picture a pipeline as a conveyor belt with state machines
+operating on the items passing through.</p>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">P</span> a b <span class="kw">where</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">IdP</span><span class="ot">    ::</span> <span class="dt">P</span> a a</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="ot">  (:&gt;&gt;&gt;) ::</span> <span class="dt">Typeable</span> b <span class="ot">=&gt;</span> <span class="dt">P</span> a b <span class="ot">-&gt;</span> <span class="dt">P</span> b c <span class="ot">-&gt;</span> <span class="dt">P</span> a c</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">SM</span><span class="ot">     ::</span> <span class="dt">Typeable</span> s <span class="ot">=&gt;</span> <span class="dt">Name</span> <span class="ot">-&gt;</span> s <span class="ot">-&gt;</span> <span class="dt">T</span> s a b <span class="ot">-&gt;</span> <span class="dt">P</span> a b</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Name</span> <span class="ot">=</span> <span class="dt">String</span></span></code></pre></div>
+<p>Notice how the state type of the state machines is existentially
+quantified, meaning each state machine can have it’s own state.</p>
+<h3 id="deployment">Deployment</h3>
+<p>Pipelines can be deployed. Each state machine will be spawned on its
+own thread, meaning that all state machines run in parallel, and they
+will be connected via queues.</p>
+<p>Given a pipeline <code>P a b</code> and an input
+<code>Queue (Msg a)</code> we get an output <code>Queue (Msg b)</code>,
+where <code>Msg</code> is defined as follows.</p>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Msg</span> a</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=</span> <span class="dt">Item</span> (<span class="dt">Maybe</span> <span class="dt">Socket</span>) a</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">Upgrade</span> (<span class="dt">Maybe</span> <span class="dt">Socket</span>) <span class="dt">Name</span> <span class="dt">UpgradeData_</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="op">...</span></span></code></pre></div>
+<p>This little wrapper allows us to perform upgrades of state machines,
+assuming they are compatible with the running state machine.</p>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="ot">deploy ::</span> <span class="kw">forall</span> a b<span class="op">.</span> (<span class="dt">Typeable</span> a, <span class="dt">Typeable</span> b)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>       <span class="ot">=&gt;</span> <span class="dt">P</span> a b <span class="ot">-&gt;</span> <span class="dt">Queue</span> (<span class="dt">Msg</span> a) <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">Queue</span> (<span class="dt">Msg</span> b))</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>deploy <span class="dt">IdP</span>             q <span class="ot">=</span> <span class="fu">return</span> q</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>deploy (f <span class="op">:&gt;&gt;&gt;</span> g)      q <span class="ot">=</span> deploy g <span class="op">=&lt;&lt;</span> deploy f q</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>deploy (<span class="dt">SM</span> name s0 f0) q <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  q&#39; <span class="ot">&lt;-</span> newQueue</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span><span class="ot"> go ::</span> <span class="dt">Typeable</span> s <span class="ot">=&gt;</span> s <span class="ot">-&gt;</span> <span class="dt">T</span> s a b <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>      go s f <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>        m <span class="ot">&lt;-</span> readQueue q</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>        <span class="kw">case</span> m <span class="kw">of</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>          <span class="dt">Item</span> msock i <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>            <span class="kw">let</span> (o, s&#39;) <span class="ot">=</span> runT f i s</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>            writeQueue q&#39; (<span class="dt">Item</span> msock o)</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>            go s&#39; f</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>          <span class="dt">Upgrade</span> msock name&#39; ud</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>            <span class="op">|</span> name <span class="op">/=</span> name&#39; <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>                writeQueue q&#39; (<span class="dt">Upgrade</span> msock name&#39; ud)</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>                go s f</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>            <span class="op">|</span> <span class="fu">otherwise</span> <span class="ot">-&gt;</span></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>                <span class="kw">case</span> typeCheckUpgrade s f ud <span class="kw">of</span></span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>                  <span class="dt">Just</span> (<span class="dt">UpgradeData</span> (<span class="ot">f&#39; ::</span> <span class="dt">T</span> s a b) (<span class="ot">g ::</span> <span class="dt">T</span> () s s)) <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>                    <span class="kw">let</span> (s&#39;, ()) <span class="ot">=</span> runT g s ()</span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>                    go s&#39; f&#39;</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>                  <span class="dt">Nothing</span> <span class="ot">-&gt;</span></span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>                    go s f</span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>          <span class="op">...</span></span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>  _pid <span class="ot">&lt;-</span> forkIO (go s0 f0)</span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> q&#39;</span></code></pre></div>
+<h3 id="upgrades">Upgrades</h3>
+<p>Upgrades are sent over the wire in a serialised format and
+deserialised at the other end, so they need to be plain first-order
+data.</p>
+<p>This means we can’t merely send over our typed state machine type
+<code>t :: T s a b</code>, or rather the receiver will have to
+reconstruct the type information. If this would strange, the perhaps
+easiest way to convince yourself is to imagine you receive
+<code>show t</code> and now you want to reconstruct <code>t</code>. When
+you call <code>read (show t)</code> you need to annotate it with what
+type to read into, and that’s the problem: at this point you don’t have
+<code>T s a b</code>.</p>
+<p>So the plan around this is to introduce a plain first-order datatype
+for upgrades, which can easily be serialised and deserialised, and then
+use <em>typechecking</em> to reconstruct the type information.</p>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">UpgradeData_</span> <span class="ot">=</span> <span class="dt">UpgradeData_</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> newState        ::</span> <span class="dt">Ty_</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> newInput        ::</span> <span class="dt">Ty_</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> newOutput       ::</span> <span class="dt">Ty_</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> newStateMachine ::</span> <span class="dt">U</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> stateMigration  ::</span> <span class="dt">U</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Read</span>)</span></code></pre></div>
+<p>We can to typecheck the above untyped upgrade into the following
+typed version.</p>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">UpgradeData</span> s a b <span class="ot">=</span> <span class="dt">UpgradeData</span> (<span class="dt">T</span> s a b) (<span class="dt">T</span> () s s)</span></code></pre></div>
+<p>The way typechecking for upgrades work is basically the user needs to
+provide the untyped types of the state, input and output types of the
+new state machine as well as the state migration function, from the
+untyped types we can infer the typed types which we then typecheck the
+new state machine and migration function against.</p>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="ot">typeCheckUpgrade ::</span> <span class="kw">forall</span> s a b<span class="op">.</span> (<span class="dt">Typeable</span> s, <span class="dt">Typeable</span> a, <span class="dt">Typeable</span> b)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>                 <span class="ot">=&gt;</span> s <span class="ot">-&gt;</span> <span class="dt">T</span> s a b <span class="ot">-&gt;</span> <span class="dt">UpgradeData_</span> <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">UpgradeData</span> s a b)</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>typeCheckUpgrade _s _f (<span class="dt">UpgradeData_</span> s&#39;_ a&#39;_ b&#39;_ f_ g_) <span class="ot">=</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> (inferTy s&#39;_, inferTy a&#39;_, inferTy b&#39;_) <span class="kw">of</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    (<span class="dt">ETy</span> (<span class="ot">s&#39; ::</span> <span class="dt">Ty</span> s&#39;), <span class="dt">ETy</span> (<span class="ot">a&#39; ::</span> <span class="dt">Ty</span> a&#39;), <span class="dt">ETy</span> (<span class="ot">b&#39; ::</span> <span class="dt">Ty</span> b&#39;)) <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">Refl</span> <span class="ot">&lt;-</span> eqT <span class="op">@</span>a <span class="op">@</span>a&#39;</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">Refl</span> <span class="ot">&lt;-</span> eqT <span class="op">@</span>b <span class="op">@</span>b&#39;</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">Refl</span> <span class="ot">&lt;-</span> eqT <span class="op">@</span>s <span class="op">@</span>s&#39;</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>      f <span class="ot">&lt;-</span> typeCheck f_ s&#39; a&#39; b&#39;</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>      g <span class="ot">&lt;-</span> typeCheck g_ <span class="dt">TUnit</span> s&#39; s&#39;</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">return</span> (<span class="dt">UpgradeData</span> f g)</span></code></pre></div>
+<p>Where untyped types are defined as follows:</p>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Ty_</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=</span> <span class="dt">UTUnit</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">UTInt</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">UTBool</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">UTString</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">UTPair</span> <span class="dt">Ty_</span> <span class="dt">Ty_</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">UTEither</span> <span class="dt">Ty_</span> <span class="dt">Ty_</span></span></code></pre></div>
+<p>and typed types as follows:</p>
+<div class="sourceCode" id="cb16"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Ty</span> a <span class="kw">where</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">TUnit</span><span class="ot">   ::</span> <span class="dt">Ty</span> ()</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">TInt</span><span class="ot">    ::</span> <span class="dt">Ty</span> <span class="dt">Int</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">TBool</span><span class="ot">   ::</span> <span class="dt">Ty</span> <span class="dt">Bool</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">TString</span><span class="ot"> ::</span> <span class="dt">Ty</span> <span class="dt">String</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">TPair</span><span class="ot">   ::</span> <span class="dt">Ty</span> a <span class="ot">-&gt;</span> <span class="dt">Ty</span> b <span class="ot">-&gt;</span> <span class="dt">Ty</span> (a, b)</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">TEither</span><span class="ot"> ::</span> <span class="dt">Ty</span> a <span class="ot">-&gt;</span> <span class="dt">Ty</span> b <span class="ot">-&gt;</span> <span class="dt">Ty</span> (<span class="dt">Either</span> a b)</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>  <span class="op">...</span></span></code></pre></div>
+<p>and the way we infer typed types from the untyped ones is done as
+follows:</p>
+<div class="sourceCode" id="cb17"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">ETy</span> <span class="kw">where</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">ETy</span><span class="ot"> ::</span> <span class="dt">Typeable</span> a <span class="ot">=&gt;</span> <span class="dt">Ty</span> a <span class="ot">-&gt;</span> <span class="dt">ETy</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="ot">inferTy ::</span> <span class="dt">Ty_</span> <span class="ot">-&gt;</span> <span class="dt">ETy</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>inferTy <span class="dt">UTUnit</span> <span class="ot">=</span> <span class="dt">ETy</span> <span class="dt">TUnit</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>inferTy <span class="dt">UTInt</span>  <span class="ot">=</span> <span class="dt">ETy</span> <span class="dt">TInt</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>inferTy <span class="dt">UTBool</span> <span class="ot">=</span> <span class="dt">ETy</span> <span class="dt">TBool</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>inferTy <span class="dt">UTString</span> <span class="ot">=</span> <span class="dt">ETy</span> <span class="dt">TString</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>inferTy (<span class="dt">UTPair</span> ua ub) <span class="ot">=</span> <span class="kw">case</span> (inferTy ua, inferTy ub) <span class="kw">of</span></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>  (<span class="dt">ETy</span> a, <span class="dt">ETy</span> b) <span class="ot">-&gt;</span> <span class="dt">ETy</span> (<span class="dt">TPair</span> a b)</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>inferTy (<span class="dt">UTEither</span> ua ub) <span class="ot">=</span> <span class="kw">case</span> (inferTy ua, inferTy ub) <span class="kw">of</span></span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>  (<span class="dt">ETy</span> a, <span class="dt">ETy</span> b) <span class="ot">-&gt;</span> <span class="dt">ETy</span> (<span class="dt">TEither</span> a b)</span></code></pre></div>
+<p>Now the only piece missing is untyped state machines and how to
+typecheck those into typed ones.</p>
+<div class="sourceCode" id="cb18"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ot">typeCheck ::</span> <span class="dt">U</span> <span class="ot">-&gt;</span> <span class="dt">Ty</span> s <span class="ot">-&gt;</span> <span class="dt">Ty</span> a <span class="ot">-&gt;</span> <span class="dt">Ty</span> b <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">T</span> s a b)</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">U</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=</span> <span class="dt">IdU</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">ComposeU</span> <span class="dt">U</span> <span class="dt">U</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">IntU</span> <span class="dt">Int</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">CaseU</span> <span class="dt">U</span> <span class="dt">U</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">IncrU</span></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">GetU</span></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">PutU</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">ReadU</span> <span class="dt">Ty_</span></span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">ShowU</span> <span class="dt">Ty_</span></span></code></pre></div>
+<p>I’ll spare you from the details, but the main ingredient is to use
+the <code>Data.Typeable</code> instances to check if the types match up,
+similarly to how it was done above in <code>typeCheckUpgrade</code>.</p>
+<h3 id="sources-and-sinks">Sources and sinks</h3>
+<p>Almost there. When we deploy a pipeline <code>P a b</code> we need to
+provide a <code>Queue (Msg a)</code> and get a
+<code>Queue (Msg b)</code>, what are we supposed to do with those
+queues? We could manually feed them with items, but for convenience it’s
+nice to have some basic reusable adapters that we can connect these
+“garden hoses” to.</p>
+<p>We call something that provides an input queue a <code>Source</code>
+and something that consumes an output queue a <code>Sink</code>. Useful
+sources and sinks include stdin/stdout, files, and TCP streams.</p>
+<p>We can then implement a run function with the following type:</p>
+<div class="sourceCode" id="cb19"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="ot">run ::</span> (<span class="dt">Typeable</span> a, <span class="dt">Typeable</span> b)</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>    <span class="ot">=&gt;</span> <span class="dt">Source</span> a <span class="ot">-&gt;</span> <span class="dt">Codec</span> (<span class="dt">Msg</span> a) (<span class="dt">Msg</span> b) <span class="ot">-&gt;</span> <span class="dt">P</span> a b <span class="ot">-&gt;</span> <span class="dt">Sink</span> b r <span class="ot">-&gt;</span> <span class="dt">IO</span> r</span></code></pre></div>
+<p>Where <code>Codec a b</code> contains a deserialiser from
+<code>ByteString</code> to <code>Maybe a</code> and a serialiser from
+<code>b</code> to <code>ByteString</code>. We need this because our
+sources and sinks produce and consume <code>ByteString</code>s.</p>
+<h3 id="remote-upgrades">Remote upgrades</h3>
+<p>Putting it all together we can now create a TCP server for our
+counter:</p>
+<div class="sourceCode" id="cb20"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>run (<span class="dt">FromTCP</span> <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span>) readShowCodec (<span class="dt">SM</span> <span class="st">&quot;counter&quot;</span> <span class="dv">0</span> counterV1) <span class="dt">ToTCP</span></span></code></pre></div>
+<p>If we run the above in a REPL, then from another terminal we can
+interact with the server as follows.</p>
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Get the current state of the counter.</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> echo <span class="st">&#39;Item &quot;Left ()&quot;&#39;</span> <span class="kw">|</span> <span class="ex">nc</span> 127.0.0.1 3000</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="ex">Item</span> <span class="st">&quot;Left 0&quot;</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Increment the counter.</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> echo <span class="st">&#39;Item &quot;Right ()&quot;&#39;</span> <span class="kw">|</span> <span class="ex">nc</span> 127.0.0.1 3000</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="ex">Item</span> <span class="st">&quot;Right ()&quot;</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Read the counter again.</span></span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> echo <span class="st">&#39;Item &quot;Left ()&quot;&#39;</span> <span class="kw">|</span> <span class="ex">nc</span> 127.0.0.1 3000</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a><span class="ex">Item</span> <span class="st">&quot;Left 1&quot;</span></span></code></pre></div>
+<p>In order to make life a bit easier for ourselves, we can implement a
+simple TCP client in Haskell and use from another REPL to achieve the
+same result.</p>
+<div class="sourceCode" id="cb22"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">ReadCountV1</span>))</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">IncrCountV1</span>))</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">IncrCountV1</span>))</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">ReadCountV1</span>))</span></code></pre></div>
+<pre><code>Item &quot;Left 0&quot;               -- The initial value of the counter is 0.
+Item &quot;Right ()&quot;             -- Two increments.
+Item &quot;Right ()&quot;
+Item &quot;Left 2&quot;               -- The value is now 2</code></pre>
+<p>At this point, let’s imagine we want to add a reset feature to our
+counter. Reset takes no argument and returns nothing, so we use the unit
+type in both the input and output types.</p>
+<div class="sourceCode" id="cb24"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">InputV2</span>  <span class="ot">=</span> <span class="dt">Either</span> () <span class="dt">InputV1</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">OutputV2</span> <span class="ot">=</span> <span class="dt">Either</span> () <span class="dt">OutputV1</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ReadCountV2</span><span class="ot"> ::</span> <span class="dt">InputV2</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ReadCountV2</span>  <span class="ot">=</span> <span class="dt">Left</span> ()</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">IncrCountV2</span><span class="ot"> ::</span> <span class="dt">InputV2</span></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">IncrCountV2</span>  <span class="ot">=</span> <span class="dt">Right</span> (<span class="dt">Left</span> ())</span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ResetCountV2</span><span class="ot"> ::</span> <span class="dt">InputV2</span></span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ResetCountV2</span> <span class="ot">=</span> <span class="dt">Right</span> (<span class="dt">Right</span> ())</span></code></pre></div>
+<p>The state machine looks the same, except for the last
+<code>Case</code> where we update the state to be <code>0</code>, thus
+resetting the counter.</p>
+<div class="sourceCode" id="cb25"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="ot">counterV2 ::</span> <span class="dt">T</span> <span class="dt">Int</span> <span class="dt">String</span> <span class="dt">String</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>counterV2 <span class="ot">=</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Read</span> <span class="op">&gt;&gt;&gt;</span> (<span class="dt">Get</span> <span class="ot">`Case`</span> (<span class="dt">Get</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Incr</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Put</span>) <span class="ot">`Case`</span> (<span class="dt">Int</span> <span class="dv">0</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Put</span>)) <span class="op">&gt;&gt;&gt;</span> <span class="dt">Show</span></span></code></pre></div>
+<p>Back in our REPL we can now do the upgrade, by sending over a type
+<code>erase</code>d version of <code>counterV2</code>.</p>
+<div class="sourceCode" id="cb26"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span><span class="ot"> msg ::</span> <span class="dt">Msg</span> ()</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>    msg <span class="ot">=</span> <span class="dt">Upgrade</span> <span class="dt">Nothing</span> <span class="st">&quot;counter&quot;</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>            (<span class="dt">UpgradeData_</span> <span class="dt">UTInt</span> <span class="dt">UTInt</span> <span class="dt">UTString</span> <span class="dt">UTString</span> (erase counterV2) <span class="dt">IdU</span>)</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> msg</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">ReadCountV2</span>))</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">ResetCountV2</span>))</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">ReadCountV2</span>))</span></code></pre></div>
+<p>Which yields the following annotated output.</p>
+<pre><code>UpgradeSucceeded &quot;counter&quot;
+Item &quot;Left 2&quot;              -- The counter&#39;s state is preserved by the upgrade.
+Item &quot;Right (Right ())&quot;    -- Reset the counter.
+Item &quot;Left 0&quot;              -- The value is back to 0.</code></pre>
+<h2 id="discussion-and-future-work">Discussion and future work</h2>
+<p>While there’s still a lot to do in order to get proper support for
+upgrades of stateful systems, I hope that I’ve managed to provide a
+glimpse of a possible way of going about doing it.</p>
+<p>Here are a bunch of things I’ve thought of but not done yet:</p>
+<ol type="1">
+<li><p>Notice how the type of <code>counterV1</code> and
+<code>counterV2</code> is the same. I think the input and output types
+perhaps need to stay the same, otherwise we wouldn’t be able to perform
+the upgrade in the <code>deploy</code> function because the types of the
+input and output queues cannot change (that’s why we set them both to be
+<code>String</code> and made deserialisation and serialisation part of
+the upgrade, thus allowing for changes in the inputs and outputs). I
+think that the state type is different though, and we should be able to
+change that during an upgrade;</p></li>
+<li><p>To support backwards compatibility we’d need to extend the notion
+of upgrade with an input upgrade function (upgrading old inputs to new
+inputs) and an output downgrade function (taking new outputs to old
+outputs), like we discussed in the introduction;</p></li>
+<li><p>For forward compatibility we’d need a way for an old server to
+ignore the new stuff that was added to an input. One way to achieve this
+could be to define a function on types, which annotates the input with
+extra constructors or parameters to existing constructors, etc, then the
+server could ignore these extra annotations. We’d also need default
+values for anything that is added to the outputs, so that the servers
+old output can be upgraded to the new output that the new client
+expects.</p>
+<p>Alternatively clients can be made to support multiple versions and
+establish which version to use in the initial handshake with the server,
+this is arguably not as satisfying of a solution though;</p></li>
+<li><p>We’ve seen upgrades of state machines running on top of
+pipelines, but what if we wanted to change the pipelines themselves?
+This seems trickier. Perhaps can start by thinking about what kind of
+changes one would like to allow, e.g. prepending or appending something
+to a pipeline seems easier than changing some part in the
+middle?</p></li>
+<li><p>The state machine are represented by first-order datatypes, that
+get typechecked and then interpreted. What would upgrades look like if
+we wanted to state machines to be compiled rather than interpreted? For
+some prior work in Haskell see the repos <a
+href="https://github.com/nmattia/haskell-hot-swap"><code>haskell-hot-swap</code></a>
+and <a
+href="https://github.com/fbsamples/ghc-hotswap/"><code>ghc-hotswap</code></a>;</p></li>
+<li><p>Writing state machines and pipelines using combinators is not
+fun, can we have something like Haskell’s arrow syntax at the very
+least? C.f. Conal Elliott’s <a
+href="http://conal.net/papers/compiling-to-categories/"><em>Compiling to
+categories</em></a> and Oleg Grenrus’ <a
+href="https://hackage.haskell.org/package/overloaded-0.3.1/docs/Overloaded-Categories.html"><em>Overloaded.Categories</em></a>;</p></li>
+<li><p>One advantage with the combinators is that they don’t contain
+variables, so it should be easier to do something like Unison does with
+content-addressed hashes?</p></li>
+<li><p>On the pipeline level we might want to support multiple sources
+(<code>Alternative</code> instance?), multiple sinks (perhaps via
+something like
+<code>Tee ::    P a b -&gt; Sink a () -&gt; P a b</code>?), fanout and
+sharding as well as making everything efficient (as I’ve written about
+<a
+href="https://stevana.github.io/parallel_stream_processing_with_zero-copy_fan-out_and_sharding.html">earlier</a>);</p></li>
+<li><p>Finally we also need to figure out how to we build something more
+complicated, like a HTTP-based API, on top of the TCP stuff. Scott
+Wlaschin’s <a
+href="https://www.youtube.com/watch?v=ipceTuJlw-M">“pipeline-oriented
+programming”</a> approach can be useful here.</p></li>
+</ol>
+<p>If you feel that I’m missing something, or if any of the above sounds
+interesting to work on, please do feel free to get in touch!</p>
+<h2 id="running-the-code">Running the code</h2>
+<p>The easiest way to get the code running is probably using the <a
+href="https://nixos.org/download">Nix package manager</a>.</p>
+<div class="sourceCode" id="cb28"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/stevana/hot-swapping-state-machines2.git</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> hot-swapping-state-machines2</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a><span class="ex">nix-shell</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a><span class="ex">cabal</span> repl</span></code></pre></div>
+<p>Although using <a href="https://www.haskell.org/ghcup/">GHCup</a>
+should work too, if you replace <code>nix-shell</code> with
+<code>ghcup install ghc 9.8.1</code>.</p>
+<h2 id="see-also">See also</h2>
+<ul>
+<li>For many more examples of sources and sinks, see <a
+href="https://www.benthos.dev/">Benthos</a>;</li>
+<li>We haven’t discussed any security aspects of upgrades, for more on
+this topic see <a
+href="https://en.wikipedia.org/wiki/The_Update_Framework">TUF</a>;</li>
+<li>As I was writing up I found this old post about hot-swapping in <a
+href="https://elm-lang.org/news/interactive-programming">Elm</a> (2013).
+It’s even more interesting considering that in Elm one is basically
+writing a state machine;</li>
+<li>Gregor Hohpe gave a talk called <a
+href="https://www.youtube.com/watch?v=vasvpFRPx9c">Application
+architecture as code</a> at AWS re:Invent 2023, where he also describes
+pipelines as code which later gets deployed to AWS. He doesn’t mention
+upgrades, but surely they must have thought about it? He also wrote
+about the topic <a
+href="https://architectelevator.com/cloud/iac-ifc-trends/">here</a>;</li>
+<li>I’ve written about upgrading state machines only (as opposed to
+pipelines with state machines in them) in an earlier <a
+href="https://stevana.github.io/hot-code_swapping_a_la_erlang_with_arrow-based_state_machines.html">post</a>
+(2023). I consider this post a successor of the earlier approach, but
+the old post still contains some aspects that can be useful and not
+covered here;</li>
+<li>For non-linear pipelines and a more efficient implementation of
+them, see my older post called <a
+href="https://stevana.github.io/parallel_stream_processing_with_zero-copy_fan-out_and_sharding.html">Parallel
+stream processing with zero-copy fan-out and sharding</a> (2024);</li>
+<li>Backwards and forwards compatibility is also related to schema
+evolution, which I’ve written more about <a
+href="https://stevana.github.io/working_with_binary_data.html">here</a>
+(2023).</li>
+</ul>
+<section id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>I used to argue that state machines should be used
+because they are easy to reason about. Over the years I’ve found people
+argue for state machines more eloquently and convincingly than I ever
+could. So rather than me trying to convince you, I’ll refer to them.</p>
+<p>Joe Armstrong’s PhD <a
+href="http://kth.diva-portal.org/smash/record.jsf?pid=diva2%3A9492&amp;dswid=-4551">thesis</a>
+(2003), Joe makes the point that big systems can be built in Erlang/OTP
+using a handful of library constructs (behaviours). The most commonly
+used of these building blocks is <code>gen_server</code>, which is a
+state machine. I’ve written a high-level summary of the ideas over <a
+href="https://stevana.github.io/erlangs_not_about_lightweight_processes_and_message_passing.html">here</a>,
+although I recommend reading his thesis and forming your own
+conclusions.</p>
+<p>Leslie Lamport is another proponent of state machines. His TLA+ is
+basically a language for describing state machines. See his article <a
+href="https://www.microsoft.com/en-us/research/publication/computation-state-machines/"><em>Computation
+and State Machines</em></a> (2008) for an introduction. Fault tolerance
+in distributed systems is often realised by means of replicated state
+machines, which Leslie helped develop back in the 80s.</p>
+<p>State machines might seem like low-level clumsy way of programming,
+but Yuri Gurevich has <a
+href="https://www.microsoft.com/en-us/research/publication/103-evolving-algebras-1993-lipari-guide/">shown</a>
+that abstract state machines (state machines where state can be any
+first-order structure) can capture any algorithm at any level of
+abstraction. This result is a generalisation of the Church-Turing thesis
+from computable functions on natural numbers to arbitrary sequential
+algorithms.<a href="#fnref1" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>Many years ago I had the pleasure to study interaction
+structures (aka index containers aka polynomial functors). One of many
+possible way to view these structures is as if they are state machines.
+One can construct a category with the objects being interaction
+structures and then think about what the morphisms must look like in
+order to satisfy the necessary categorical laws.</p>
+<p>I don’t know much about category theory myself, but I remember that
+the morphisms in the resulting category have two components and they
+look exactly like those that we needed to be able to support backwards
+compatibility.</p>
+<p>There’s also a strong <a
+href="https://arxiv.org/abs/0905.4063v1">connection</a> between this
+category and stepwise refinement or refinement calculus, which at least
+intuitively has some connection with upgrades.</p>
+<p>I suppose that there are more useful ideas to steal from there.<a
+href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>This restriction makes it easier to make everything
+deterministic, which in turn makes it easier to (simulation) test. I
+touch upon this in an earlier <a
+href="https://stevana.github.io/erlangs_not_about_lightweight_processes_and_message_passing.html">post</a>
+towards the end. I hope to expand upon this in a separate post at some
+point in the future.</p>
+<p>It also make it possible for the implementation to be more efficient.
+For example, if we want to have a pipeline that takes the output of one
+state machine and broadcasts it to two other state machines (on the same
+computer) then in Erlang the output would be copied to the two state
+machines downstream, whereas with pipelines we can do it <a
+href="https://stevana.github.io/parallel_stream_processing_with_zero-copy_fan-out_and_sharding.html">without
+copying</a>.<a href="#fnref3" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>People familiar with Haskell’s ecosystem might recognise
+that this is an instance of <a
+href="https://hackage.haskell.org/package/base-4.19.1.0/docs/Control-Category.html"><code>Category</code></a>
+and partially an instance of <a
+href="https://github.com/stevana/hot-swapping-state-machines2/blob/main/src/Classes.hs#L13"><code>Cocartesian</code></a>,
+plus some extras. In a “real” implementation we would want this datatype
+to be an instance of <code>Cocartesian</code> instance as well as
+<code>Cartesian</code>.<a href="#fnref4" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+</main>
+</body>
+</html>

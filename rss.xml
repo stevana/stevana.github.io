@@ -37,6 +37,7 @@ contributing</a></li>
 <li><a href="#discussion" id="toc-discussion">Discussion</a></li>
 </ul>
 </nav>
+<div class="date">Posted on Jan 23, 2024</div>
 <p>In a previous <a
 href="https://stevana.github.io/pipelined_state_machines.html">post</a>
 I explored how we can make better use of our parallel hardware by means
@@ -1152,6 +1153,7 @@ href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li><a href="#see-also" id="toc-see-also">See also</a></li>
 </ul>
 </nav>
+<div class="date">Posted on Sep  9, 2023</div>
 <p>This post is about how to write an <a
 href="https://en.wikipedia.org/wiki/SVG">SVG</a> viewer / browser /
 “slideshow” which is itself a self-contained SVG.</p>
@@ -1387,6 +1389,7 @@ controller</a></li>
 <li><a href="#discussion" id="toc-discussion">Discussion</a></li>
 </ul>
 </nav>
+<div class="date">Posted on Mar 14, 2023</div>
 <p>An experiment in controlling the size of a thread pool using a PID
 controller.</p>
 <h2 id="motivation">Motivation</h2>
@@ -1772,6 +1775,7 @@ id="toc-presentations">Presentations</a></li>
 </ul></li>
 </ul>
 </nav>
+<div class="date">Posted on Mar  1, 2023</div>
 <p>An experiment in declaratively programming parallel pipelines of
 state machines.</p>
 <h2 id="motivation">Motivation</h2>
@@ -2373,6 +2377,7 @@ programming</a>.</li>
 id="toc-acknowledgments">Acknowledgments</a></li>
 </ul>
 </nav>
+<div class="date">Posted on Feb 21, 2023</div>
 <p>An experiment in implementing remote hot code swapping, or dynamic
 code upgrade, for state machines.</p>
 <h2 id="background">Background</h2>
@@ -2762,6 +2767,7 @@ server</a></li>
 <li><a href="#see-also" id="toc-see-also">See also</a></li>
 </ul>
 </nav>
+<div class="date">Posted on Feb 13, 2023</div>
 <p>An experimental implementation of Erlang/OTP’s
 <code>gen_server</code> and <code>supervisor</code> behaviours that
 doesn’t use lightweight threads and message passing.</p>
@@ -2925,6 +2931,7 @@ contents</a></li>
 <li><a href="#license" id="toc-license">License</a></li>
 </ul>
 </nav>
+<div class="date">Posted on Feb  7, 2023</div>
 <p><a
 href="https://github.com/stevana/property-based-testing-stateful-systems-tutorial/actions"><img
 src="https://github.com/stevana/property-based-testing-stateful-systems-tutorial/workflows/CI/badge.svg"
@@ -3092,6 +3099,7 @@ id="toc-correctness-of-behaviours">Correctness of behaviours</a></li>
 <li><a href="#discussion" id="toc-discussion">Discussion</a></li>
 </ul>
 </nav>
+<div class="date">Posted on Jan 18, 2023</div>
 <p>I used to think that the big idea of Erlang is its lightweight
 processes and message passing. Over the last couple of years I’ve
 realised that there’s a bigger insight to be had, and in this post I’d
@@ -3743,6 +3751,7 @@ encodings</a></li>
 <li><a href="#see-also" id="toc-see-also">See also</a></li>
 </ul>
 </nav>
+<div class="date">Posted on Jan 11, 2023</div>
 <p>Can we make binary encodings “human-readable”? This post explores
 this question by means of implementing a library inspired by Erlang’s
 bit syntax.</p>
@@ -4245,6 +4254,7 @@ href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li><a href="#see-also" id="toc-see-also">See also</a></li>
 </ul>
 </nav>
+<div class="date">Posted on Jan  7, 2023</div>
 <p>State machines of the type
 <code>Input -&gt; State -&gt; (Output, State)</code> are great. They are
 easy to reason about, and if run on a separate thread with access to a
