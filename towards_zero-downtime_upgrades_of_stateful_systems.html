@@ -276,7 +276,7 @@ that:</p>
 <ol type="1">
 <li>Accepts new connections/sockets from a client;</li>
 <li>Waits for some of the accepted sockets to be readable (this requires
-some <code>select/poll</code>-like constructs);</li>
+some <code>select/poll/io_uring</code>-like constructs);</li>
 <li><code>recv</code> the bytes of a request;</li>
 <li>Deserialise the request bytes into an input;</li>
 <li>Process the input using the a state machine to produce an output
@@ -290,13 +290,14 @@ the socket.</li>
 with all the other stages. Structuring services in this pipeline fashion
 was <a
 href="https://www.youtube.com/watch?v=U3eo49nVxcA&amp;t=1949s">advocated</a>
-by the late Jim Gray and more recently Martin Thompson et al have been
-giving <a href="https://www.youtube.com/watch?v=_KvFapRkR9I">talks</a>
-using a similar approach. If a stage is slow, we can shard (or
-partition, using Jim’s terminology) it by dedicating another CPU/core to
-that stage and have even numbered requests to one CPU/core while odd
-numbered requests go to the other. That way we effectively double the
-throughput, without breaking determinism.</p>
+by the late Jim Gray and more recently Martin Thompson et al have <a
+href="https://www.youtube.com/watch?v=qDhTjE0XmkE">been</a> giving <a
+href="https://www.youtube.com/watch?v=_KvFapRkR9I">talks</a> using a
+similar approach. If a stage is slow, we can shard (or partition, using
+Jim’s terminology) it by dedicating another CPU/core to that stage and
+have even numbered requests to one CPU/core while odd numbered requests
+go to the other. That way we effectively double the throughput, without
+breaking determinism.</p>
 <p>Let me just leave you with one final image. I like to think of state
 machines on top of pipelines as a limited form of actors or Erlang
 processes (<code>gen_server</code>s more precisely) that cannot send
