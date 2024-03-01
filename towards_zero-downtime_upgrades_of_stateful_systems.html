@@ -686,10 +686,16 @@ Item &quot;Left 2&quot;              -- The counter&#39;s state is preserved by 
 Item &quot;Right (Right ())&quot;    -- Reset the counter.
 Item &quot;Left 0&quot;              -- The value is back to 0.</code></pre>
 <h2 id="discussion-and-future-work">Discussion and future work</h2>
+<p>Wouldn’t it be neat if the programming language environment
+(compiler/REPL?) could keep track of what’s deployed where and only
+allow us to upgrade it without downtime and without breaking forwards or
+backwards compatibility? (Or at least give us a stern warning and let us
+proceed in cases we really wanted to break things.)</p>
 <p>While there’s still a lot to do in order to get proper support for
 upgrades of stateful systems, I hope that I’ve managed to provide a
-glimpse of a possible way of going about doing it.</p>
-<p>Here are a bunch of things I’ve thought of but not done yet:</p>
+glimpse of a possible way of going about doing it, at least if one
+content with writing state machines.</p>
+<p>Here are a bunch of things I’ve thought of, but not done yet:</p>
 <ol type="1">
 <li><p>Notice how the type of <code>counterV1</code> and
 <code>counterV2</code> is the same. I think the input and output types
@@ -800,16 +806,24 @@ href="https://stevana.github.io/working_with_binary_data.html">here</a>
 role="doc-endnotes">
 <hr />
 <ol>
-<li id="fn1"><p>I used to argue that state machines should be used
-because they are easy to reason about. Over the years I’ve found people
-argue for state machines more eloquently and convincingly than I ever
-could. So rather than me trying to convince you, I’ll refer to them.</p>
-<p>Joe Armstrong’s PhD <a
+<li id="fn1"><p>State machines might seem like low-level clumsy way of
+programming, but Yuri Gurevich has <a
+href="https://www.microsoft.com/en-us/research/publication/103-evolving-algebras-1993-lipari-guide/">shown</a>
+that abstract state machines (state machines where state can be any
+first-order structure) can avoid the Turing tarpit and capture any
+algorithm at any level of abstraction. This result is a generalisation
+of the Church-Turing thesis from computable functions on natural numbers
+to arbitrary sequential algorithms.</p>
+<p>In case you’re not convinced by this theoretical argument, then here
+are a couple of practical examples of state machine use from
+industry.</p>
+<p>In Joe Armstrong’s PhD <a
 href="http://kth.diva-portal.org/smash/record.jsf?pid=diva2%3A9492&amp;dswid=-4551">thesis</a>
-(2003), Joe makes the point that big systems can be built in Erlang/OTP
-using a handful of library constructs (behaviours). The most commonly
-used of these building blocks is <code>gen_server</code>, which is a
-state machine. I’ve written a high-level summary of the ideas over <a
+(2003), Joe gives an example of a big Ericsson telecommunications system
+built in Erlang/OTP using a handful of library constructs (behaviours).
+The most commonly used of these building blocks is
+<code>gen_server</code>, which is a state machine. I’ve written a
+high-level summary of the ideas over <a
 href="https://stevana.github.io/erlangs_not_about_lightweight_processes_and_message_passing.html">here</a>,
 although I recommend reading his thesis and forming your own
 conclusions.</p>
@@ -819,15 +833,10 @@ href="https://www.microsoft.com/en-us/research/publication/computation-state-mac
 and State Machines</em></a> (2008) for an introduction. Fault tolerance
 in distributed systems is often realised by means of replicated state
 machines, which Leslie helped develop back in the 80s.</p>
-<p>State machines might seem like low-level clumsy way of programming,
-but Yuri Gurevich has <a
-href="https://www.microsoft.com/en-us/research/publication/103-evolving-algebras-1993-lipari-guide/">shown</a>
-that abstract state machines (state machines where state can be any
-first-order structure) can capture any algorithm at any level of
-abstraction. This result is a generalisation of the Church-Turing thesis
-from computable functions on natural numbers to arbitrary sequential
-algorithms.<a href="#fnref1" class="footnote-back"
-role="doc-backlink">↩︎</a></p></li>
+<p>Jean-Raymond Abrial’s B-method (a successor to Z notation) is also
+centered around state machines and has been used to verify the automatic
+Paris Métro lines 14 and 1 and the Ariane 5 rocket.<a href="#fnref1"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn2"><p>Many years ago I had the pleasure to study interaction
 structures (aka index containers aka polynomial functors). One of many
 possible way to view these structures is as if they are state machines.
