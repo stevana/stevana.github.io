@@ -749,7 +749,6 @@ Item &quot;Left ()&quot;                  -- Toggle to decrementing.
 Item &quot;Right (Right (Right ()))&quot; -- Decrement.
 Item &quot;Right (Right (Left 1))&quot;   -- The value is 1.</code></pre>
 <h2 id="discussion-and-future-work">Discussion and future work</h2>
-<p>XXX:</p>
 <p>If we look back at the list, from the introduction, of properties
 that we wanted from our upgrades, then I hope that I’ve managed to
 provide a glimpse of a possible way of achieving zero-downtime upgrades
@@ -764,26 +763,20 @@ probably use an <a
 href="https://en.wikipedia.org/wiki/Interface_description_language">interface_description_language</a>,
 such as Avro or Protobuf, but it could also be interesting see if we
 could add input and output migrations as part of upgrades (in addition
-to state migrations). Especially in conjuction with being able to derive
-them generically and <a
+to state migrations). Especially in conjunction with being able to
+derive them generically and <a
 href="https://www.manuelbaerenz.de/essence-of-live-coding/EssenceOfLiveCoding.pdf">automatically</a>
 from the schema change.</p>
-<p>There’s also a bunch of other things that I thought of while working
-on this, which I don’t have any good answers for yet.</p>
-<p>If you feel that I’m missing something, or if any of these problems
-sound interesting to work on, please do feel free to get in touch!</p>
-<p>Let me leave you with one closing though:</p>
-<p>Wouldn’t it be neat if the programming language environment
-(compiler/REPL?) could keep track of what’s deployed where and only
-allow us to upgrade it without downtime and without breaking forwards or
-backwards compatibility? (Or at least give us a stern warning and let us
-proceed in cases we really wanted to break things.)</p>
-<p>Another way to think of it is typechecking across versions of code,
-as opposed to merely typechecking a version of the code in isolation of
-the rest.</p>
-<p>In a world where software systems are expected to evolve over time,
-this seems like our programming languages should also be helping us with
-upgrades, don’t you think?</p>
+<p>There’s also a bunch of other <a
+href="https://github.com/stevana/hot-swapping-state-machines2/blob/main/TODO.md">things</a>
+that I thought of while working on this, which I don’t have any good
+answers for yet. If you feel that I’m missing something, or if any of
+these problems sound interesting to work on, please do feel free to get
+in <a href="https://stevana.github.io/about.html">touch</a>!</p>
+<p>Let me leave you with one closing question: in a world where software
+systems are expected to evolve over time, wouldn’t it be neat if we
+could typecheck our code <em>across versions</em>, as opposed to merely
+typechecking a version of the code in isolation from the next?</p>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
 <hr />
