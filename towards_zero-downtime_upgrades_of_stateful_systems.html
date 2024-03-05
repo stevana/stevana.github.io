@@ -760,11 +760,11 @@ system itself could downgrade in case there’s more than N errors within
 some time period, or something like that.</p>
 <p>I didn’t talk about backwards and forwards compatibility. We could
 probably use an <a
-href="https://en.wikipedia.org/wiki/Interface_description_language">interface_description_language</a>,
-such as Avro or Protobuf, but it could also be interesting see if we
-could add input and output migrations as part of upgrades (in addition
-to state migrations). Especially in conjunction with being able to
-derive them generically and <a
+href="https://en.wikipedia.org/wiki/Interface_description_language">interface
+description language</a>, such as Avro or Protobuf, but it could also be
+interesting see if we could add input and output migrations as part of
+upgrades (in addition to state migrations). Especially in conjunction
+with being able to derive them generically and <a
 href="https://www.manuelbaerenz.de/essence-of-live-coding/EssenceOfLiveCoding.pdf">automatically</a>
 from the schema change.</p>
 <p>There’s also a bunch of other <a
@@ -773,9 +773,11 @@ that I thought of while working on this, which I don’t have any good
 answers for yet. If you feel that I’m missing something, or if any of
 these problems sound interesting to work on, please do feel free to get
 in <a href="https://stevana.github.io/about.html">touch</a>!</p>
-<p>Let me leave you with one closing question: in a world where software
-systems are expected to evolve over time, wouldn’t it be neat if we
-could typecheck our code <em>across versions</em>, as opposed to merely
+<p>Let me close by trying to tie it back to Barbara Liskov’s remark
+about the need for more complete programming languages. In a world where
+software systems are expected to evolve over time, wouldn’t it be neat
+if programming languages provided some notion of upgrade and could
+typecheck our code <em>across versions</em>, as opposed to merely
 typechecking a version of the code in isolation from the next?</p>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
