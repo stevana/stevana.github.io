@@ -52,9 +52,6 @@ upgrades</a></li>
 </ul></li>
 <li><a href="#discussion-and-future-work"
 id="toc-discussion-and-future-work">Discussion and future work</a></li>
-<li><a href="#running-the-code" id="toc-running-the-code">Running the
-code</a></li>
-<li><a href="#see-also" id="toc-see-also">See also</a></li>
 </ul>
 </nav>
 <div class="date">Posted on Feb 27, 2024</div>
@@ -377,15 +374,13 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a 
 <span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">IncrCountV1</span> <span class="ot">=</span> <span class="dt">Right</span> ()</span>
 <span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="ot">counterV1 ::</span> <span class="dt">T</span> <span class="dt">Int</span> <span class="dt">String</span> <span class="dt">String</span></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>counterV1 <span class="ot">=</span></span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Read</span> <span class="op">&gt;&gt;&gt;</span></span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Get</span> <span class="ot">`Case`</span> (<span class="dt">Get</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Incr</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Put</span>) <span class="op">&gt;&gt;&gt;</span></span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Show</span></span></code></pre></div>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>counterV1 <span class="ot">=</span> <span class="dt">Read</span> <span class="op">&gt;&gt;&gt;</span> counterV1&#39; <span class="op">&gt;&gt;&gt;</span> <span class="dt">Show</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="ot">    counterV1&#39; ::</span> <span class="dt">T</span> <span class="dt">Int</span> <span class="dt">InputV1</span> <span class="dt">OutputV1</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    counterV1&#39; <span class="ot">=</span> <span class="dt">Get</span> <span class="ot">`Case`</span> (<span class="dt">Get</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Incr</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Put</span>)</span></code></pre></div>
 <p>Notice how the two operations’ inputs and outputs are represented
-with an <code>Either</code> over which the <code>Case</code> operates.
-The counter does its own deserialisation and serialisation via
-<code>Read</code> and <code>Show</code>, we’ll come back to why in a
-bit.</p>
+with an <code>Either</code> over which the <code>Case</code>
+operates.</p>
 <h3 id="semantics">Semantics</h3>
 <p>We can interpret our typed state machines in terms of the
 <code>State</code> monad as follows.</p>
@@ -518,17 +513,18 @@ for upgrades, which can easily be serialised and deserialised, and then
 use <em>typechecking</em> to reconstruct the type information.</p>
 <div class="sourceCode" id="cb13"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">UpgradeData_</span> <span class="ot">=</span> <span class="dt">UpgradeData_</span></span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> newState        ::</span> <span class="dt">Ty_</span></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> newInput        ::</span> <span class="dt">Ty_</span></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> newOutput       ::</span> <span class="dt">Ty_</span></span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> newStateMachine ::</span> <span class="dt">U</span></span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> stateMigration  ::</span> <span class="dt">U</span></span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Read</span>)</span></code></pre></div>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> oldState        ::</span> <span class="dt">Ty_</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> newState        ::</span> <span class="dt">Ty_</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> newInput        ::</span> <span class="dt">Ty_</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> newOutput       ::</span> <span class="dt">Ty_</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> newStateMachine ::</span> <span class="dt">U</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> stateMigration  ::</span> <span class="dt">U</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Read</span>)</span></code></pre></div>
 <p>We can to typecheck the above untyped upgrade into the following
 typed version.</p>
 <div class="sourceCode" id="cb14"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">UpgradeData</span> s a b <span class="ot">=</span> <span class="dt">UpgradeData</span> (<span class="dt">T</span> s a b) (<span class="dt">T</span> () s s)</span></code></pre></div>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">UpgradeData</span> s a b <span class="ot">=</span> <span class="kw">forall</span> s&#39;<span class="op">.</span> <span class="dt">Typeable</span> s&#39; <span class="ot">=&gt;</span> <span class="dt">UpgradeData</span> (<span class="dt">T</span> s&#39; a b) (<span class="dt">T</span> () s s&#39;)</span></code></pre></div>
 <p>The way typechecking for upgrades work is basically the user needs to
 provide the untyped types of the state, input and output types of the
 new state machine as well as the state migration function, from the
@@ -536,15 +532,15 @@ untyped types we can infer the typed types which we then typecheck the
 new state machine and migration function against.</p>
 <div class="sourceCode" id="cb15"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="ot">typeCheckUpgrade ::</span> <span class="kw">forall</span> s a b<span class="op">.</span> (<span class="dt">Typeable</span> s, <span class="dt">Typeable</span> a, <span class="dt">Typeable</span> b)</span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>                 <span class="ot">=&gt;</span> s <span class="ot">-&gt;</span> <span class="dt">T</span> s a b <span class="ot">-&gt;</span> <span class="dt">UpgradeData_</span> <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">UpgradeData</span> s a b)</span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>typeCheckUpgrade _s _f (<span class="dt">UpgradeData_</span> s&#39;_ a&#39;_ b&#39;_ f_ g_) <span class="ot">=</span></span>
-<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> (inferTy s&#39;_, inferTy a&#39;_, inferTy b&#39;_) <span class="kw">of</span></span>
-<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    (<span class="dt">ETy</span> (<span class="ot">s&#39; ::</span> <span class="dt">Ty</span> s&#39;), <span class="dt">ETy</span> (<span class="ot">a&#39; ::</span> <span class="dt">Ty</span> a&#39;), <span class="dt">ETy</span> (<span class="ot">b&#39; ::</span> <span class="dt">Ty</span> b&#39;)) <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">Refl</span> <span class="ot">&lt;-</span> eqT <span class="op">@</span>a <span class="op">@</span>a&#39;</span>
-<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">Refl</span> <span class="ot">&lt;-</span> eqT <span class="op">@</span>b <span class="op">@</span>b&#39;</span>
-<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">Refl</span> <span class="ot">&lt;-</span> eqT <span class="op">@</span>s <span class="op">@</span>s&#39;</span>
-<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>      f <span class="ot">&lt;-</span> typeCheck f_ s&#39; a&#39; b&#39;</span>
-<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>      g <span class="ot">&lt;-</span> typeCheck g_ <span class="dt">TUnit</span> s&#39; s&#39;</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>                 <span class="ot">=&gt;</span> <span class="dt">T</span> s a b <span class="ot">-&gt;</span> <span class="dt">UpgradeData_</span> <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">UpgradeData</span> s a b)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>typeCheckUpgrade _f (<span class="dt">UpgradeData_</span> t_ t&#39;_ a&#39;_ b&#39;_ f_ g_) <span class="ot">=</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> (inferTy t_, inferTy t&#39;_, inferTy a&#39;_, inferTy b&#39;_) <span class="kw">of</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    (<span class="dt">ETy</span> (<span class="ot">t ::</span> <span class="dt">Ty</span> t), <span class="dt">ETy</span> (<span class="ot">t&#39; ::</span> <span class="dt">Ty</span> t&#39;), <span class="dt">ETy</span> (<span class="ot">a&#39; ::</span> <span class="dt">Ty</span> a&#39;), <span class="dt">ETy</span> (<span class="ot">b&#39; ::</span> <span class="dt">Ty</span> b&#39;)) <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">Refl</span> <span class="ot">&lt;-</span> decT <span class="op">@</span>a <span class="op">@</span>a&#39;</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">Refl</span> <span class="ot">&lt;-</span> decT <span class="op">@</span>b <span class="op">@</span>b&#39;</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">Refl</span> <span class="ot">&lt;-</span> decT <span class="op">@</span>s <span class="op">@</span>t</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>      f <span class="ot">&lt;-</span> typeCheck f_ t&#39; a&#39; b&#39;</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>      g <span class="ot">&lt;-</span> typeCheck g_ <span class="dt">TUnit</span> t t&#39;</span>
 <span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">return</span> (<span class="dt">UpgradeData</span> f g)</span></code></pre></div>
 <p>Where untyped types are defined as follows:</p>
 <div class="sourceCode" id="cb16"><pre
@@ -654,27 +650,32 @@ type in both the input and output types.</p>
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">InputV2</span>  <span class="ot">=</span> <span class="dt">Either</span> () <span class="dt">InputV1</span></span>
 <span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">OutputV2</span> <span class="ot">=</span> <span class="dt">Either</span> () <span class="dt">OutputV1</span></span>
 <span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ReadCountV2</span><span class="ot"> ::</span> <span class="dt">InputV2</span></span>
-<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ReadCountV2</span>  <span class="ot">=</span> <span class="dt">Left</span> ()</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ResetCountV2</span><span class="ot"> ::</span> <span class="dt">InputV2</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ResetCountV2</span> <span class="ot">=</span> <span class="dt">Left</span> ()</span>
 <span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">IncrCountV2</span><span class="ot"> ::</span> <span class="dt">InputV2</span></span>
-<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">IncrCountV2</span>  <span class="ot">=</span> <span class="dt">Right</span> (<span class="dt">Left</span> ())</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ReadCountV2</span><span class="ot"> ::</span> <span class="dt">InputV2</span></span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ReadCountV2</span>  <span class="ot">=</span> <span class="dt">Right</span> <span class="dt">ReadCountV1</span></span>
 <span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ResetCountV2</span><span class="ot"> ::</span> <span class="dt">InputV2</span></span>
-<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ResetCountV2</span> <span class="ot">=</span> <span class="dt">Right</span> (<span class="dt">Right</span> ())</span></code></pre></div>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">IncrCountV2</span><span class="ot"> ::</span> <span class="dt">InputV2</span></span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">IncrCountV2</span>  <span class="ot">=</span> <span class="dt">Right</span> <span class="dt">IncrCountV1</span></span></code></pre></div>
 <p>The state machine looks the same, except for the last
 <code>Case</code> where we update the state to be <code>0</code>, thus
 resetting the counter.</p>
 <div class="sourceCode" id="cb26"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="ot">counterV2 ::</span> <span class="dt">T</span> <span class="dt">Int</span> <span class="dt">String</span> <span class="dt">String</span></span>
-<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>counterV2 <span class="ot">=</span></span>
-<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Read</span> <span class="op">&gt;&gt;&gt;</span> (<span class="dt">Get</span> <span class="ot">`Case`</span> (<span class="dt">Get</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Incr</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Put</span>) <span class="ot">`Case`</span> (<span class="dt">Int</span> <span class="dv">0</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Put</span>)) <span class="op">&gt;&gt;&gt;</span> <span class="dt">Show</span></span></code></pre></div>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>counterV2 <span class="ot">=</span> <span class="dt">Read</span> <span class="op">&gt;&gt;&gt;</span> counterV2&#39; <span class="op">&gt;&gt;&gt;</span> <span class="dt">Show</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="ot">    counterV2&#39; ::</span> <span class="dt">T</span> <span class="dt">Int</span> <span class="dt">InputV2</span> <span class="dt">OutputV2</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>    counterV2&#39; <span class="ot">=</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>      (<span class="dt">Int</span> <span class="dv">0</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Put</span>) <span class="ot">`Case`</span></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">Get</span> <span class="ot">`Case`</span></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>      (<span class="dt">Get</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Incr</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Put</span>)</span></code></pre></div>
 <p>Back in our REPL we can now do the upgrade, by sending over a type
 <code>erase</code>d version of <code>counterV2</code>.</p>
 <div class="sourceCode" id="cb27"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span><span class="ot"> msg ::</span> <span class="dt">Msg</span> ()</span>
 <span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>    msg <span class="ot">=</span> <span class="dt">Upgrade</span> <span class="dt">Nothing</span> <span class="st">&quot;counter&quot;</span></span>
-<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>            (<span class="dt">UpgradeData_</span> <span class="dt">UTInt</span> <span class="dt">UTInt</span> <span class="dt">UTString</span> <span class="dt">UTString</span> (erase counterV2) <span class="dt">IdU</span>)</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>            (<span class="dt">UpgradeData_</span> <span class="dt">UTInt</span> <span class="dt">UTInt</span> <span class="dt">UTString</span> <span class="dt">UTString</span> (erase counterV2) (erase <span class="dt">Id</span>))</span>
 <span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> msg</span>
 <span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">ReadCountV2</span>))</span>
@@ -682,126 +683,107 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb27-1"><a
 <span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">ReadCountV2</span>))</span></code></pre></div>
 <p>Which yields the following annotated output.</p>
 <pre><code>UpgradeSucceeded &quot;counter&quot;
-Item &quot;Left 2&quot;              -- The counter&#39;s state is preserved by the upgrade.
-Item &quot;Right (Right ())&quot;    -- Reset the counter.
-Item &quot;Left 0&quot;              -- The value is back to 0.</code></pre>
+Item &quot;Right (Left 2)&quot;   -- The counter&#39;s state is preserved by the upgrade.
+Item &quot;Left ()&quot;          -- Reset the counter.
+Item &quot;Right (Left 0)&quot;   -- The value is back to 0.</code></pre>
+<p>As a final example of an upgrade, let’s do a more interesting state
+migration. Let’s say we want to add a boolean to the state which
+determines if <code>IncrCount</code> should add by <code>1</code> or
+<code>-1</code> (i.e. decrement). This boolean can be toggled by the
+user using a new operation, while the signatures of the other operations
+stay the same as before.</p>
+<div class="sourceCode" id="cb29"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">InputV3</span>  <span class="ot">=</span> <span class="dt">Either</span> () <span class="dt">InputV2</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">OutputV3</span> <span class="ot">=</span> <span class="dt">Either</span> () <span class="dt">OutputV2</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ToggleCountV3</span><span class="ot"> ::</span> <span class="dt">InputV3</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ToggleCountV3</span> <span class="ot">=</span> <span class="dt">Left</span> ()</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">ReadCountV3</span>, <span class="dt">IncrCountV3</span>, <span class="dt">ToggleCountV3</span><span class="ot"> ::</span> <span class="dt">InputV3</span></span></code></pre></div>
+<p>In order to implement the toggle operation we need to extend the
+syntax of our state machines to be able to deal with booleans and
+products (the details can be found <a
+href="https://github.com/stevana/hot-swapping-state-machines2/blob/main/src/Interpreter.hs">here</a>).</p>
+<div class="sourceCode" id="cb30"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="ot">counterV3 ::</span> <span class="dt">T</span> (<span class="dt">Int</span>, <span class="dt">Bool</span>) <span class="dt">String</span> <span class="dt">String</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>counterV3 <span class="ot">=</span> <span class="dt">Read</span> <span class="op">&gt;&gt;&gt;</span> counterV3&#39; <span class="op">&gt;&gt;&gt;</span> <span class="dt">Show</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="ot">    counterV3&#39; ::</span> <span class="dt">T</span> (<span class="dt">Int</span>, <span class="dt">Bool</span>) <span class="dt">InputV3</span> <span class="dt">OutputV3</span></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>    counterV3&#39; <span class="ot">=</span></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>      <span class="co">-- Toggle negates the boolean in the state (the second component).</span></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>      (<span class="dt">Get</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Second</span> <span class="dt">Not</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Put</span>) <span class="ot">`Case`</span></span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>      <span class="co">-- Reset resets the counter and the boolean back to false (i.e. incrementing).</span></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>      (<span class="dt">Int</span> <span class="dv">0</span> <span class="op">:&amp;&amp;&amp;</span> <span class="dt">Bool</span> <span class="dt">False</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Put</span>) <span class="ot">`Case`</span></span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>      <span class="co">-- Reading the counter picks out the first component from the state.</span></span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a>      (<span class="dt">Get</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Fst</span>) <span class="ot">`Case`</span></span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a>      <span class="co">-- Incrementing or decrementing, depending on the boolean in the state.</span></span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a>      (<span class="dt">Get</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">If</span> <span class="dt">Decr</span> <span class="dt">Incr</span> <span class="op">&gt;&gt;&gt;</span> (<span class="dt">Id</span> <span class="op">:&amp;&amp;&amp;</span> (<span class="dt">Consume</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Get</span> <span class="op">&gt;&gt;&gt;</span> <span class="dt">Snd</span>)) <span class="op">&gt;&gt;&gt;</span> <span class="dt">Put</span>)</span></code></pre></div>
+<p>We can then upgrade to our new version of the counter as follows.</p>
+<div class="sourceCode" id="cb31"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span><span class="ot"> msg2 ::</span> <span class="dt">Msg</span> ()</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>      msg2 <span class="ot">=</span> <span class="dt">Upgrade_</span> <span class="st">&quot;counter&quot;</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>               (<span class="dt">UpgradeData_</span> <span class="dt">UTInt</span> (<span class="dt">UTPair</span> <span class="dt">UTInt</span> <span class="dt">UTBool</span>) <span class="dt">UTString</span> <span class="dt">UTString</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>                 (erase counterV3) (erase (<span class="dt">Id</span> <span class="op">:&amp;&amp;&amp;</span> <span class="dt">Bool</span> <span class="dt">False</span>)))</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> msg2</span></code></pre></div>
+<p>Notice how the state is migrated using
+<code>Id :&amp;&amp;&amp; Bool False</code>, i.e. create a pair where
+the first component is the old value of the state (this is the current
+count) and the second component is <code>False</code> (this is whether
+we are decrementing).</p>
+<p>Here’s a final example of how we can use the new counter.</p>
+<div class="sourceCode" id="cb32"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item_</span> (<span class="fu">show</span> <span class="dt">ReadCountV3</span>))</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item_</span> (<span class="fu">show</span> <span class="dt">IncrCountV3</span>))</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item_</span> (<span class="fu">show</span> <span class="dt">IncrCountV3</span>))</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item_</span> (<span class="fu">show</span> <span class="dt">ReadCountV3</span>))</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item_</span> (<span class="fu">show</span> <span class="dt">ToggleCountV3</span>))</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item_</span> (<span class="fu">show</span> <span class="dt">IncrCountV3</span>))</span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item_</span> (<span class="fu">show</span> <span class="dt">ReadCountV3</span>))</span></code></pre></div>
+<p>The above yields the following output.</p>
+<pre><code>UpgradeSucceeded &quot;counter&quot;
+Item &quot;Right (Right (Left 0))&quot;   -- The counter is 0.
+Item &quot;Right (Right (Right ()))&quot; -- Two increments.
+Item &quot;Right (Right (Right ()))&quot;
+Item &quot;Right (Right (Left 2))&quot;   -- The counter is 2.
+Item &quot;Left ()&quot;                  -- Toggle to decrementing.
+Item &quot;Right (Right (Right ()))&quot; -- Decrement.
+Item &quot;Right (Right (Left 1))&quot;   -- The value is 1.</code></pre>
 <h2 id="discussion-and-future-work">Discussion and future work</h2>
+<p>XXX:</p>
+<p>If we look back at the list, from the introduction, of properties
+that we wanted from our upgrades, then I hope that I’ve managed to
+provide a glimpse of a possible way of achieving zero-downtime upgrades
+with type-safe state migrations that are atomic.</p>
+<p>Downgrades can be thought of as an upgrade to an earlier version,
+although it could be interesting to experiment with requiring an inverse
+function to the state migration as part of an upgrade. That way the
+system itself could downgrade in case there’s more than N errors within
+some time period, or something like that.</p>
+<p>I didn’t talk about backwards and forwards compatibility. We could
+probably use an <a
+href="https://en.wikipedia.org/wiki/Interface_description_language">interface_description_language</a>,
+such as Avro or Protobuf, but it could also be interesting see if we
+could add input and output migrations as part of upgrades (in addition
+to state migrations). Especially in conjuction with being able to derive
+them generically and <a
+href="https://www.manuelbaerenz.de/essence-of-live-coding/EssenceOfLiveCoding.pdf">automatically</a>
+from the schema change.</p>
+<p>There’s also a bunch of other things that I thought of while working
+on this, which I don’t have any good answers for yet.</p>
+<p>If you feel that I’m missing something, or if any of these problems
+sound interesting to work on, please do feel free to get in touch!</p>
+<p>Let me leave you with one closing though:</p>
 <p>Wouldn’t it be neat if the programming language environment
 (compiler/REPL?) could keep track of what’s deployed where and only
 allow us to upgrade it without downtime and without breaking forwards or
 backwards compatibility? (Or at least give us a stern warning and let us
 proceed in cases we really wanted to break things.)</p>
-<p>While there’s still a lot to do in order to get proper support for
-upgrades of stateful systems, I hope that I’ve managed to provide a
-glimpse of a possible way of going about doing it, at least if one
-content with writing state machines.</p>
-<p>Here are a bunch of things I’ve thought of, but not done yet:</p>
-<ol type="1">
-<li><p>Notice how the type of <code>counterV1</code> and
-<code>counterV2</code> is the same. I think the input and output types
-perhaps need to stay the same, otherwise we wouldn’t be able to perform
-the upgrade in the <code>deploy</code> function because the types of the
-input and output queues cannot change (that’s why we set them both to be
-<code>String</code> and made deserialisation and serialisation part of
-the upgrade, thus allowing for changes in the inputs and outputs). I
-think that the state type is different though, and we should be able to
-change that during an upgrade;</p></li>
-<li><p>To support backwards compatibility we’d need to extend the notion
-of upgrade with an input upgrade function (upgrading old inputs to new
-inputs) and an output downgrade function (taking new outputs to old
-outputs), like we discussed in the introduction;</p></li>
-<li><p>For forward compatibility we’d need a way for an old server to
-ignore the new stuff that was added to an input. One way to achieve this
-could be to define a function on types, which annotates the input with
-extra constructors or parameters to existing constructors, etc, then the
-server could ignore these extra annotations. We’d also need default
-values for anything that is added to the outputs, so that the servers
-old output can be upgraded to the new output that the new client
-expects.</p>
-<p>Alternatively clients can be made to support multiple versions and
-establish which version to use in the initial handshake with the server,
-this is arguably not as satisfying of a solution though;</p></li>
-<li><p>We’ve seen upgrades of state machines running on top of
-pipelines, but what if we wanted to change the pipelines themselves?
-This seems trickier. Perhaps can start by thinking about what kind of
-changes one would like to allow, e.g. prepending or appending something
-to a pipeline seems easier than changing some part in the
-middle?</p></li>
-<li><p>The state machine are represented by first-order datatypes, that
-get typechecked and then interpreted. What would upgrades look like if
-we wanted to state machines to be compiled rather than interpreted? For
-some prior work in Haskell see the repos <a
-href="https://github.com/nmattia/haskell-hot-swap"><code>haskell-hot-swap</code></a>
-and <a
-href="https://github.com/fbsamples/ghc-hotswap/"><code>ghc-hotswap</code></a>;</p></li>
-<li><p>Writing state machines and pipelines using combinators is not
-fun, can we have something like Haskell’s arrow syntax at the very
-least? C.f. Conal Elliott’s <a
-href="http://conal.net/papers/compiling-to-categories/"><em>Compiling to
-categories</em></a> and Oleg Grenrus’ <a
-href="https://hackage.haskell.org/package/overloaded-0.3.1/docs/Overloaded-Categories.html"><em>Overloaded.Categories</em></a>;</p></li>
-<li><p>One advantage with the combinators is that they don’t contain
-variables, so it should be easier to do something like Unison does with
-content-addressed hashes?</p></li>
-<li><p>On the pipeline level we might want to support multiple sources
-(<code>Alternative</code> instance?), multiple sinks (perhaps via
-something like
-<code>Tee ::    P a b -&gt; Sink a () -&gt; P a b</code>?), fanout and
-sharding as well as making everything efficient (as I’ve written about
-<a
-href="https://stevana.github.io/parallel_stream_processing_with_zero-copy_fan-out_and_sharding.html">earlier</a>);</p></li>
-<li><p>Finally we also need to figure out how to we build something more
-complicated, like a HTTP-based API, on top of the TCP stuff. Scott
-Wlaschin’s <a
-href="https://www.youtube.com/watch?v=ipceTuJlw-M">“pipeline-oriented
-programming”</a> approach can be useful here.</p></li>
-</ol>
-<p>If you feel that I’m missing something, or if any of the above sounds
-interesting to work on, please do feel free to get in touch!</p>
-<h2 id="running-the-code">Running the code</h2>
-<p>The easiest way to get the code running is probably using the <a
-href="https://nixos.org/download">Nix package manager</a>.</p>
-<div class="sourceCode" id="cb29"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/stevana/hot-swapping-state-machines2.git</span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> hot-swapping-state-machines2</span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="ex">nix-shell</span></span>
-<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="ex">cabal</span> repl</span></code></pre></div>
-<p>Although using <a href="https://www.haskell.org/ghcup/">GHCup</a>
-should work too, if you replace <code>nix-shell</code> with
-<code>ghcup install ghc 9.8.1</code>.</p>
-<h2 id="see-also">See also</h2>
-<ul>
-<li>For many more examples of sources and sinks, see <a
-href="https://www.benthos.dev/">Benthos</a>;</li>
-<li>We haven’t discussed any security aspects of upgrades, for more on
-this topic see <a
-href="https://en.wikipedia.org/wiki/The_Update_Framework">TUF</a>;</li>
-<li>As I was writing up I found this old post about hot-swapping in <a
-href="https://elm-lang.org/news/interactive-programming">Elm</a> (2013).
-It’s even more interesting considering that in Elm one is basically
-writing a state machine;</li>
-<li>Gregor Hohpe gave a talk called <a
-href="https://www.youtube.com/watch?v=vasvpFRPx9c">Application
-architecture as code</a> at AWS re:Invent 2023, where he also describes
-pipelines as code which later gets deployed to AWS. He doesn’t mention
-upgrades, but surely they must have thought about it? He also wrote
-about the topic <a
-href="https://architectelevator.com/cloud/iac-ifc-trends/">here</a>;</li>
-<li>I’ve written about upgrading state machines only (as opposed to
-pipelines with state machines in them) in an earlier <a
-href="https://stevana.github.io/hot-code_swapping_a_la_erlang_with_arrow-based_state_machines.html">post</a>
-(2023). I consider this post a successor of the earlier approach, but
-the old post still contains some aspects that can be useful and not
-covered here;</li>
-<li>For non-linear pipelines and a more efficient implementation of
-them, see my older post called <a
-href="https://stevana.github.io/parallel_stream_processing_with_zero-copy_fan-out_and_sharding.html">Parallel
-stream processing with zero-copy fan-out and sharding</a> (2024);</li>
-<li>Backwards and forwards compatibility is also related to schema
-evolution, which I’ve written more about <a
-href="https://stevana.github.io/working_with_binary_data.html">here</a>
-(2023).</li>
-</ul>
+<p>Another way to think of it is typechecking across versions of code,
+as opposed to merely typechecking a version of the code in isolation of
+the rest.</p>
+<p>In a world where software systems are expected to evolve over time,
+this seems like our programming languages should also be helping us with
+upgrades, don’t you think?</p>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
 <hr />
