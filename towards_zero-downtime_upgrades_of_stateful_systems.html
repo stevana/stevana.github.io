@@ -465,15 +465,16 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a
 <span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>                writeQueue q&#39; (<span class="dt">Upgrade</span> msock name&#39; ud)</span>
 <span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>                go s f</span>
 <span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>            <span class="op">|</span> <span class="fu">otherwise</span> <span class="ot">-&gt;</span></span>
-<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>                <span class="kw">case</span> typeCheckUpgrade s f ud <span class="kw">of</span></span>
-<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>                  <span class="dt">Just</span> (<span class="dt">UpgradeData</span> (<span class="ot">f&#39; ::</span> <span class="dt">T</span> s a b) (<span class="ot">g ::</span> <span class="dt">T</span> () s s)) <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>                    <span class="kw">let</span> (s&#39;, ()) <span class="ot">=</span> runT g s ()</span>
-<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>                    go s&#39; f&#39;</span>
-<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>                  <span class="dt">Nothing</span> <span class="ot">-&gt;</span></span>
-<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>                    go s f</span>
-<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>          <span class="op">...</span></span>
-<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a>  _pid <span class="ot">&lt;-</span> forkIO (go s0 f0)</span>
-<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> q&#39;</span></code></pre></div>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>                <span class="kw">case</span> typeCheckUpgrade f ud <span class="kw">of</span></span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>                  <span class="dt">Just</span> (<span class="dt">UpgradeData</span> (<span class="ot">f&#39; ::</span> <span class="dt">T</span> t&#39; a b) (<span class="ot">g ::</span> <span class="dt">T</span> () s t&#39;)) <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>                    <span class="kw">let</span> (t&#39;, ()) <span class="ot">=</span> runT g s ()</span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>                    <span class="kw">case</span> cast t&#39; <span class="kw">of</span></span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>                      <span class="dt">Just</span> s&#39; <span class="ot">-&gt;</span> go s&#39; f&#39;</span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>                      <span class="dt">Nothing</span> <span class="ot">-&gt;</span> go s f</span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>                  <span class="dt">Nothing</span> <span class="ot">-&gt;</span> go s f</span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a>          <span class="op">...</span></span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>  _pid <span class="ot">&lt;-</span> forkIO (go s0 f0)</span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> q&#39;</span></code></pre></div>
 <p>The identity pipeline simply returns the input queue. We deploy
 compositions of pipelines by deploying the components and connecting the
 queues. Deploying state machines is the interesting part.</p>
@@ -502,12 +503,12 @@ deserialised at the other end, so they need to be plain first-order
 data.</p>
 <p>This means we can’t merely send over our typed state machine type
 <code>t :: T s a b</code>, or rather the receiver will have to
-reconstruct the type information. If this would strange, the perhaps
+reconstruct the type information. If this sounds strange, the perhaps
 easiest way to convince yourself is to imagine you receive
 <code>show t</code> and now you want to reconstruct <code>t</code>. When
 you call <code>read (show t)</code> you need to annotate it with what
 type to read into, and that’s the problem: at this point you don’t have
-<code>T s a b</code>.</p>
+the type annotation <code>T s a b</code>.</p>
 <p>So the plan around this is to introduce a plain first-order datatype
 for upgrades, which can easily be serialised and deserialised, and then
 use <em>typechecking</em> to reconstruct the type information.</p>
@@ -591,9 +592,11 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb19-1"><a
 <span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">PutU</span></span>
 <span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">ReadU</span> <span class="dt">Ty_</span></span>
 <span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">ShowU</span> <span class="dt">Ty_</span></span></code></pre></div>
-<p>I’ll spare you from the details, but the main ingredient is to use
-the <code>Data.Typeable</code> instances to check if the types match up,
-similarly to how it was done above in <code>typeCheckUpgrade</code>.</p>
+<p>I’ll spare you from the <a
+href="https://github.com/stevana/hot-swapping-state-machines2/blob/main/src/TypeCheck/StateMachine.hs">details</a>,
+but the main ingredient is to use the <code>Data.Typeable</code>
+instances to check if the types match up, similarly to how it was done
+above in <code>typeCheckUpgrade</code>.</p>
 <h3 id="sources-and-sinks">Sources and sinks</h3>
 <p>Almost there. When we deploy a pipeline <code>P a b</code> we need to
 provide a <code>Queue (Msg a)</code> and get a
