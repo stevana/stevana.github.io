@@ -58,7 +58,7 @@ id="toc-discussion-and-future-work">Discussion and future work</a></li>
 <p><em>Work in progress, please don’t share, but do feel free to get
 involved!</em></p>
 <p>In this post I’d like to explore one possible way we might be able to
-achieve zero-downtime upgrades of stateful systems.</p>
+achieve zero-downtime upgrades of stateful systems in the future.</p>
 <h2 id="motivation">Motivation</h2>
 <p>Most deployed programs need to be upgraded at some point. The reasons
 vary from adding new features to patching a bug and potentially fixing a
@@ -334,8 +334,11 @@ above.</p>
 <p>Typed state machines are represented using a datatype parametrised by
 the state, <code>s</code>, and indexed by its input type,
 <code>a</code>, and output type <code>b</code><a href="#fn4"
-class="footnote-ref" id="fnref4"
-role="doc-noteref"><sup>4</sup></a>.</p>
+class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a>.
+For example the <code>Id</code>entity state machine has the same input
+and output type, while if we want to <code>Compose</code> to state
+machines then output type of the first needs to be the same as the input
+type of the second, and so on.</p>
 <div class="sourceCode" id="cb5"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">T</span> s a b <span class="kw">where</span></span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- Identity and composition.</span></span>
