@@ -55,10 +55,6 @@ id="toc-discussion-and-future-work">Discussion and future work</a></li>
 </ul>
 </nav>
 <div class="date">Posted on Feb 27, 2024</div>
-<p><em>Work in progress, please don’t share, but do feel free to get
-involved!</em></p>
-<p>In this post I’d like to explore one possible way we might be able to
-achieve zero-downtime upgrades of stateful systems in the future.</p>
 <h2 id="motivation">Motivation</h2>
 <p>Most deployed programs need to be upgraded at some point. The reasons
 vary from adding new features to patching a bug and potentially fixing a
@@ -727,7 +723,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb30-1"><a
 <p>We can then upgrade to our new version of the counter as follows.</p>
 <div class="sourceCode" id="cb31"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span><span class="ot"> msg2 ::</span> <span class="dt">Msg</span> ()</span>
-<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>      msg2 <span class="ot">=</span> <span class="dt">Upgrade_</span> <span class="st">&quot;counter&quot;</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>      msg2 <span class="ot">=</span> <span class="dt">Upgrade</span> <span class="dt">Nothing</span> <span class="st">&quot;counter&quot;</span></span>
 <span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>               (<span class="dt">UpgradeData_</span> <span class="dt">UTInt</span> (<span class="dt">UTPair</span> <span class="dt">UTInt</span> <span class="dt">UTBool</span>) <span class="dt">UTString</span> <span class="dt">UTString</span></span>
 <span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>                 (erase counterV3) (erase (<span class="dt">Id</span> <span class="op">:&amp;&amp;&amp;</span> <span class="dt">Bool</span> <span class="dt">False</span>)))</span>
 <span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> msg2</span></code></pre></div>
@@ -738,13 +734,13 @@ count) and the second component is <code>False</code> (this is whether
 we are decrementing).</p>
 <p>Here’s a final example of how we can use the new counter.</p>
 <div class="sourceCode" id="cb32"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item_</span> (<span class="fu">show</span> <span class="dt">ReadCountV3</span>))</span>
-<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item_</span> (<span class="fu">show</span> <span class="dt">IncrCountV3</span>))</span>
-<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item_</span> (<span class="fu">show</span> <span class="dt">IncrCountV3</span>))</span>
-<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item_</span> (<span class="fu">show</span> <span class="dt">ReadCountV3</span>))</span>
-<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item_</span> (<span class="fu">show</span> <span class="dt">ToggleCountV3</span>))</span>
-<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item_</span> (<span class="fu">show</span> <span class="dt">IncrCountV3</span>))</span>
-<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item_</span> (<span class="fu">show</span> <span class="dt">ReadCountV3</span>))</span></code></pre></div>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">ReadCountV3</span>))</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">IncrCountV3</span>))</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">IncrCountV3</span>))</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">ReadCountV3</span>))</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">ToggleCountV3</span>))</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">IncrCountV3</span>))</span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>  nc <span class="st">&quot;127.0.0.1&quot;</span> <span class="dv">3000</span> (<span class="dt">Item</span> <span class="dt">Nothing</span> (<span class="fu">show</span> <span class="dt">ReadCountV3</span>))</span></code></pre></div>
 <p>The above yields the following output.</p>
 <pre><code>UpgradeSucceeded &quot;counter&quot;
 Item &quot;Right (Right (Left 0))&quot;   -- The counter is 0.
@@ -776,9 +772,10 @@ from the schema change.</p>
 <p>There’s also a bunch of other <a
 href="https://github.com/stevana/hot-swapping-state-machines2/blob/main/TODO.md">things</a>
 that I thought of while working on this, which I don’t have any good
-answers for yet. If you feel that I’m missing something, or if any of
-these problems sound interesting to work on, please do feel free to get
-in <a href="https://stevana.github.io/about.html">touch</a>!</p>
+answers for yet. If you feel that I’m missing something, or if you know
+some answers or if any of these problems sound interesting to work on,
+please do feel free to get in <a
+href="https://stevana.github.io/about.html">touch</a>!</p>
 <p>Let me close by trying to tie it back to Barbara Liskov’s remark
 about the need for more complete programming languages. In a world where
 software systems are expected to evolve over time, wouldn’t it be neat
