@@ -524,7 +524,8 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb13-1"><a
 <p>We can to typecheck the above untyped upgrade into the following
 typed version.</p>
 <div class="sourceCode" id="cb14"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">UpgradeData</span> s a b <span class="ot">=</span> <span class="kw">forall</span> s&#39;<span class="op">.</span> <span class="dt">Typeable</span> s&#39; <span class="ot">=&gt;</span> <span class="dt">UpgradeData</span> (<span class="dt">T</span> s&#39; a b) (<span class="dt">T</span> () s s&#39;)</span></code></pre></div>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">UpgradeData</span> s a b <span class="ot">=</span> <span class="kw">forall</span> s&#39;<span class="op">.</span> <span class="dt">Typeable</span> s&#39; <span class="ot">=&gt;</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">UpgradeData</span> (<span class="dt">T</span> s&#39; a b) (<span class="dt">T</span> () s s&#39;)</span></code></pre></div>
 <p>The way typechecking for upgrades work is basically the user needs to
 provide the untyped types of the state, input and output types of the
 new state machine as well as the state migration function, from the
@@ -660,7 +661,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb25-1"><a
 <span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">IncrCountV2</span><span class="ot"> ::</span> <span class="dt">InputV2</span></span>
 <span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">IncrCountV2</span>  <span class="ot">=</span> <span class="dt">Right</span> <span class="dt">IncrCountV1</span></span></code></pre></div>
-<p>The state machine looks the same, except for the last
+<p>The state machine looks the same, except for the first
 <code>Case</code> where we update the state to be <code>0</code>, thus
 resetting the counter.</p>
 <div class="sourceCode" id="cb26"><pre
