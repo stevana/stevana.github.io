@@ -32,7 +32,7 @@ $endif$
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
-    <img src="https://stevana-github-io.goatcounter.com/count?p=stevana.github.io/$path$">
+    <img src="https://stevana-github-io.goatcounter.com/count?p=/$path$&t=$pagetitle$">
   </noscript>
 </head>
 <body>
