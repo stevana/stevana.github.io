@@ -108,6 +108,7 @@ markdownToHtml site markdownFile = do
   let readerOpts = def { readerExtensions = githubMarkdownExtensions <>
                                             pandocExtensions }
   pandoc <- runIOorExplode $ readMarkdown readerOpts markdown'
+  let htmlFile = replaceExtensions markdownFile "html"
   html <- runIOorExplode $ do
     let writerOpts = def
           { writerTOCDepth = 4
@@ -116,6 +117,7 @@ markdownToHtml site markdownFile = do
           , writerVariables = context $
               [ ("lang", "en")
               , ("title", title)
+              , ("path", T.pack (takeFileName htmlFile))
               , ("author-meta", _author site)
               , ("pagetitle", title)
               , ("css", T.pack cSS_FILE)
@@ -125,7 +127,6 @@ markdownToHtml site markdownFile = do
 
           }
     writeHtml5String writerOpts pandoc
-  let htmlFile = replaceExtensions markdownFile "html"
   T.writeFile htmlFile html
 
 ------------------------------------------------------------------------
