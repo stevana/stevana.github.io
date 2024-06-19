@@ -76,6 +76,11 @@ topics:
     - title: Load/soak testing
       status: Planned
 
+    - title: The sad state of property-based testing libraries
+      date: 2024-06-19T00:00:00Z
+      content: https://raw.githubusercontent.com/stevana/stateful-pbt-with-fakes/main/README.md
+      status: FirstDraft
+
 # ----------------------------------------------------------------------
 - topic: Deployment
   posts:
