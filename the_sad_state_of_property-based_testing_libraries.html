@@ -88,8 +88,6 @@ implementation</a></li>
 id="toc-example-parallel-counter">Example: parallel counter</a></li>
 <li><a href="#example-process-registry"
 id="toc-example-process-registry">Example: process registry</a></li>
-<li><a href="#example-key-value-store"
-id="toc-example-key-value-store">Example: key-value store</a></li>
 </ul></li>
 <li><a href="#integration-testing-with-contract-tested-fakes"
 id="toc-integration-testing-with-contract-tested-fakes">Integration
@@ -1632,7 +1630,7 @@ class="sourceCode diff"><code class="sourceCode diff"><span id="cb47-1"><a href=
 <span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
 <p>With this final tweak, the property passes. I hope that this somewhat
 long example gives you a feel for how property-based testing drives the
-development and debugging of code.</p>
+development and debugging of the code.</p>
 <h4 id="example-jug-puzzle-from-die-hard-3">Example: jug puzzle from Die
 Hard 3</h4>
 <p>In the movie Die Hard 3 there’s an <a
@@ -1667,7 +1665,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb48-1"><a
 <span id="cb48-17"><a href="#cb48-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">EmptySmall</span></span>
 <span id="cb48-18"><a href="#cb48-18" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">SmallIntoBig</span></span>
 <span id="cb48-19"><a href="#cb48-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">BigIntoSmall</span></span>
-<span id="cb48-20"><a href="#cb48-20" aria-hidden="true" tabindex="-1"></a>    <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Enum</span>, <span class="dt">Bounded</span>, <span class="dt">Functor</span>)</span>
+<span id="cb48-20"><a href="#cb48-20" aria-hidden="true" tabindex="-1"></a>    <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Enum</span>, <span class="dt">Bounded</span>, <span class="dt">Functor</span>, <span class="dt">Foldable</span>)</span>
 <span id="cb48-21"><a href="#cb48-21" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb48-22"><a href="#cb48-22" aria-hidden="true" tabindex="-1"></a>  <span class="kw">data</span> <span class="dt">Response</span> <span class="dt">Model</span> r <span class="ot">=</span> <span class="dt">Done</span> <span class="op">|</span> <span class="dt">BigJugIs4</span></span>
 <span id="cb48-23"><a href="#cb48-23" aria-hidden="true" tabindex="-1"></a>    <span class="kw">deriving</span> (<span class="dt">Eq</span>, <span class="dt">Show</span>, <span class="dt">Functor</span>, <span class="dt">Foldable</span>)</span>
@@ -1698,16 +1696,14 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb48-1"><a
 <span id="cb48-48"><a href="#cb48-48" aria-hidden="true" tabindex="-1"></a>  monitoring (_s, s&#39;) _cmd _resp <span class="ot">=</span></span>
 <span id="cb48-49"><a href="#cb48-49" aria-hidden="true" tabindex="-1"></a>    counterexample <span class="op">$</span> <span class="st">&quot;\n    State: &quot;</span> <span class="op">++</span> <span class="fu">show</span> s&#39; <span class="op">++</span> <span class="st">&quot;\n&quot;</span></span>
 <span id="cb48-50"><a href="#cb48-50" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-51"><a href="#cb48-51" aria-hidden="true" tabindex="-1"></a>  runCommandMonad _s <span class="ot">=</span> <span class="fu">id</span></span>
-<span id="cb48-52"><a href="#cb48-52" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-53"><a href="#cb48-53" aria-hidden="true" tabindex="-1"></a><span class="ot">done ::</span> <span class="dt">Model</span> <span class="ot">-&gt;</span> <span class="dt">Either</span> void (<span class="dt">Model</span>, <span class="dt">Response</span> <span class="dt">Model</span> ref)</span>
-<span id="cb48-54"><a href="#cb48-54" aria-hidden="true" tabindex="-1"></a>done s&#39; <span class="op">|</span> bigJug s&#39; <span class="op">==</span> <span class="dv">4</span> <span class="ot">=</span> <span class="fu">return</span> (s&#39;, <span class="dt">BigJugIs4</span>)</span>
-<span id="cb48-55"><a href="#cb48-55" aria-hidden="true" tabindex="-1"></a>        <span class="op">|</span> <span class="fu">otherwise</span>      <span class="ot">=</span> <span class="fu">return</span> (s&#39;, <span class="dt">Done</span>)</span>
-<span id="cb48-56"><a href="#cb48-56" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-57"><a href="#cb48-57" aria-hidden="true" tabindex="-1"></a><span class="ot">prop_dieHard ::</span> <span class="dt">Commands</span> <span class="dt">Model</span> <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
-<span id="cb48-58"><a href="#cb48-58" aria-hidden="true" tabindex="-1"></a>prop_dieHard cmds <span class="ot">=</span> withMaxSuccess <span class="dv">10000</span> <span class="op">$</span> monadicIO <span class="op">$</span> <span class="kw">do</span></span>
-<span id="cb48-59"><a href="#cb48-59" aria-hidden="true" tabindex="-1"></a>  runCommands cmds</span>
-<span id="cb48-60"><a href="#cb48-60" aria-hidden="true" tabindex="-1"></a>  assert <span class="dt">True</span></span></code></pre></div>
+<span id="cb48-51"><a href="#cb48-51" aria-hidden="true" tabindex="-1"></a><span class="ot">done ::</span> <span class="dt">Model</span> <span class="ot">-&gt;</span> <span class="dt">Either</span> void (<span class="dt">Model</span>, <span class="dt">Response</span> <span class="dt">Model</span> ref)</span>
+<span id="cb48-52"><a href="#cb48-52" aria-hidden="true" tabindex="-1"></a>done s&#39; <span class="op">|</span> bigJug s&#39; <span class="op">==</span> <span class="dv">4</span> <span class="ot">=</span> <span class="fu">return</span> (s&#39;, <span class="dt">BigJugIs4</span>)</span>
+<span id="cb48-53"><a href="#cb48-53" aria-hidden="true" tabindex="-1"></a>        <span class="op">|</span> <span class="fu">otherwise</span>      <span class="ot">=</span> <span class="fu">return</span> (s&#39;, <span class="dt">Done</span>)</span>
+<span id="cb48-54"><a href="#cb48-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-55"><a href="#cb48-55" aria-hidden="true" tabindex="-1"></a><span class="ot">prop_dieHard ::</span> <span class="dt">Commands</span> <span class="dt">Model</span> <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
+<span id="cb48-56"><a href="#cb48-56" aria-hidden="true" tabindex="-1"></a>prop_dieHard cmds <span class="ot">=</span> withMaxSuccess <span class="dv">10000</span> <span class="op">$</span> monadicIO <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb48-57"><a href="#cb48-57" aria-hidden="true" tabindex="-1"></a>  runCommands cmds</span>
+<span id="cb48-58"><a href="#cb48-58" aria-hidden="true" tabindex="-1"></a>  assert <span class="dt">True</span></span></code></pre></div>
 <p>When we run <code>quickcheck prop_dieHard</code> we get the following
 output:</p>
 <pre><code>   +++ OK, failed as expected. Assertion failed (after 199 tests and 11 shrinks):
@@ -2605,11 +2601,6 @@ same fix to <code>unregister</code>, we get:</p>
 <p>Killing a thread will unregister it, so we get a similar problem
 again. If we take the lock before calling <code>kill</code>, then the
 parallel tests finally pass.</p>
-<h4 id="example-key-value-store">Example: key-value store</h4>
-<ul>
-<li>change so it has a create command which creates a new ref?</li>
-<li>coverage to confirm</li>
-</ul>
 <h3 id="integration-testing-with-contract-tested-fakes">Integration
 testing with contract tested fakes</h3>
 <p>Throughout this post we’ve used in-memory models, or fakes, as
