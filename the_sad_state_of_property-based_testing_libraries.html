@@ -135,12 +135,12 @@ university called Chalmers. At the computer science department of
 Chalmers there are several research groups, two of which are
 particularly relevant to our story – the <em>Functional Programming</em>
 group and <em>Programming Logic</em> group. I’ll let you guess what the
-former group’s main interest is. The latter group’s mostly conserned
+former group’s main interest is. The latter group’s mostly concerned
 with a branch of functional programming where the type system is
 sufficiently expressive that it allows for formal specifications of
 programs, sometimes called dependently typed programming or type theory.
 Agda is an example of a Haskell-like dependently typed programming
-language, that also happens to be mainly developed by the Programing
+language, that also happens to be mainly developed by the Programming
 Logic group. Given the overlap of interest and proximity, researchers at
 the department are sometimes part of both groups or at least visit each
 others research seminars from time to time.</p>
@@ -166,20 +166,20 @@ specification is correct, without having to do the proving work. For
 example in the sorting example you can simply generate a random input
 list and then compare the output of your sorting function with the one
 in the standard library (which is likely to be correct). As programs get
-more complicted the ratio of effort saved by merely testing, as opposed
+more complicated the ratio of effort saved by merely testing, as opposed
 to proving, increases. In fact for bigger programs the effort involved
 in proving correctness is simply too high for it to be practical (this
 is an active area of research). Given all this, I hope that you can
 start to see why this idea excited John.</p>
 <p>While John was working on this idea, Koen Claessen, another member of
-the Functional Programing group, <a
+the Functional Programming group, <a
 href="https://youtu.be/x4BNj7mVTkw?t=289">stuck his head</a> into John’s
 office and asked what he was doing. Koen got excited as well and came
 back the next day with his improved version of John’s code. There was
 some things that Koen hadn’t thought about, so John iterated on his code
 and so it went back and forth for a week until the first implementation
 of property-based testing was written and not long afterwards they
-publised the paper <a
+published the paper <a
 href="https://www.cs.tufts.edu/~nr/cs257/archive/john-hughes/quick.pdf"><em>QuickCheck:
 A Lightweight Tool for Random Testing of Haskell Programs</em></a> (ICFP
 2000). I think it’s worth stressing the <em>lightweight tool</em> part
@@ -236,7 +236,7 @@ testing for fun and profit</em></a> (2007). This paper also mentions
 that it took John four iterations to get the stateful testing design
 right, so while the 2006 paper already does mention stateful testing
 it’s likely containing one of those earlier iteration of it.</p>
-<p>While the 2007 paper also mentiones <em>parallel</em> testing via
+<p>While the 2007 paper also mentions <em>parallel</em> testing via
 traces and interleavings, it’s vague on details. It’s only later in <a
 href="https://www.cse.chalmers.se/~nicsma/papers/finding-race-conditions.pdf"><em>Finding
 Race Conditions in Erlang with QuickCheck and PULSE</em></a> (ICFP 2009)
@@ -255,7 +255,7 @@ the hard stuff and staying sane</em></a> (2014), <em>Testing AUTOSAR
 software with QuickCheck</em> (2015), <em>Mysteries of Dropbox:
 Property-Based Testing of a Distributed Synchronization Service</em>
 (2016).</p>
-<p>Sometimes various minor extenions to stateful and parallel testings
+<p>Sometimes various minor extensions to stateful and parallel testings
 are needed in order to test some particular piece of software, e.g. C
 FFI bindings in the case of AUTOSAR or eventual consistency in the case
 of Dropbox, but by and large the stateful and parallel testing features
@@ -552,7 +552,7 @@ id="why-are-property-based-testing-libraries-in-such-a-sad-state">Why
 are property-based testing libraries in such a sad state?</h3>
 <p>Here are three reasons I’ve heard from John:</p>
 <ol type="1">
-<li><p>The stateful and parallel testing featurs are not as useful as
+<li><p>The stateful and parallel testing features are not as useful as
 testing pure functions. This is what John told me when I asked him why
 these features haven’t taken off in the context of Haskell (BobKonf
 2017);</p></li>
@@ -619,7 +619,7 @@ topic of making property-based testing of pure functions more accessible
 to programmers, one might wonder why we cannot do the same for stateful
 and parallel testing?</p>
 <p>The experience reports, that we’ve mentioned above, usually contain
-some novelty (which warrents publishing a new paper) rather than general
+some novelty (which warrants publishing a new paper) rather than general
 advice which can be done with the vanilla stateful and parallel testing
 features. Furthermore they require buying a Quviq license in order to
 reproduce the results, a show stopper for many people.</p>
@@ -645,14 +645,14 @@ industry adoption</h4>
 this is perhaps the most controversial point that John makes.</p>
 <p>If we try to see it from John’s perspective, how else would an
 academic get funding to work on tooling (which typically isn’t
-reconginised as doing research), or feedback from industry? Surely, one
+recognised as doing research), or feedback from industry? Surely, one
 cannot expect research funding agencies to pay for this?</p>
 <p>On the other hand one could ask why there isn’t a requirement that
-published research should be reproducable using open source tools (or at
+published research should be reproducible using open source tools (or at
 least tools that are freely available to the public and other
 researchers)?</p>
 <p>Trying to replicate the results from the Quviq QuickCheck papers
-(from 2006 and onwards) without buying a Quviq QuickCheck license, is
+(from 2006 and onward) without buying a Quviq QuickCheck license, is
 almost impossible without a lot of reverse engineering work.</p>
 <p>I suppose one could argue that one could have built a business around
 an open source tool, only charging for the training and consulting, but
@@ -663,7 +663,7 @@ would have worked (and it was probably even worse back in 2006).</p>
 adoption in industry, I think it’s by now fair to say it has not helped
 open source adoption.</p>
 <p>Or perhaps rather, it’s unlikely that a company that pays for a
-licence in Erlang would then go and port the library in another
+license in Erlang would then go and port the library in another
 language.</p>
 <h3 id="what-can-we-do-about-it">What can we do about it?</h3>
 <p>I think there’s at least two things worth trying.</p>
@@ -687,7 +687,7 @@ generally?</p></li>
 this post as follows:</p>
 <ol type="1">
 <li><p>Show how one can implement stateful and parallel property-based
-testing in about 330 lines of code (similar to the size of the original
+testing in about 400 lines of code (similar to the size of the original
 QuickCheck implementation);</p></li>
 <li><p>Make specifications simpler by using <a
 href="https://martinfowler.com/bliki/TestDouble.html">fakes</a> rather
@@ -830,7 +830,7 @@ previous inputs affects the output of the next input.</p>
 
     ---------------------------------&gt; time</code></pre>
 <p>Where <code>s</code> is the state, <code>i</code> is an input
-(e.g. <code>incr</code>) and <code>o</code> is an ouput. Notice how the
+(e.g. <code>incr</code>) and <code>o</code> is an output. Notice how the
 state evolves over time and depends on the history of inputs.</p>
 <p>In the pure case each test case is a single input, in the stateful
 case we need a sequence of inputs in order to test how the system
@@ -944,7 +944,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a
 true, because it’s an example. In reality the model will often be many
 orders of magnitude smaller. This is due to the fact that the model,
 unlike the real implementation, doesn’t need to persisting to disk,
-communicating over the network, or various perform time or space
+communicating over the network, or perform various time or space
 optimisations. Recall the LevelDB example from above.</p>
 <h5 id="tests">Tests</h5>
 <p>The tests, or property, can now be written as follows.</p>
@@ -1053,7 +1053,7 @@ minimise it.</p>
 <h4 id="stateful-library-implementation">Stateful library
 implementation</h4>
 <p>In the example above we implemented the <code>StateModel</code>
-interface (or type class), next we’ll have a look at the definiton of
+interface (or type class), next we’ll have a look at the definition of
 this interface and the testing functionality we can derive by
 programming against the interface.</p>
 <h5 id="stateful-testing-interface">Stateful testing interface</h5>
@@ -1129,7 +1129,7 @@ their response types respectively.</p>
 <p>In addition there’s also three optional types, that we’ve not needed
 in the counter example. The first is references, these are used to refer
 back to previously created resources. For example if we open a file
-handle on a POSIX-like filesystem, then later commands need to be able
+handle on a POSIX-like file system, then later commands need to be able
 to refer to that file handle when wanting to write or read from it. The
 second datatype is <code>PreconditionFailure</code>, which is used to
 give a nice error message when a command is executed in a disallowed
@@ -1267,7 +1267,7 @@ against the model and the real system using <code>runFake</code> and
 <code>runReal</code>. In the process of doing so <code>runReal</code>
 will produce <code>Reference</code>s that later commands might use, so
 we also need to substitute symbolic references for real references.
-This, together coverage statatistics bookkeeping, is done in the
+This, together coverage statistics bookkeeping, is done in the
 <code>runCommands</code> function:</p>
 <div class="sourceCode" id="cb23"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="ot">runCommands ::</span> <span class="kw">forall</span> state<span class="op">.</span> <span class="dt">StateModel</span> state</span>
@@ -1519,7 +1519,7 @@ class="sourceCode diff"><code class="sourceCode diff"><span id="cb34-1"><a href=
 <span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a><span class="va">+ | length (fqElems (s Map.! q)) &gt;= fqSize (s Map.! q) = Left QueueIsFull</span></span>
 <span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>  | otherwise = return (Map.adjust (\fq -&gt; fq { fqElems = fqElems fq ++ [i] }) q s, ())</span></code></pre></div>
 <p>We can add the counterexample that we got as a regression test to our
-testsuite as follows:</p>
+test suite as follows:</p>
 <div class="sourceCode" id="cb35"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="ot">unit_queueFull ::</span> <span class="dt">IO</span> ()</span>
 <span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>unit_queueFull <span class="ot">=</span> quickCheck (withMaxSuccess <span class="dv">1</span> (expectFailure (prop_queue cmds)))</span>
@@ -1829,7 +1829,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb52-1"><a
 <span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>   j <span class="ot">&lt;-</span> readIORef gLOBAL_COUNTER</span>
 <span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a>   writeIORef gLOBAL_COUNTER (i <span class="op">+</span> j)</span></code></pre></div>
 <p>Because we first read the old value and <em>then</em> write the new
-incremented value in an non-atomic way, it’s possilbe that if two
+incremented value in an non-atomic way, it’s possible that if two
 threads do this at the same time they overwrite each others increment.
 For example:</p>
 <pre><code>   thread 1, incr 1     |  thread 2, incr 2
@@ -1873,13 +1873,13 @@ width=60%></p>
 src="https://raw.githubusercontent.com/stevana/stateful-pbt-with-fakes/main/images/concurrent_counter.svg"
 width=60%></p>
 <p>Note that the execution of some commands overlap in time, this is
-what’s meant by concurrent and arguebly it’s easier to see the overlap
+what’s meant by concurrent and arguably it’s easier to see the overlap
 here than in the original sequence diagram.</p>
 <p>We’ve also abstracted away the counter, it’s a black box from the
 perspective of the threads. The only thing we know for sure is when we
 invoked the operation and when it returned, which is what our interval
 captures. We also know that the effect of the operation must have
-happend sometime within that interval.</p>
+happened sometime within that interval.</p>
 <p>One such concurrent history can have different interleavings,
 depending on when exactly the effect of the commands happen. Here are
 two possible interleavings, where the red cross symbolises when the
@@ -1913,7 +1913,7 @@ or <code>2</code> however, then it would be a non-linearisable outcome.
 We can see visually that that <code>get</code> happens after both
 <code>incr</code>, so no matter where we choose to place the red crosses
 on the <code>incr</code>s the effects will happen before that
-<code>get</code> so it must return <code>3</code>. Is it even possilbe
+<code>get</code> so it must return <code>3</code>. Is it even possible
 that <code>1</code> or <code>2</code> are returned? It’s, imagine if
 <code>incr</code> is implemented by first reading the current value then
 storing the incremented value, in that case there can be a race where
@@ -1922,7 +1922,7 @@ the <code>incr</code>s overwrite each other.</p>
 threads and gather a concurrent history of the execution. We then try to
 find a sequential interleaving (a choice of where the red crosses in the
 diagrams should be) which respects the a sequential state machine model
-specfication. If we find a single one that does, then we say that the
+specification. If we find a single one that does, then we say that the
 history linearises and that the concurrent execution is correct, if we
 cannot find a sequential interleaving that respects the model then the
 history doesn’t linearise and we have found a problem.</p>
@@ -1945,11 +1945,11 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb54-1"><a
 <span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">Fork</span> state <span class="ot">=</span> <span class="dt">Fork</span> [<span class="dt">Command</span> state (<span class="dt">Var</span> (<span class="dt">Reference</span> state))]</span></code></pre></div>
 <p>The idea is that the commands inside <code>Fork</code>s get executed
 in parallel, this list will only be between one and three commands long,
-i.e. capturing single, double or triple threaded exeuction. The amount
+i.e. capturing single, double or triple threaded execution. The amount
 of <code>Fork</code>s themselves vary with the size of the test case,
 just like when we were doing the sequential testing.</p>
 <p>Depending on the order in which the commands in the
-<code>Fork</code>s get executed, we can potententially get different
+<code>Fork</code>s get executed, we can potentially get different
 models. For example
 <code>Fork [Write "a" "foo", Write "a" "bar"]</code>, depending on which
 branch of the <code>Fork</code> gets executed first we might end up with
@@ -2025,8 +2025,8 @@ we can end up generating: <code>Fork New New</code>, which doesn’t make
 sense. It should also be noted that making <code>New</code> fail
 gracefully when a <code>New</code> has already been executed would need
 a global boolean flag, which is ugly.</p>
-<p>The solution to the preconditon problem is to check that they hold in
-all possible interleavings of a <code>Fork</code>, which is what
+<p>The solution to the precondition problem is to check that they hold
+in all possible interleavings of a <code>Fork</code>, which is what
 <code>parallelSafe</code> does:</p>
 <div class="sourceCode" id="cb58"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a><span class="ot">parallelSafe ::</span> <span class="dt">ParallelModel</span> state <span class="ot">=&gt;</span> [state] <span class="ot">-&gt;</span> <span class="dt">Fork</span> state <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
@@ -2195,7 +2195,7 @@ parallel testing that it’s enough to find <em>any</em> possible
 interleaving which respects the sequential model. So let’s start by
 enumerating all possible interleavings using a <a
 href="https://hackage.haskell.org/package/containers-0.7/docs/Data-Tree.html"><code>Rose</code>
-tree</a> datastrucutre:</p>
+tree</a> data structure:</p>
 <div class="sourceCode" id="cb64"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Op</span> state <span class="ot">=</span> <span class="dt">Op</span> (<span class="dt">Command</span> state (<span class="dt">Var</span> (<span class="dt">Reference</span> state)))</span>
 <span id="cb64-2"><a href="#cb64-2" aria-hidden="true" tabindex="-1"></a>                   (<span class="dt">Response</span> state (<span class="dt">Reference</span> state))</span>
@@ -2278,7 +2278,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb68-1"><a
 QuickCheck tries a smaller test case (which still has the race
 condition), but because of a different interleaving of threads the race
 doesn’t get triggered and so QuickCheck thinks it found the minimal test
-case (because the smaller test case, that the shriker picked,
+case (because the smaller test case, that the shrinker picked,
 passes).</p>
 <p>The proper solution to this problem is to use a deterministic thread
 scheduler, this is what they do the parallel testing paper. A simpler
@@ -2316,7 +2316,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb72-1"><a
 <code>import Data.IORef</code> to <code>import SleepyIORef</code> and
 rerun the tests and get better shrinking.</p>
 <p>This situation is not ideal, but save us the trouble of having to
-reimplement a scheduler.</p>
+re-implement a scheduler.</p>
 <p>It’s worth stressing that the race is found in the unmodified code
 and the introduction of sleep is only needed to make the counterexample
 smaller.</p>
@@ -2672,7 +2672,7 @@ state machine specifications.</p>
 <p>XXX: Post-conditions are more general than fakes? Relational vs
 functional?</p>
 <p>Fake instead of state machine spec is not only easier for programmers
-unfamilar with formal specification</p>
+unfamiliar with formal specification</p>
 <p>But there are other advantages to having a fake, for example we can
 use this fake in integration tests with components that depend on the
 software that we tested with the fake.</p>
@@ -2747,10 +2747,10 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb89-1"><a
 <span id="cb89-15"><a href="#cb89-15" aria-hidden="true" tabindex="-1"></a><span class="ot">deploy ::</span> <span class="dt">IO</span> ()</span>
 <span id="cb89-16"><a href="#cb89-16" aria-hidden="true" tabindex="-1"></a>deploy <span class="ot">=</span> prog real</span></code></pre></div>
 <p>When we integration test our new component we can use the
-<code>fake</code> instance to make the tests fast and determinstic,
+<code>fake</code> instance to make the tests fast and deterministic,
 while when we deploy we use the <code>real</code> instance and because
 of our stateful property-based tests we know that the fake is faithful
-to the real implementaton.</p>
+to the real implementation.</p>
 <h4 id="example-file-system">Example: file system</h4>
 <p>The next example is a file system, first used by Edsko de Vries in
 the <a
@@ -2798,7 +2798,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb92-1"><a
 <span id="cb92-7"><a href="#cb92-7" aria-hidden="true" tabindex="-1"></a>  , iRead  <span class="ot">=</span> rRead</span>
 <span id="cb92-8"><a href="#cb92-8" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
 <p>The fake implementation of the interface is, as usual, implemented
-using an in-memory datastructure:</p>
+using an in-memory data structure:</p>
 <div class="sourceCode" id="cb93"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb93-1"><a href="#cb93-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">FHandle</span> <span class="ot">=</span> <span class="dt">Var</span> <span class="dt">Handle</span></span>
 <span id="cb93-2"><a href="#cb93-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -2882,9 +2882,9 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb95-1"><a
 <span id="cb95-7"><a href="#cb95-7" aria-hidden="true" tabindex="-1"></a>  iWrite ifs h <span class="st">&quot;baz&quot;</span></span>
 <span id="cb95-8"><a href="#cb95-8" aria-hidden="true" tabindex="-1"></a>  iClose ifs h</span>
 <span id="cb95-9"><a href="#cb95-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">putStrLn</span> <span class="op">=&lt;&lt;</span> iRead ifs f</span></code></pre></div>
-<p>We can then use the fake filesystem when we integration test and thus
-get fast and deterministic tests, and then use the real filesystem when
-we deploy.</p>
+<p>We can then use the fake file system when we integration test and
+thus get fast and deterministic tests, and then use the real file system
+when we deploy.</p>
 <div class="sourceCode" id="cb96"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb96-1"><a href="#cb96-1" aria-hidden="true" tabindex="-1"></a><span class="ot">test ::</span> <span class="dt">IO</span> ()</span>
 <span id="cb96-2"><a href="#cb96-2" aria-hidden="true" tabindex="-1"></a>test <span class="ot">=</span> prog <span class="op">=&lt;&lt;</span> fake</span>
@@ -2904,8 +2904,8 @@ in the system that Edsko worked on the component that depended on the
 file system is a database. In such cases it makes sense to write a whole
 new stateful and parallel property-based test suite using database
 commands and responses, it’s those tests that do the integration testing
-between the database and the fake filesystem, while the stateful and
-parallel property-based tests of the filesystem alone do the contract
+between the database and the fake file system, while the stateful and
+parallel property-based tests of the file system alone do the contract
 tests that ensure that the file system fake is faithful to the real file
 system.</p>
 <h4 id="example-bigger-system-of-components">Example: bigger system of
@@ -2946,7 +2946,7 @@ components or services<a href="#fn7" class="footnote-ref" id="fnref7"
 role="doc-noteref"><sup>7</sup></a>.</p>
 <h2 id="conclusion-and-future-work">Conclusion and future work</h2>
 <p>We’ve seen how stateful and parallel property-based testing can be
-implemented in about 400 lines of code, which is comparible to the 300
+implemented in about 400 lines of code, which is comparable to the 300
 lines of code of the first version of QuickCheck (which didn’t have
 shrinking).</p>
 <p>We’ve also had a look at several examples of how we can use fakes as
@@ -3033,11 +3033,11 @@ reduce the amount of work for the checker is partial order reduction.
 During concurrent execution sometimes we can commute two operations
 without changing the outcome, e.g. the interleaving of
 <code>Write "a" 1</code> and <code>Write "b" 2</code> doesn’t matter,
-they all end up the same state. We can expoit this fact to check less
+they all end up the same state. We can exploit this fact to check less
 histories;</li>
 <li>The properties we’ve covered in this post are so called safety
 properties, i.e. “something bad will not happen”. There’s another class
-of properties called liveness and fariness properties, i.e. “something
+of properties called liveness and fairness properties, i.e. “something
 good will eventually happen”. An example of liveness and fairness is
 that “a request made by a client will eventually be served”. It would be
 interesting to see what’s needed to support liveness and fairness. See
@@ -3056,13 +3056,15 @@ fault-injection and at the same time minimise the potential mismatch
 between the fake and the real implementation of said interfaces is a
 challenge.</li>
 </ol>
-<p>Formal specification and proofs are fundamental to computer science
-and have occupied minds since <a
+<p>I’d like to end by saying few words about formal specification, the
+source of the idea behind property-based testing. Formal specification
+and proofs are fundamental to computer science and have occupied minds
+since <a
 href="https://turingarchive.kings.cam.ac.uk/publications-lectures-and-talks-amtb/amt-b-8">Alan
-Turing</a> (1949). Property-based testing gives us an execellent
+Turing</a> (1949). Property-based testing gives us an excellent
 opportunity to introduce formal specification to a lot of programmers
 without the tedious and laborious formal proof part, we should cherish
-such eduction opportunities.</p>
+such education opportunities.</p>
 <h2 id="acknowledgments">Acknowledgments</h2>
 <p>I’d like to thank Daniel Gustafsson for helping implement the
 <code>quickcheck-state-machine</code> library with me seven years ago,
@@ -3087,7 +3089,7 @@ href="https://strategiska.se/forskning/genomford-forskning/ramanslag-inom-it-omr
 must be the project mentioned above.<a href="#fnref1"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn2"><p>There’s some room for error here from the users side,
-e.g. the user could create non-unique refererences. In a proper library
+e.g. the user could create non-unique references. In a proper library
 one might want to introduce a <code>genSym</code> construct which
 guarantees uniqueness.<a href="#fnref2" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
