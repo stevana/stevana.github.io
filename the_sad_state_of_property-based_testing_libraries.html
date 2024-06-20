@@ -62,9 +62,9 @@ id="toc-what-can-we-do-about-it">What can we do about it?</a></li>
 <li><a href="#pure-property-based-testing-recap"
 id="toc-pure-property-based-testing-recap">Pure property-based testing
 recap</a></li>
-<li><a href="#stateful-property-based-testing-in-180-loc"
-id="toc-stateful-property-based-testing-in-180-loc">Stateful
-property-based testing in ~180 LOC</a>
+<li><a href="#stateful-property-based-testing"
+id="toc-stateful-property-based-testing">Stateful property-based
+testing</a>
 <ul>
 <li><a href="#example-counter" id="toc-example-counter">Example:
 counter</a></li>
@@ -77,9 +77,9 @@ id="toc-example-circular-buffer">Example: circular buffer</a></li>
 id="toc-example-jug-puzzle-from-die-hard-3">Example: jug puzzle from Die
 Hard 3</a></li>
 </ul></li>
-<li><a href="#parallel-property-based-testing-in-230-loc"
-id="toc-parallel-property-based-testing-in-230-loc">Parallel
-property-based testing in ~230 LOC</a>
+<li><a href="#parallel-property-based-testing"
+id="toc-parallel-property-based-testing">Parallel property-based
+testing</a>
 <ul>
 <li><a href="#parallel-library-implementation"
 id="toc-parallel-library-implementation">Parallel library
@@ -789,8 +789,8 @@ e.g. <code>\(i j k :: Int) -&gt; (i + j) + k == i + (j + k)</code>;</li>
 </ul>
 <p>Readers familiar with discrete math might recognise some of the
 above.</p>
-<h3 id="stateful-property-based-testing-in-180-loc">Stateful
-property-based testing in ~180 LOC</h3>
+<h3 id="stateful-property-based-testing">Stateful property-based
+testing</h3>
 <p>In the pure property-based testing case, that we just looked at, the
 picture of the test setup looks a bit like this:</p>
 <pre><code>         +-----+
@@ -1275,7 +1275,7 @@ against the model and the real system using <code>runFake</code> and
 <code>runReal</code>. In the process of doing so <code>runReal</code>
 will produce <code>Reference</code>s that later commands might use, so
 we also need to substitute symbolic references for real references.
-This, together coverage statistics bookkeeping, is done in the
+This, together with coverage statistics bookkeeping, is done in the
 <code>runCommands</code> function:</p>
 <div class="sourceCode" id="cb22"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="ot">runCommands ::</span> <span class="kw">forall</span> state<span class="op">.</span> <span class="dt">StateModel</span> state</span>
@@ -1435,12 +1435,59 @@ gets if the queue is empty and thus we’ll never execute the C code for
 <p>Having defined our model the interface implementation is almost
 mechanical.</p>
 <div class="sourceCode" id="cb29"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"></code></pre></div>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">StateModel</span> <span class="dt">State</span> <span class="kw">where</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  initialState <span class="ot">=</span> Map.empty</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">type</span> <span class="dt">Reference</span> <span class="dt">State</span> <span class="ot">=</span> <span class="dt">Queue</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">type</span> <span class="dt">PreconditionFailure</span> <span class="dt">State</span> <span class="ot">=</span> <span class="dt">Err</span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>  <span class="kw">data</span> <span class="dt">Command</span> <span class="dt">State</span> q</span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a>    <span class="ot">=</span> <span class="dt">New</span> <span class="dt">Int</span></span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">Put</span> q <span class="dt">Int</span></span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">Get</span> q</span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">Size</span> q</span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a>    <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Functor</span>, <span class="dt">Foldable</span>)</span>
+<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-16"><a href="#cb29-16" aria-hidden="true" tabindex="-1"></a>  <span class="kw">data</span> <span class="dt">Response</span> <span class="dt">State</span> q</span>
+<span id="cb29-17"><a href="#cb29-17" aria-hidden="true" tabindex="-1"></a>    <span class="ot">=</span> <span class="dt">New_</span> q</span>
+<span id="cb29-18"><a href="#cb29-18" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">Put_</span> ()</span>
+<span id="cb29-19"><a href="#cb29-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">Get_</span> <span class="dt">Int</span></span>
+<span id="cb29-20"><a href="#cb29-20" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="dt">Size_</span> <span class="dt">Int</span></span>
+<span id="cb29-21"><a href="#cb29-21" aria-hidden="true" tabindex="-1"></a>    <span class="kw">deriving</span> (<span class="dt">Eq</span>, <span class="dt">Show</span>, <span class="dt">Functor</span>, <span class="dt">Foldable</span>)</span>
+<span id="cb29-22"><a href="#cb29-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-23"><a href="#cb29-23" aria-hidden="true" tabindex="-1"></a>  generateCommand s</span>
+<span id="cb29-24"><a href="#cb29-24" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> Map.null s <span class="ot">=</span> <span class="dt">New</span> <span class="op">.</span> getPositive <span class="op">&lt;$&gt;</span> arbitrary</span>
+<span id="cb29-25"><a href="#cb29-25" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="fu">otherwise</span>  <span class="ot">=</span> oneof</span>
+<span id="cb29-26"><a href="#cb29-26" aria-hidden="true" tabindex="-1"></a>      [ <span class="dt">New</span> <span class="op">.</span> getPositive <span class="op">&lt;$&gt;</span> arbitrary</span>
+<span id="cb29-27"><a href="#cb29-27" aria-hidden="true" tabindex="-1"></a>      , <span class="dt">Put</span>  <span class="op">&lt;$&gt;</span> arbitraryQueue <span class="op">&lt;*&gt;</span> arbitrary</span>
+<span id="cb29-28"><a href="#cb29-28" aria-hidden="true" tabindex="-1"></a>      , <span class="dt">Get</span>  <span class="op">&lt;$&gt;</span> arbitraryQueue</span>
+<span id="cb29-29"><a href="#cb29-29" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="cb29-30"><a href="#cb29-30" aria-hidden="true" tabindex="-1"></a>    <span class="kw">where</span></span>
+<span id="cb29-31"><a href="#cb29-31" aria-hidden="true" tabindex="-1"></a><span class="ot">      arbitraryQueue ::</span> <span class="dt">Gen</span> (<span class="dt">Var</span> <span class="dt">Queue</span>)</span>
+<span id="cb29-32"><a href="#cb29-32" aria-hidden="true" tabindex="-1"></a>      arbitraryQueue <span class="ot">=</span> elements (Map.keys s)</span>
+<span id="cb29-33"><a href="#cb29-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-34"><a href="#cb29-34" aria-hidden="true" tabindex="-1"></a>  shrinkCommand _s (<span class="dt">New</span> i)   <span class="ot">=</span> [ <span class="dt">New</span> i&#39;   <span class="op">|</span> <span class="dt">Positive</span> i&#39; <span class="ot">&lt;-</span> shrink (<span class="dt">Positive</span> i) ]</span>
+<span id="cb29-35"><a href="#cb29-35" aria-hidden="true" tabindex="-1"></a>  shrinkCommand _s (<span class="dt">Put</span> q i) <span class="ot">=</span> [ <span class="dt">Put</span> q i&#39; <span class="op">|</span> i&#39; <span class="ot">&lt;-</span> shrink i ]</span>
+<span id="cb29-36"><a href="#cb29-36" aria-hidden="true" tabindex="-1"></a>  shrinkCommand _s _cmd <span class="ot">=</span> []</span>
+<span id="cb29-37"><a href="#cb29-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-38"><a href="#cb29-38" aria-hidden="true" tabindex="-1"></a>  runFake (<span class="dt">New</span> sz)  s <span class="ot">=</span> <span class="fu">fmap</span> <span class="dt">New_</span>  <span class="op">&lt;$&gt;</span> fNew sz s</span>
+<span id="cb29-39"><a href="#cb29-39" aria-hidden="true" tabindex="-1"></a>  runFake (<span class="dt">Put</span> q i) s <span class="ot">=</span> <span class="fu">fmap</span> <span class="dt">Put_</span>  <span class="op">&lt;$&gt;</span> fPut q i s</span>
+<span id="cb29-40"><a href="#cb29-40" aria-hidden="true" tabindex="-1"></a>  runFake (<span class="dt">Get</span> q)   s <span class="ot">=</span> <span class="fu">fmap</span> <span class="dt">Get_</span>  <span class="op">&lt;$&gt;</span> fGet q s</span>
+<span id="cb29-41"><a href="#cb29-41" aria-hidden="true" tabindex="-1"></a>  runFake (<span class="dt">Size</span> q)  s <span class="ot">=</span> <span class="fu">fmap</span> <span class="dt">Size_</span> <span class="op">&lt;$&gt;</span> fSize q s</span>
+<span id="cb29-42"><a href="#cb29-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-43"><a href="#cb29-43" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- Here `new`, `put`, `get` and `size` are FFI wrappers for their respective C</span></span>
+<span id="cb29-44"><a href="#cb29-44" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- functions.</span></span>
+<span id="cb29-45"><a href="#cb29-45" aria-hidden="true" tabindex="-1"></a>  runReal (<span class="dt">New</span> sz)  <span class="ot">=</span> <span class="dt">New_</span>  <span class="op">&lt;$&gt;</span> new sz</span>
+<span id="cb29-46"><a href="#cb29-46" aria-hidden="true" tabindex="-1"></a>  runReal (<span class="dt">Put</span> q i) <span class="ot">=</span> <span class="dt">Put_</span>  <span class="op">&lt;$&gt;</span> put q i</span>
+<span id="cb29-47"><a href="#cb29-47" aria-hidden="true" tabindex="-1"></a>  runReal (<span class="dt">Get</span> q)   <span class="ot">=</span> <span class="dt">Get_</span>  <span class="op">&lt;$&gt;</span> get q</span>
+<span id="cb29-48"><a href="#cb29-48" aria-hidden="true" tabindex="-1"></a>  runReal (<span class="dt">Size</span> q)  <span class="ot">=</span> <span class="dt">Size_</span> <span class="op">&lt;$&gt;</span> size q</span></code></pre></div>
 <p>The only new thing worth paying attention to is the <code>q</code> in
 <code>Command</code> and <code>Response</code>, which is parametrised so
 that it works for both symbolic and real references. The
-<code>Functor</code> instance let’s us to substitution, while
-<code>Foldable</code> let’s us extract all new references from a
+<code>Functor</code> instance lets us do substitution, while
+<code>Foldable</code> lets us extract all new references from a
 response, so that we can substitute them in later
 <code>Command</code>s.</p>
 <h5 id="testing">Testing</h5>
@@ -1643,7 +1690,7 @@ long example gives you a feel for how property-based testing drives the
 development and debugging of the code.</p>
 <h4 id="example-jug-puzzle-from-die-hard-3">Example: jug puzzle from Die
 Hard 3</h4>
-<p>In the movie Die Hard 3 there’s an <a
+<p>In the movie Die Hard 3 there’s a <a
 href="https://www.youtube.com/watch?v=BVtQNK_ZUJg">scene</a> where Bruce
 Willis and Samuel L. Jackson have to solve a puzzle in order to stop a
 bomb from going off. The puzzle is: given a 3L and a 5L jug, how can you
@@ -1748,8 +1795,8 @@ output:</p>
 verify that it’s indeed a correct solution to the puzzle<a href="#fn3"
 class="footnote-ref" id="fnref3"
 role="doc-noteref"><sup>3</sup></a>.</p>
-<h3 id="parallel-property-based-testing-in-230-loc">Parallel
-property-based testing in ~230 LOC</h3>
+<h3 id="parallel-property-based-testing">Parallel property-based
+testing</h3>
 <p>Let’s now turn our focus to parallel property-based testing.</p>
 <p>Debugging buggy concurrent code is not fun. The main reason for this
 is that the threads interleave in different ways between executions,
@@ -1757,21 +1804,21 @@ making it hard to reproduce the bug and hard to verify that a bug fix
 actually worked.</p>
 <p>Ideally we’d like to make working with concurrent code as pleasant as
 the sequential stateful case and without the user having to write any
-additional test code.</p>
-<p>In order to explain how we can achieve this, we need to first
-understand how we can test concurrent code in a reproducible way.</p>
+additional test code. In order to explain how we can achieve this, we
+need to first understand how we can test concurrent code in a
+reproducible way.</p>
 <p>Recall our <code>Counter</code> that we looked at in the sequential
 testing case. Here we’ll be using a slight generalisation where the
 <code>incr</code> takes an integer parameter which specifies by how much
-we want to increment (as opposed to always incrementing by
+we want to increment (instead of always incrementing by
 <code>1</code>).</p>
+<p>When we interact with the counter sequentially, i.e. one command at
+the time, then it appears to count correctly:</p>
 <div class="sourceCode" id="cb49"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> incr <span class="dv">1</span></span>
 <span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> incr <span class="dv">2</span></span>
 <span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> get</span>
 <span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a><span class="dv">3</span></span></code></pre></div>
-<p>When we interact with the counter sequentially, i.e. one command at
-the time, then it appears to count correctly.</p>
 <p>But if we instead concurrently issue the <code>incr</code>ements , we
 see something strange:</p>
 <div class="sourceCode" id="cb50"><pre
@@ -1791,7 +1838,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb51-1"><a
 <p>Because we first read the old value and <em>then</em> write the new
 incremented value in an non-atomic way, it’s possible that if two
 threads do this at the same time they overwrite each others increment.
-For example:</p>
+For example, consider the interleaving:</p>
 <pre><code>   thread 1, incr 1     |  thread 2, incr 2
    ---------------------+------------------
     0 &lt;- readIORef      |
@@ -1889,13 +1936,13 @@ history doesn’t linearise and we have found a problem.</p>
 <h4 id="parallel-library-implementation">Parallel library
 implementation</h4>
 <p>Let’s try to implement the above. We’ll split up the implementation
-in three parts. First we’ll show how to generate and shrink parallel
+in three parts. First, we’ll show how to generate and shrink parallel
 commands, these will be different than the sequential commands as we
-have more than one thread that does the execution. Second we’ll
-implement linearisability checking by trying to find an interleaving of
-the concurrent history which respects the sequential model. Finally,
-we’ll have a look at how to execute the generated parallel commands to
-produce a concurrent history.</p>
+have more than one thread that does the execution. Second, we’ll have a
+look at how to execute the generated parallel commands to produce a
+concurrent history. Finally, we’ll implement linearisability checking by
+trying to find an interleaving of the concurrent history which respects
+the sequential model.</p>
 <h5 id="parallel-program-generation-and-shrinking">Parallel program
 generation and shrinking</h5>
 <p>First we need define what a parallel program is:</p>
@@ -1968,23 +2015,11 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb56-1"><a
 <p>In the sequential case a precondition is a contract that needs to be
 fulfilled by the client before the command is issued. In the parallel
 case there are multiple clients, so it could be the case that one client
-unknowingly breaks another clients precondition.</p>
-<p>E.g. <code>Fork [Write "a" "foo", Delete "a"]</code>, where the
-precondition for both commands is that <code>"a"</code> exists. If
+unknowingly breaks another clients precondition. For example
+<code>Fork [Write "a" "foo", Delete "a"]</code>, where the precondition
+for both commands is that <code>"a"</code> exists. If
 <code>Delete</code> gets executed first then it would break
 <code>Write</code>’s precondition.</p>
-<p>One idea might be to drop all preconditions in the parallel case and
-make all commands be able to fail gracefully instead of crashing, e.g.
-<code>Write_ (Either DoesntExist ())</code>.</p>
-<p>XXX: make counter or queue example into one of such examples:</p>
-<p>The problem with this approach is that examples such as the ticket
-dispenser have initialisation commands such as <code>New</code> which
-create a ticket dispenser reference upon which the later commands depend
-on, so without preconditions forbidding more than one <code>New</code>
-we can end up generating: <code>Fork New New</code>, which doesn’t make
-sense. It should also be noted that making <code>New</code> fail
-gracefully when a <code>New</code> has already been executed would need
-a global boolean flag, which is ugly.</p>
 <p>The solution to the precondition problem is to check that they hold
 in all possible interleavings of a <code>Fork</code>, which is what
 <code>parallelSafe</code> does:</p>
@@ -2054,13 +2089,16 @@ issues, i.e. if we remove a command which creates a symbolic variable we
 also need to remove any fork that contains a command which uses said
 symbolic variable.</p>
 <p>Another option is to skip the scope checking and instead require the
-user to explicitly require preconditions which ensure the scope.</p>
+user to explicitly require preconditions which ensure the scope<a
+href="#fn4" class="footnote-ref" id="fnref4"
+role="doc-noteref"><sup>4</sup></a>.</p>
 <h5 id="parallel-running">Parallel running</h5>
-<p>One final difference in the parallel case is that because of the use
-of threads to achieve parallel execution, and the fact we can only spawn
-threads of things of type <code>IO</code>, we also need to be able to
-interpret our <code>CommandMonad</code> into <code>IO</code>, which is
-what <code>runCommandMonad</code> does.</p>
+<p>One final difference between the sequential and the parallel case is
+that because of the use of threads to achieve parallel execution, and
+the fact we can only spawn threads of things of type <code>IO</code>, we
+also need to be able to interpret our <code>CommandMonad</code> into
+<code>IO</code>, which is what <code>runCommandMonad</code> (which is
+also part of the <code>ParallelModel</code> type class) does.</p>
 <div class="sourceCode" id="cb59"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- If another command monad is used we need to provide a way run it inside the</span></span>
 <span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- IO monad. This is only needed for parallel testing, because IO is the only</span></span>
@@ -2207,9 +2245,16 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb64-1"><a
 <span id="cb64-14"><a href="#cb64-14" aria-hidden="true" tabindex="-1"></a>    any&#39; _p [] <span class="ot">=</span> <span class="dt">True</span></span>
 <span id="cb64-15"><a href="#cb64-15" aria-hidden="true" tabindex="-1"></a>    any&#39;  p xs <span class="ot">=</span> <span class="fu">any</span> p xs</span></code></pre></div>
 <h4 id="example-parallel-counter">Example: parallel counter</h4>
+<p>Having defined the <code>ParallelModel</code> interface (which
+depends on the <code>StateModel</code> interface from the sequential
+testing) and programmed our parallel generation, shrinking and parallel
+execution and linearisability checking against this interface, we
+basically get parallel testing for free by reusing the sequential
+model.</p>
+<h5 id="testing-1">Testing</h5>
 <p>This is the only new code we need to add to enable parallel testing
-of our <code>Counter</code> example<a href="#fn4" class="footnote-ref"
-id="fnref4" role="doc-noteref"><sup>4</sup></a> from before:</p>
+of our <code>Counter</code> example<a href="#fn5" class="footnote-ref"
+id="fnref5" role="doc-noteref"><sup>5</sup></a> from before:</p>
 <div class="sourceCode" id="cb65"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ParallelModel</span> <span class="dt">Counter</span> <span class="kw">where</span></span>
 <span id="cb65-2"><a href="#cb65-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -2233,7 +2278,12 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb67-1"><a
 <span id="cb67-4"><a href="#cb67-4" aria-hidden="true" tabindex="-1"></a>  writeIORef gLOBAL_COUNTER (n <span class="op">+</span> <span class="dv">1</span>)</span></code></pre></div>
 <p>then a failure is found:</p>
 <pre><code> Assertion failed (after 36 tests and 1 shrink):
-      ParallelCommands [Fork [Incr,Incr],Fork [Incr],Fork [Get,Get,Get],Fork [Incr],Fork [Get,Get],Fork [Get,Get],Fork [Incr],Fork [Get,Get,Incr],Fork [Incr],Fork [Get,Get,Get],Fork [Incr,Incr],Fork [Incr,Get],Fork [Incr,Incr],Fork [Get],Fork [Incr]]</code></pre>
+      ParallelCommands [Fork [Incr,Incr],Fork [Incr],Fork [Get,Get,Get],
+                        Fork [Incr],Fork [Get,Get],Fork [Get,Get],
+                        Fork [Incr],Fork [Get,Get,Incr],Fork [Incr],
+                        Fork [Get,Get,Get],Fork [Incr,Incr],
+                        Fork [Incr,Get],Fork [Incr,Incr],Fork [Get],
+                        Fork [Incr]]</code></pre>
 <p>But shrinking didn’t work very well. The reason for this is that
 QuickCheck tries a smaller test case (which still has the race
 condition), but because of a different interleaving of threads the race
@@ -2241,10 +2291,11 @@ doesn’t get triggered and so QuickCheck thinks it found the minimal test
 case (because the smaller test case, that the shrinker picked,
 passes).</p>
 <p>The proper solution to this problem is to use a deterministic thread
-scheduler, this is what they do the parallel testing paper. A simpler
-workaround is to introduce a small sleep after each read or write to
-shared memory, this will make it more likely that the same interleaving
-happens when we shrink the test:</p>
+scheduler, this is what they do the parallel testing <a
+href="https://www.cse.chalmers.se/~nicsma/papers/finding-race-conditions.pdf">paper</a>.
+A simpler workaround is to introduce a small sleep after each read or
+write to shared memory, this will make it more likely that the same
+interleaving happens when we shrink the test:</p>
 <div class="sourceCode" id="cb69"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a><span class="ot">incrRaceCondition ::</span> <span class="dt">IO</span> ()</span>
 <span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a>incrRaceCondition <span class="ot">=</span> <span class="kw">do</span></span>
@@ -2274,17 +2325,16 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb71-1"><a
 <span id="cb71-12"><a href="#cb71-12" aria-hidden="true" tabindex="-1"></a>  IORef.readIORef ref</span></code></pre></div>
 <p>That way if we find a race, we can change the import from
 <code>import Data.IORef</code> to <code>import SleepyIORef</code> and
-rerun the tests and get better shrinking.</p>
-<p>This situation is not ideal, but save us the trouble of having to
-re-implement a scheduler.</p>
-<p>It’s worth stressing that the race is found in the unmodified code
-and the introduction of sleep is only needed to make the counterexample
+rerun the tests and get better shrinking. This situation is not ideal,
+but save us the trouble of having to re-implement a scheduler. It’s
+worth stressing that the race is found in the unmodified code and the
+introduction of sleep is only needed to make the counterexample
 smaller.</p>
 <h4 id="example-process-registry">Example: process registry</h4>
 <p>For a slightly more complicated example containing race conditions,
 let’s have a look at an implementation of the Erlang process registry<a
-href="#fn5" class="footnote-ref" id="fnref5"
-role="doc-noteref"><sup>5</sup></a>.</p>
+href="#fn6" class="footnote-ref" id="fnref6"
+role="doc-noteref"><sup>6</sup></a>.</p>
 <h5 id="software-under-test-2">Software under test</h5>
 <p>The idea behind Erlang’s process registry is that you can spawn
 threads, register the <code>ThreadId</code> to some name of type string,
@@ -2491,7 +2541,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb74-1"><a
 <span id="cb74-6"><a href="#cb74-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb74-7"><a href="#cb74-7" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">Foldable</span> <span class="dt">NonFoldable</span> <span class="kw">where</span></span>
 <span id="cb74-8"><a href="#cb74-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">foldMap</span> _f (<span class="dt">NonFoldable</span> _x) <span class="ot">=</span> <span class="fu">mempty</span></span></code></pre></div>
-<h6 id="testing-1">Testing</h6>
+<h5 id="testing-2">Testing</h5>
 <p>The above passes the sequential tests and we can see that we got good
 coverage of failing commands as well:</p>
 <pre><code>  +++ OK, passed 100 tests:
@@ -2866,8 +2916,8 @@ system.</p>
 <h4 id="example-bigger-system-of-components">Example: bigger system of
 components</h4>
 <p>The examples given above, a queue and a file system, might not seems
-necessary to fake<a href="#fn6" class="footnote-ref" id="fnref6"
-role="doc-noteref"><sup>6</sup></a> so to finish of let’s sketch how the
+necessary to fake<a href="#fn7" class="footnote-ref" id="fnref7"
+role="doc-noteref"><sup>7</sup></a> so to finish of let’s sketch how the
 same technique scales to a bigger system of components or services.</p>
 <p>Imagine we have three components or services, where component
 <em>A</em> depends on component <em>B</em> which depends on component
@@ -2897,8 +2947,8 @@ contract tested;</li>
 <li>Use B fake (which uses the C fake) when testing A.</li>
 </ol>
 <p>Hopefully it should be clear that this strategy scales to more
-components or services<a href="#fn7" class="footnote-ref" id="fnref7"
-role="doc-noteref"><sup>7</sup></a>.</p>
+components or services<a href="#fn8" class="footnote-ref" id="fnref8"
+role="doc-noteref"><sup>8</sup></a>.</p>
 <h2 id="conclusion-and-future-work">Conclusion and future work</h2>
 <p>We’ve seen how stateful and parallel property-based testing can be
 implemented in about 400 lines of code, which is comparable to the 300
@@ -2963,12 +3013,26 @@ and how to add coverage guidance, see <a
 href="https://dl.acm.org/doi/10.1145/3360607"><em>Coverage guided,
 property based testing</em></a> (2019).<a href="#fnref3"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn4"><p>The parallel counter example is very similar to the
-ticket dispenser example that appears in <a
+<li id="fn4"><p>Another idea might be to drop all preconditions in the
+parallel case and make all commands be able to fail gracefully instead
+of crashing, e.g. <code>Write_ (Either DoesntExist ())</code>.</p>
+<p>The problem with this approach is that some examples, such as the <a
+href="https://github.com/stevana/stateful-pbt-with-fakes/blob/main/src/Example/TicketDispenser.hs">ticket
+dispenser</a>, have initialisation commands such as <code>New</code>
+which create a ticket dispenser reference upon which the later commands
+depend on, so without preconditions forbidding more than one
+<code>New</code> we can end up generating: <code>Fork New New</code>,
+which doesn’t make sense. It should also be noted that making
+<code>New</code> fail gracefully when a <code>New</code> has already
+been executed would need a global boolean flag, which is ugly.<a
+href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5"><p>The parallel counter example is very similar to the <a
+href="https://github.com/stevana/stateful-pbt-with-fakes/blob/main/src/Example/TicketDispenser.hs">ticket
+dispenser</a> example that appears in John’s paper <a
 href="https://publications.lib.chalmers.se/records/fulltext/232550/local_232550.pdf"><em>Testing
-the hard stuff and staying sane</em></a> (2014).<a href="#fnref4"
+the hard stuff and staying sane</em></a> (2014).<a href="#fnref5"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn5"><p>The sequential variant of the process registry example
+<li id="fn6"><p>The sequential variant of the process registry example
 first appeared in the paper <a
 href="https://citeseerx.ist.psu.edu/document?repid=rep1&amp;type=pdf&amp;doi=5ae25681ff881430797268c5787d7d9ee6cf542c"><em>QuickCheck
 testing for fun and profit</em></a> (2007) and is also part of John’s
@@ -2976,8 +3040,8 @@ Midlands Graduate School course (2019). The parallel tests were
 introduced in <a
 href="https://www.cse.chalmers.se/~nicsma/papers/finding-race-conditions.pdf"><em>Finding
 Race Conditions in Erlang with QuickCheck and PULSE</em></a> (2009).<a
-href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn6"><p>Unless we want to test what happens when failures, such
+href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7"><p>Unless we want to test what happens when failures, such
 as the disk being full etc. <a
 href="http://www.eecg.toronto.edu/~yuan/papers/failure_analysis_osdi14.pdf">Research</a>
 shows that “almost all (92%) of the catastrophic system failures are the
@@ -2985,12 +3049,12 @@ result of incorrect handling of non-fatal errors explicitly signaled in
 software. […] in 58% of the catastrophic failures, the underlying faults
 could easily have been detected through simple testing of error handling
 code.”. Fakes make it easier to inject faults, but that’s a story for
-another day.<a href="#fnref6" class="footnote-back"
+another day.<a href="#fnref7" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn7"><p>See the talk <a
+<li id="fn8"><p>See the talk <a
 href="https://www.youtube.com/watch?v=fhFa4tkFUFw">Integrated Tests Are
 A Scam</a> by J.B. Rainsberger for a longer presentation of this idea.<a
-href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
 </main>
