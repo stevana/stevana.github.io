@@ -2685,23 +2685,22 @@ parallel testing examples!</p>
 <h3 id="integration-testing-with-contract-tested-fakes">Integration
 testing with contract tested fakes</h3>
 <p>Throughout this post we’ve used in-memory models, or fakes, as
-reference implementations to test against.</p>
-<p>The use of fakes diverges from the original work on Erlang
-QuickCheck, where a more traditional state machine specification is used
-with post-conditions.</p>
+reference implementations to test against. The use of fakes diverges
+from the original work on Quviq’s Erlang QuickCheck, where a more
+traditional state machine specification is used with
+post-conditions.</p>
 <p>As far as I know, Edsko de Vries’ <a
 href="https://www.well-typed.com/blog/2019/01/qsm-in-depth/">post</a>
 (2019) was the first to propose the use of fakes instead of state
 machine specifications with post-conditions. Edsko also showed how one
 can implement fake-based specifications on top of a library that uses
-state machine specifications.</p>
-<p>XXX: Post-conditions are more general than fakes? Relational vs
-functional?</p>
-<p>Fake instead of state machine spec is not only easier for programmers
-unfamiliar with formal specification</p>
-<p>But there are other advantages to having a fake, for example we can
-use this fake in integration tests with components that depend on the
-software that we tested with the fake.</p>
+state machine specifications<a href="#fn7" class="footnote-ref"
+id="fnref7" role="doc-noteref"><sup>7</sup></a>.</p>
+<p>Using fakes instead of state machine specifications with
+post-conditions is not only easier for programmers unfamiliar with
+formal specification, but there are other advantages as well. For
+example we can use this fake in integration tests with components that
+depend on the software that we tested with the fake.</p>
 <p>One of the problems with integration testing against fakes is that
 the fake can be wrong. The standard solution to solve that problem is to
 <a href="https://martinfowler.com/bliki/ContractTest.html">contract
@@ -2709,7 +2708,9 @@ test</a> the fake to make sure that it is faithful to the software it’s
 supposed to be a fake of. We don’t have this problem, because our tests
 assure that the fake is faithful.</p>
 <p>This, final, section is about unpacking and giving examples of how
-integration testing against fakes works.</p>
+integration testing against fakes works. Hopefully this shows how the
+testing methodology that we’ve explored in this post can be scaled to a
+bigger system of components.</p>
 <h4 id="example-queue-again">Example: queue (again)</h4>
 <p>As our first example of integration testing, let’s recall our queue
 example from the section on stateful testing. We can introduce an
@@ -2937,8 +2938,8 @@ system.</p>
 <h4 id="example-bigger-system-of-components">Example: bigger system of
 components</h4>
 <p>The examples given above, a queue and a file system, might not seems
-necessary to fake<a href="#fn7" class="footnote-ref" id="fnref7"
-role="doc-noteref"><sup>7</sup></a> so to finish of let’s sketch how the
+necessary to fake<a href="#fn8" class="footnote-ref" id="fnref8"
+role="doc-noteref"><sup>8</sup></a> so to finish of let’s sketch how the
 same technique scales to a bigger system of components or services.</p>
 <p>Imagine we have three components or services, where component
 <em>A</em> depends on component <em>B</em> which depends on component
@@ -2968,8 +2969,8 @@ contract tested;</li>
 <li>Use B fake (which uses the C fake) when testing A.</li>
 </ol>
 <p>Hopefully it should be clear that this strategy scales to more
-components or services<a href="#fn8" class="footnote-ref" id="fnref8"
-role="doc-noteref"><sup>8</sup></a>.</p>
+components or services<a href="#fn9" class="footnote-ref" id="fnref9"
+role="doc-noteref"><sup>9</sup></a>.</p>
 <h2 id="conclusion-and-future-work">Conclusion and future work</h2>
 <p>We’ve seen how stateful and parallel property-based testing can be
 implemented in about 400 lines of code, which is comparable to the 300
@@ -3062,7 +3063,13 @@ introduced in <a
 href="https://www.cse.chalmers.se/~nicsma/papers/finding-race-conditions.pdf"><em>Finding
 Race Conditions in Erlang with QuickCheck and PULSE</em></a> (2009).<a
 href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn7"><p>Unless we want to test what happens when failures, such
+<li id="fn7"><p>I believe the post-condition formulation is more
+general, as it allows a relational rather than a functional
+specification. So I don’t think we can show the converse of what Edsko
+did, i.e. implement a post-condition style specification on top of our
+fake-based one.<a href="#fnref7" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+<li id="fn8"><p>Unless we want to test what happens when failures, such
 as the disk being full etc. <a
 href="http://www.eecg.toronto.edu/~yuan/papers/failure_analysis_osdi14.pdf">Research</a>
 shows that “almost all (92%) of the catastrophic system failures are the
@@ -3070,12 +3077,12 @@ result of incorrect handling of non-fatal errors explicitly signaled in
 software. […] in 58% of the catastrophic failures, the underlying faults
 could easily have been detected through simple testing of error handling
 code.”. Fakes make it easier to inject faults, but that’s a story for
-another day.<a href="#fnref7" class="footnote-back"
+another day.<a href="#fnref8" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn8"><p>See the talk <a
+<li id="fn9"><p>See the talk <a
 href="https://www.youtube.com/watch?v=fhFa4tkFUFw">Integrated Tests Are
 A Scam</a> by J.B. Rainsberger for a longer presentation of this idea.<a
-href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
 </main>
