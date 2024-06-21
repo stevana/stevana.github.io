@@ -2317,12 +2317,10 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb71-1"><a
 <span id="cb71-4"><a href="#cb71-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.IORef</span> (<span class="dt">IORef</span>)</span>
 <span id="cb71-5"><a href="#cb71-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.IORef</span> <span class="kw">as</span> <span class="dt">IORef</span></span>
 <span id="cb71-6"><a href="#cb71-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb71-7"><a href="#cb71-7" aria-hidden="true" tabindex="-1"></a><span class="co">------------------------------------------------------------------------</span></span>
-<span id="cb71-8"><a href="#cb71-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb71-9"><a href="#cb71-9" aria-hidden="true" tabindex="-1"></a><span class="ot">readIORef ::</span> <span class="dt">IORef</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> a</span>
-<span id="cb71-10"><a href="#cb71-10" aria-hidden="true" tabindex="-1"></a>readIORef ref <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb71-11"><a href="#cb71-11" aria-hidden="true" tabindex="-1"></a>  threadDelay <span class="dv">1000</span></span>
-<span id="cb71-12"><a href="#cb71-12" aria-hidden="true" tabindex="-1"></a>  IORef.readIORef ref</span></code></pre></div>
+<span id="cb71-7"><a href="#cb71-7" aria-hidden="true" tabindex="-1"></a><span class="ot">readIORef ::</span> <span class="dt">IORef</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> a</span>
+<span id="cb71-8"><a href="#cb71-8" aria-hidden="true" tabindex="-1"></a>readIORef ref <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb71-9"><a href="#cb71-9" aria-hidden="true" tabindex="-1"></a>  threadDelay <span class="dv">1000</span></span>
+<span id="cb71-10"><a href="#cb71-10" aria-hidden="true" tabindex="-1"></a>  IORef.readIORef ref</span></code></pre></div>
 <p>That way if we find a race, we can change the import from
 <code>import Data.IORef</code> to <code>import SleepyIORef</code> and
 rerun the tests and get better shrinking. This situation is not ideal,
@@ -2344,14 +2342,14 @@ can also be unregistered and killed.</p>
 name, then other threads can easily find the thread id of the new thread
 using the registry.</p>
 <div class="sourceCode" id="cb72"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a><span class="ot">alive ::</span> <span class="dt">ThreadId</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Bool</span></span>
-<span id="cb72-2"><a href="#cb72-2" aria-hidden="true" tabindex="-1"></a>alive tid <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb72-3"><a href="#cb72-3" aria-hidden="true" tabindex="-1"></a>  s <span class="ot">&lt;-</span> threadStatus tid</span>
-<span id="cb72-4"><a href="#cb72-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> <span class="op">$</span> s <span class="op">/=</span> <span class="dt">ThreadFinished</span> <span class="op">&amp;&amp;</span> s <span class="op">/=</span> <span class="dt">ThreadDied</span></span>
-<span id="cb72-5"><a href="#cb72-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb72-6"><a href="#cb72-6" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# NOINLINE registry #-}</span></span>
-<span id="cb72-7"><a href="#cb72-7" aria-hidden="true" tabindex="-1"></a><span class="ot">registry ::</span> <span class="dt">IORef</span> [(<span class="dt">String</span>,<span class="dt">ThreadId</span>)]</span>
-<span id="cb72-8"><a href="#cb72-8" aria-hidden="true" tabindex="-1"></a>registry <span class="ot">=</span> unsafePerformIO (newIORef [])</span>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# NOINLINE registry #-}</span></span>
+<span id="cb72-2"><a href="#cb72-2" aria-hidden="true" tabindex="-1"></a><span class="ot">registry ::</span> <span class="dt">IORef</span> [(<span class="dt">String</span>,<span class="dt">ThreadId</span>)]</span>
+<span id="cb72-3"><a href="#cb72-3" aria-hidden="true" tabindex="-1"></a>registry <span class="ot">=</span> unsafePerformIO (newIORef [])</span>
+<span id="cb72-4"><a href="#cb72-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb72-5"><a href="#cb72-5" aria-hidden="true" tabindex="-1"></a><span class="ot">alive ::</span> <span class="dt">ThreadId</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Bool</span></span>
+<span id="cb72-6"><a href="#cb72-6" aria-hidden="true" tabindex="-1"></a>alive tid <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb72-7"><a href="#cb72-7" aria-hidden="true" tabindex="-1"></a>  s <span class="ot">&lt;-</span> threadStatus tid</span>
+<span id="cb72-8"><a href="#cb72-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> <span class="op">$</span> s <span class="op">/=</span> <span class="dt">ThreadFinished</span> <span class="op">&amp;&amp;</span> s <span class="op">/=</span> <span class="dt">ThreadDied</span></span>
 <span id="cb72-9"><a href="#cb72-9" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb72-10"><a href="#cb72-10" aria-hidden="true" tabindex="-1"></a><span class="ot">spawn ::</span> <span class="dt">IO</span> <span class="dt">ThreadId</span></span>
 <span id="cb72-11"><a href="#cb72-11" aria-hidden="true" tabindex="-1"></a>spawn <span class="ot">=</span> forkIO (threadDelay <span class="dv">100000000</span>)</span>
@@ -2407,6 +2405,20 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb72-1"><a
 <span id="cb72-61"><a href="#cb72-61" aria-hidden="true" tabindex="-1"></a>        waitUntilDead (n <span class="op">-</span> <span class="dv">1</span>)</span>
 <span id="cb72-62"><a href="#cb72-62" aria-hidden="true" tabindex="-1"></a>      <span class="kw">else</span> <span class="fu">return</span> ()</span></code></pre></div>
 <h5 id="model-2">Model</h5>
+<p>The model of the process registry contains three things that we
+haven’t seen before. The first thing to note is that
+<code>Register</code> and <code>Unregister</code> might fail, so we use
+an <code>Either ErrorCall</code> in their respective responses and a
+function called <code>abstractError</code> to make the error from the
+model and the error from the real implementation match up. It’s called
+abstract, because it abstracts away details from the real
+implementation, and it’s a useful technique to know as it can be applied
+to other settings.</p>
+<p>The second thing to notice is the use of <code>monitoring</code> to
+keep statistics of how often <code>Register</code> and
+<code>Unregister</code> actually do fail, this is useful coverage
+information that ensures that our generators and or pre-conditions are
+not too restrictive.</p>
 <div class="sourceCode" id="cb73"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb73-1"><a href="#cb73-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">RegState</span> <span class="ot">=</span> <span class="dt">RegState</span></span>
 <span id="cb73-2"><a href="#cb73-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> tids   ::</span> [<span class="dt">Var</span> <span class="dt">ThreadId</span>]</span>
@@ -2506,22 +2518,10 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb73-1"><a
 <span id="cb73-96"><a href="#cb73-96" aria-hidden="true" tabindex="-1"></a>allNames <span class="ot">=</span> [<span class="st">&quot;a&quot;</span>, <span class="st">&quot;b&quot;</span>, <span class="st">&quot;c&quot;</span>, <span class="st">&quot;d&quot;</span>, <span class="st">&quot;e&quot;</span>]</span>
 <span id="cb73-97"><a href="#cb73-97" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb73-98"><a href="#cb73-98" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Tag</span> <span class="ot">=</span> <span class="dt">RegisterFailed</span> <span class="op">|</span> <span class="dt">RegisterSucceeded</span> <span class="op">|</span> <span class="dt">UnregisterFailed</span> <span class="op">|</span> <span class="dt">UnregisterSucceeded</span></span>
-<span id="cb73-99"><a href="#cb73-99" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> <span class="dt">Show</span></span>
-<span id="cb73-100"><a href="#cb73-100" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb73-101"><a href="#cb73-101" aria-hidden="true" tabindex="-1"></a><span class="ot">prop_registry ::</span> <span class="dt">Commands</span> <span class="dt">RegState</span> <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
-<span id="cb73-102"><a href="#cb73-102" aria-hidden="true" tabindex="-1"></a>prop_registry cmds <span class="ot">=</span> monadicIO <span class="op">$</span> <span class="kw">do</span></span>
-<span id="cb73-103"><a href="#cb73-103" aria-hidden="true" tabindex="-1"></a>  void (run cleanUp)</span>
-<span id="cb73-104"><a href="#cb73-104" aria-hidden="true" tabindex="-1"></a>  runCommands cmds</span>
-<span id="cb73-105"><a href="#cb73-105" aria-hidden="true" tabindex="-1"></a>  assert <span class="dt">True</span></span>
-<span id="cb73-106"><a href="#cb73-106" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb73-107"><a href="#cb73-107" aria-hidden="true" tabindex="-1"></a><span class="ot">cleanUp ::</span> <span class="dt">IO</span> [<span class="dt">Either</span> <span class="dt">ErrorCall</span> ()]</span>
-<span id="cb73-108"><a href="#cb73-108" aria-hidden="true" tabindex="-1"></a>cleanUp <span class="ot">=</span> <span class="fu">sequence</span></span>
-<span id="cb73-109"><a href="#cb73-109" aria-hidden="true" tabindex="-1"></a>  [ try (unregister name)<span class="ot"> ::</span> <span class="dt">IO</span> (<span class="dt">Either</span> <span class="dt">ErrorCall</span> ())</span>
-<span id="cb73-110"><a href="#cb73-110" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> name <span class="ot">&lt;-</span> allNames</span>
-<span id="cb73-111"><a href="#cb73-111" aria-hidden="true" tabindex="-1"></a>  ]</span></code></pre></div>
-<p>One new thing to note here is that <code>WhereIs_</code> returns the
-thread id that we wanted to look up, but thread ids also happen to be
-references. The way we implemented extending the environment with new
+<span id="cb73-99"><a href="#cb73-99" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> <span class="dt">Show</span></span></code></pre></div>
+<p>The last new thing to note here is that <code>WhereIs_</code> returns
+the thread id that we wanted to look up, but thread ids also happen to
+be references. The way we implemented extending the environment with new
 references is that we call <code>Data.Foldable.toList</code> on all
 responses, which gives us all references from the responses. In the
 <code>Spawn_</code> case this does the right thing, since spawn returns
@@ -2542,8 +2542,23 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb74-1"><a
 <span id="cb74-7"><a href="#cb74-7" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">Foldable</span> <span class="dt">NonFoldable</span> <span class="kw">where</span></span>
 <span id="cb74-8"><a href="#cb74-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">foldMap</span> _f (<span class="dt">NonFoldable</span> _x) <span class="ot">=</span> <span class="fu">mempty</span></span></code></pre></div>
 <h5 id="testing-2">Testing</h5>
-<p>The above passes the sequential tests and we can see that we got good
-coverage of failing commands as well:</p>
+<p>We can now write our sequential testing property as we’ve done
+earlier for the other examples.</p>
+<div class="sourceCode" id="cb75"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb75-1"><a href="#cb75-1" aria-hidden="true" tabindex="-1"></a><span class="ot">prop_registry ::</span> <span class="dt">Commands</span> <span class="dt">RegState</span> <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
+<span id="cb75-2"><a href="#cb75-2" aria-hidden="true" tabindex="-1"></a>prop_registry cmds <span class="ot">=</span> monadicIO <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb75-3"><a href="#cb75-3" aria-hidden="true" tabindex="-1"></a>  void (run cleanUp)</span>
+<span id="cb75-4"><a href="#cb75-4" aria-hidden="true" tabindex="-1"></a>  runCommands cmds</span>
+<span id="cb75-5"><a href="#cb75-5" aria-hidden="true" tabindex="-1"></a>  assert <span class="dt">True</span></span>
+<span id="cb75-6"><a href="#cb75-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb75-7"><a href="#cb75-7" aria-hidden="true" tabindex="-1"></a><span class="ot">cleanUp ::</span> <span class="dt">IO</span> [<span class="dt">Either</span> <span class="dt">ErrorCall</span> ()]</span>
+<span id="cb75-8"><a href="#cb75-8" aria-hidden="true" tabindex="-1"></a>cleanUp <span class="ot">=</span> <span class="fu">sequence</span></span>
+<span id="cb75-9"><a href="#cb75-9" aria-hidden="true" tabindex="-1"></a>  [ try (unregister name)<span class="ot"> ::</span> <span class="dt">IO</span> (<span class="dt">Either</span> <span class="dt">ErrorCall</span> ())</span>
+<span id="cb75-10"><a href="#cb75-10" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> name <span class="ot">&lt;-</span> allNames</span>
+<span id="cb75-11"><a href="#cb75-11" aria-hidden="true" tabindex="-1"></a>  ]</span></code></pre></div>
+<p>This property passes and we can see, thanks to our
+<code>monitoring</code>, that we got good coverage of failing commands
+as well:</p>
 <pre><code>  +++ OK, passed 100 tests:
   83% Spawn
   82% WhereIs
@@ -2556,18 +2571,18 @@ coverage of failing commands as well:</p>
   29% UnregisterSucceeded</code></pre>
 <p>To make sure everything works as expected, let’s introduce a bug on
 purpose:</p>
-<div class="sourceCode" id="cb76"><pre
-class="sourceCode diff"><code class="sourceCode diff"><span id="cb76-1"><a href="#cb76-1" aria-hidden="true" tabindex="-1"></a>  register :: String -&gt; ThreadId -&gt; IO ()</span>
-<span id="cb76-2"><a href="#cb76-2" aria-hidden="true" tabindex="-1"></a>  register name tid = do</span>
-<span id="cb76-3"><a href="#cb76-3" aria-hidden="true" tabindex="-1"></a>    ok &lt;- alive tid</span>
-<span id="cb76-4"><a href="#cb76-4" aria-hidden="true" tabindex="-1"></a>    reg &lt;- readRegistry</span>
-<span id="cb76-5"><a href="#cb76-5" aria-hidden="true" tabindex="-1"></a>    if ok &amp;&amp; name `notElem` map fst reg &amp;&amp; tid `notElem` map snd reg</span>
-<span id="cb76-6"><a href="#cb76-6" aria-hidden="true" tabindex="-1"></a>      then atomicModifyIORef&#39; registry $ \reg&#39; -&gt;</span>
-<span id="cb76-7"><a href="#cb76-7" aria-hidden="true" tabindex="-1"></a>             if name `notElem` map fst reg&#39; &amp;&amp; tid `notElem` map snd reg&#39;</span>
-<span id="cb76-8"><a href="#cb76-8" aria-hidden="true" tabindex="-1"></a><span class="st">-              then ((name,tid):reg&#39;,())</span></span>
-<span id="cb76-9"><a href="#cb76-9" aria-hidden="true" tabindex="-1"></a><span class="va">+              then ([(name,tid)],())</span></span>
-<span id="cb76-10"><a href="#cb76-10" aria-hidden="true" tabindex="-1"></a>               else (reg&#39;,badarg)</span>
-<span id="cb76-11"><a href="#cb76-11" aria-hidden="true" tabindex="-1"></a>      else badarg</span></code></pre></div>
+<div class="sourceCode" id="cb77"><pre
+class="sourceCode diff"><code class="sourceCode diff"><span id="cb77-1"><a href="#cb77-1" aria-hidden="true" tabindex="-1"></a>  register :: String -&gt; ThreadId -&gt; IO ()</span>
+<span id="cb77-2"><a href="#cb77-2" aria-hidden="true" tabindex="-1"></a>  register name tid = do</span>
+<span id="cb77-3"><a href="#cb77-3" aria-hidden="true" tabindex="-1"></a>    ok &lt;- alive tid</span>
+<span id="cb77-4"><a href="#cb77-4" aria-hidden="true" tabindex="-1"></a>    reg &lt;- readRegistry</span>
+<span id="cb77-5"><a href="#cb77-5" aria-hidden="true" tabindex="-1"></a>    if ok &amp;&amp; name `notElem` map fst reg &amp;&amp; tid `notElem` map snd reg</span>
+<span id="cb77-6"><a href="#cb77-6" aria-hidden="true" tabindex="-1"></a>      then atomicModifyIORef&#39; registry $ \reg&#39; -&gt;</span>
+<span id="cb77-7"><a href="#cb77-7" aria-hidden="true" tabindex="-1"></a>             if name `notElem` map fst reg&#39; &amp;&amp; tid `notElem` map snd reg&#39;</span>
+<span id="cb77-8"><a href="#cb77-8" aria-hidden="true" tabindex="-1"></a><span class="st">-              then ((name,tid):reg&#39;,())</span></span>
+<span id="cb77-9"><a href="#cb77-9" aria-hidden="true" tabindex="-1"></a><span class="va">+              then ([(name,tid)],())</span></span>
+<span id="cb77-10"><a href="#cb77-10" aria-hidden="true" tabindex="-1"></a>               else (reg&#39;,badarg)</span>
+<span id="cb77-11"><a href="#cb77-11" aria-hidden="true" tabindex="-1"></a>      else badarg</span></code></pre></div>
 <p>If we rerun the tests with this bug in place, we get test failures
 like the following:</p>
 <pre><code>     *** Failed! Assertion failed (after 30 tests and 7 shrinks):
@@ -2594,22 +2609,21 @@ like the following:</p>
 
       Expected: Unregister_ (Right ())
       Got: Unregister_ (Left bad argument)</code></pre>
-<p>As we can see unregister fails, when it in fact so should succeed
-(we’ve registered <code>"e"</code> so we should be allowed to unregister
-it, but the real implementation has due to the bug forgot that the
-registration happened).</p>
+<p>As we can see, unregister fails when it in fact should succeed. We’ve
+registered <code>"e"</code> so we should be allowed to unregister it,
+but the real implementation has, due to the bug, forgot that the
+registration happened.</p>
 <p>Let’s move on to the parallel tests, all we need to add is:</p>
-<div class="sourceCode" id="cb78"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ParallelModel</span> <span class="dt">RegState</span> <span class="kw">where</span></span>
-<span id="cb78-2"><a href="#cb78-2" aria-hidden="true" tabindex="-1"></a>  runCommandMonad _ <span class="ot">=</span> <span class="fu">id</span></span>
-<span id="cb78-3"><a href="#cb78-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb78-4"><a href="#cb78-4" aria-hidden="true" tabindex="-1"></a><span class="ot">prop_parallelRegistry ::</span> <span class="dt">ParallelCommands</span> <span class="dt">RegState</span> <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
-<span id="cb78-5"><a href="#cb78-5" aria-hidden="true" tabindex="-1"></a>prop_parallelRegistry cmds <span class="ot">=</span> monadicIO <span class="op">$</span> <span class="kw">do</span></span>
-<span id="cb78-6"><a href="#cb78-6" aria-hidden="true" tabindex="-1"></a>  replicateM_ <span class="dv">10</span> <span class="op">$</span> <span class="kw">do</span></span>
-<span id="cb78-7"><a href="#cb78-7" aria-hidden="true" tabindex="-1"></a>    void (run cleanUp)</span>
-<span id="cb78-8"><a href="#cb78-8" aria-hidden="true" tabindex="-1"></a>    runParallelCommands cmds</span>
-<span id="cb78-9"><a href="#cb78-9" aria-hidden="true" tabindex="-1"></a>  assert <span class="dt">True</span></span>
-<span id="cb78-10"><a href="#cb78-10" aria-hidden="true" tabindex="-1"></a><span class="co">-- start snippet ParallelRegistry</span></span></code></pre></div>
+<div class="sourceCode" id="cb79"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb79-1"><a href="#cb79-1" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ParallelModel</span> <span class="dt">RegState</span> <span class="kw">where</span></span>
+<span id="cb79-2"><a href="#cb79-2" aria-hidden="true" tabindex="-1"></a>  runCommandMonad _ <span class="ot">=</span> <span class="fu">id</span></span>
+<span id="cb79-3"><a href="#cb79-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb79-4"><a href="#cb79-4" aria-hidden="true" tabindex="-1"></a><span class="ot">prop_parallelRegistry ::</span> <span class="dt">ParallelCommands</span> <span class="dt">RegState</span> <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
+<span id="cb79-5"><a href="#cb79-5" aria-hidden="true" tabindex="-1"></a>prop_parallelRegistry cmds <span class="ot">=</span> monadicIO <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb79-6"><a href="#cb79-6" aria-hidden="true" tabindex="-1"></a>  replicateM_ <span class="dv">10</span> <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb79-7"><a href="#cb79-7" aria-hidden="true" tabindex="-1"></a>    void (run cleanUp)</span>
+<span id="cb79-8"><a href="#cb79-8" aria-hidden="true" tabindex="-1"></a>    runParallelCommands cmds</span>
+<span id="cb79-9"><a href="#cb79-9" aria-hidden="true" tabindex="-1"></a>  assert <span class="dt">True</span></span></code></pre></div>
 <p>When we run the tests we get rather long counterexamples:</p>
 <pre><code>      *** Failed! (after 24 tests and 7 shrinks):
       Exception:
@@ -2620,9 +2634,9 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb78-1"><a
                         Fork [Register &quot;c&quot; (Var 1),Spawn],Fork [Register &quot;e&quot; (Var 2),Register &quot;a&quot; (Var 2)]]</code></pre>
 <p>But if we replace our shared memory operations with version that do a
 bit of sleep beforehand:</p>
-<div class="sourceCode" id="cb80"><pre
-class="sourceCode diff"><code class="sourceCode diff"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true" tabindex="-1"></a><span class="st">- import Data.IORef</span></span>
-<span id="cb80-2"><a href="#cb80-2" aria-hidden="true" tabindex="-1"></a><span class="va">+ import SleepyIORef</span></span></code></pre></div>
+<div class="sourceCode" id="cb81"><pre
+class="sourceCode diff"><code class="sourceCode diff"><span id="cb81-1"><a href="#cb81-1" aria-hidden="true" tabindex="-1"></a><span class="st">- import Data.IORef</span></span>
+<span id="cb81-2"><a href="#cb81-2" aria-hidden="true" tabindex="-1"></a><span class="va">+ import SleepyIORef</span></span></code></pre></div>
 <p>We get better shrinking results:</p>
 <pre><code>      *** Failed! (after 5 tests and 5 shrinks):
       Exception:
@@ -2640,13 +2654,13 @@ been registered and then call <code>atomicModifyIORef</code>, so the
 race can be if another thread sneaks in between those two calls.</p>
 <p>We can fix this problem by adding a global lock around
 <code>register</code>:</p>
-<div class="sourceCode" id="cb82"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb82-1"><a href="#cb82-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# NOINLINE lock #-}</span></span>
-<span id="cb82-2"><a href="#cb82-2" aria-hidden="true" tabindex="-1"></a><span class="ot">lock ::</span> <span class="dt">MVar</span> ()</span>
-<span id="cb82-3"><a href="#cb82-3" aria-hidden="true" tabindex="-1"></a>lock <span class="ot">=</span> unsafePerformIO (newMVar ())</span>
-<span id="cb82-4"><a href="#cb82-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb82-5"><a href="#cb82-5" aria-hidden="true" tabindex="-1"></a><span class="ot">registerNoRace ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">ThreadId</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb82-6"><a href="#cb82-6" aria-hidden="true" tabindex="-1"></a>registerNoRace name tid <span class="ot">=</span> withMVar lock <span class="op">$</span> \_ <span class="ot">-&gt;</span> register name tid</span></code></pre></div>
+<div class="sourceCode" id="cb83"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb83-1"><a href="#cb83-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# NOINLINE lock #-}</span></span>
+<span id="cb83-2"><a href="#cb83-2" aria-hidden="true" tabindex="-1"></a><span class="ot">lock ::</span> <span class="dt">MVar</span> ()</span>
+<span id="cb83-3"><a href="#cb83-3" aria-hidden="true" tabindex="-1"></a>lock <span class="ot">=</span> unsafePerformIO (newMVar ())</span>
+<span id="cb83-4"><a href="#cb83-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb83-5"><a href="#cb83-5" aria-hidden="true" tabindex="-1"></a><span class="ot">registerNoRace ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">ThreadId</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb83-6"><a href="#cb83-6" aria-hidden="true" tabindex="-1"></a>registerNoRace name tid <span class="ot">=</span> withMVar lock <span class="op">$</span> \_ <span class="ot">-&gt;</span> register name tid</span></code></pre></div>
 <p>When rerunning the tests with this fixed version of
 <code>registry</code>, we get:</p>
 <pre><code>      *** Failed! Assertion failed (after 30 tests and 13 shrinks):
@@ -2661,6 +2675,13 @@ same fix to <code>unregister</code>, we get:</p>
 <p>Killing a thread will unregister it, so we get a similar problem
 again. If we take the lock before calling <code>kill</code>, then the
 parallel tests finally pass.</p>
+<p>These race conditions are essentially variants on the parallel
+counter bug, but I hope you agree that they’re not as obvious in the
+process registry case. I also hope that by now it’s clear that as a user
+we get these parallel tests basically without doing any extra work. All
+the heavy lifting is done by the library by reusing the sequential
+model, and this code can be written once and then reused for all our
+parallel testing examples!</p>
 <h3 id="integration-testing-with-contract-tested-fakes">Integration
 testing with contract tested fakes</h3>
 <p>Throughout this post we’ve used in-memory models, or fakes, as
@@ -2693,64 +2714,64 @@ integration testing against fakes works.</p>
 <p>As our first example of integration testing, let’s recall our queue
 example from the section on stateful testing. We can introduce an
 interface for it as follows:</p>
-<div class="sourceCode" id="cb85"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb85-1"><a href="#cb85-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">IQueue</span> q <span class="ot">=</span> <span class="dt">IQueue</span></span>
-<span id="cb85-2"><a href="#cb85-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> iNew  ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> q</span>
-<span id="cb85-3"><a href="#cb85-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> iPut  ::</span> q <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb85-4"><a href="#cb85-4" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> iGet  ::</span> q <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Int</span></span>
-<span id="cb85-5"><a href="#cb85-5" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> iSize ::</span> q <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Int</span></span>
-<span id="cb85-6"><a href="#cb85-6" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
+<div class="sourceCode" id="cb86"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb86-1"><a href="#cb86-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">IQueue</span> q <span class="ot">=</span> <span class="dt">IQueue</span></span>
+<span id="cb86-2"><a href="#cb86-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> iNew  ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> q</span>
+<span id="cb86-3"><a href="#cb86-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> iPut  ::</span> q <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb86-4"><a href="#cb86-4" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> iGet  ::</span> q <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Int</span></span>
+<span id="cb86-5"><a href="#cb86-5" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> iSize ::</span> q <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Int</span></span>
+<span id="cb86-6"><a href="#cb86-6" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
 <p>The real implementation can instantiate this interface in a
 straightforward way:</p>
-<div class="sourceCode" id="cb86"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb86-1"><a href="#cb86-1" aria-hidden="true" tabindex="-1"></a><span class="ot">real ::</span> <span class="dt">IQueue</span> <span class="dt">Queue</span></span>
-<span id="cb86-2"><a href="#cb86-2" aria-hidden="true" tabindex="-1"></a>real <span class="ot">=</span> <span class="dt">IQueue</span></span>
-<span id="cb86-3"><a href="#cb86-3" aria-hidden="true" tabindex="-1"></a>  { iNew  <span class="ot">=</span> new</span>
-<span id="cb86-4"><a href="#cb86-4" aria-hidden="true" tabindex="-1"></a>  , iPut  <span class="ot">=</span> put</span>
-<span id="cb86-5"><a href="#cb86-5" aria-hidden="true" tabindex="-1"></a>  , iGet  <span class="ot">=</span> get</span>
-<span id="cb86-6"><a href="#cb86-6" aria-hidden="true" tabindex="-1"></a>  , iSize <span class="ot">=</span> size</span>
-<span id="cb86-7"><a href="#cb86-7" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
+<div class="sourceCode" id="cb87"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb87-1"><a href="#cb87-1" aria-hidden="true" tabindex="-1"></a><span class="ot">real ::</span> <span class="dt">IQueue</span> <span class="dt">Queue</span></span>
+<span id="cb87-2"><a href="#cb87-2" aria-hidden="true" tabindex="-1"></a>real <span class="ot">=</span> <span class="dt">IQueue</span></span>
+<span id="cb87-3"><a href="#cb87-3" aria-hidden="true" tabindex="-1"></a>  { iNew  <span class="ot">=</span> new</span>
+<span id="cb87-4"><a href="#cb87-4" aria-hidden="true" tabindex="-1"></a>  , iPut  <span class="ot">=</span> put</span>
+<span id="cb87-5"><a href="#cb87-5" aria-hidden="true" tabindex="-1"></a>  , iGet  <span class="ot">=</span> get</span>
+<span id="cb87-6"><a href="#cb87-6" aria-hidden="true" tabindex="-1"></a>  , iSize <span class="ot">=</span> size</span>
+<span id="cb87-7"><a href="#cb87-7" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
 <p>The interesting part is that our fake can also instantiate the same
 interface by storing the state in a mutable reference
 (<code>IORef</code>) as follows.</p>
-<div class="sourceCode" id="cb87"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb87-1"><a href="#cb87-1" aria-hidden="true" tabindex="-1"></a><span class="ot">fake ::</span> <span class="dt">IO</span> (<span class="dt">IQueue</span> (<span class="dt">Var</span> <span class="dt">Queue</span>))</span>
-<span id="cb87-2"><a href="#cb87-2" aria-hidden="true" tabindex="-1"></a>fake <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb87-3"><a href="#cb87-3" aria-hidden="true" tabindex="-1"></a>  ref <span class="ot">&lt;-</span> newIORef emptyState</span>
-<span id="cb87-4"><a href="#cb87-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> <span class="dt">IQueue</span></span>
-<span id="cb87-5"><a href="#cb87-5" aria-hidden="true" tabindex="-1"></a>    { iNew  <span class="ot">=</span> \n   <span class="ot">-&gt;</span> updateIORef ref (fNew n)</span>
-<span id="cb87-6"><a href="#cb87-6" aria-hidden="true" tabindex="-1"></a>    , iPut  <span class="ot">=</span> \q i <span class="ot">-&gt;</span> updateIORef ref (fPut q i)</span>
-<span id="cb87-7"><a href="#cb87-7" aria-hidden="true" tabindex="-1"></a>    , iGet  <span class="ot">=</span> \q   <span class="ot">-&gt;</span> updateIORef ref (fGet q)</span>
-<span id="cb87-8"><a href="#cb87-8" aria-hidden="true" tabindex="-1"></a>    , iSize <span class="ot">=</span> \q   <span class="ot">-&gt;</span> updateIORef ref (fSize q)</span>
-<span id="cb87-9"><a href="#cb87-9" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb87-10"><a href="#cb87-10" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
-<span id="cb87-11"><a href="#cb87-11" aria-hidden="true" tabindex="-1"></a><span class="ot">    updateIORef ::</span> <span class="dt">IORef</span> <span class="dt">State</span> <span class="ot">-&gt;</span> <span class="dt">FakeOp</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> a</span>
-<span id="cb87-12"><a href="#cb87-12" aria-hidden="true" tabindex="-1"></a>    updateIORef ref op <span class="ot">=</span></span>
-<span id="cb87-13"><a href="#cb87-13" aria-hidden="true" tabindex="-1"></a>      atomicModifyIORef&#39; ref (\fs <span class="ot">-&gt;</span> assoc fs (op fs)) <span class="op">&gt;&gt;=</span> \<span class="kw">case</span></span>
-<span id="cb87-14"><a href="#cb87-14" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Left</span> err <span class="ot">-&gt;</span> throwIO err</span>
-<span id="cb87-15"><a href="#cb87-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Right</span> x  <span class="ot">-&gt;</span> <span class="fu">return</span> x</span>
-<span id="cb87-16"><a href="#cb87-16" aria-hidden="true" tabindex="-1"></a>      <span class="kw">where</span></span>
-<span id="cb87-17"><a href="#cb87-17" aria-hidden="true" tabindex="-1"></a>        assoc fs  (<span class="dt">Left</span> err)       <span class="ot">=</span> (fs,  <span class="dt">Left</span> err)</span>
-<span id="cb87-18"><a href="#cb87-18" aria-hidden="true" tabindex="-1"></a>        assoc _fs (<span class="dt">Right</span> (fs&#39;, x)) <span class="ot">=</span> (fs&#39;, <span class="dt">Right</span> x)</span></code></pre></div>
+<div class="sourceCode" id="cb88"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb88-1"><a href="#cb88-1" aria-hidden="true" tabindex="-1"></a><span class="ot">fake ::</span> <span class="dt">IO</span> (<span class="dt">IQueue</span> (<span class="dt">Var</span> <span class="dt">Queue</span>))</span>
+<span id="cb88-2"><a href="#cb88-2" aria-hidden="true" tabindex="-1"></a>fake <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb88-3"><a href="#cb88-3" aria-hidden="true" tabindex="-1"></a>  ref <span class="ot">&lt;-</span> newIORef emptyState</span>
+<span id="cb88-4"><a href="#cb88-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> <span class="dt">IQueue</span></span>
+<span id="cb88-5"><a href="#cb88-5" aria-hidden="true" tabindex="-1"></a>    { iNew  <span class="ot">=</span> \n   <span class="ot">-&gt;</span> updateIORef ref (fNew n)</span>
+<span id="cb88-6"><a href="#cb88-6" aria-hidden="true" tabindex="-1"></a>    , iPut  <span class="ot">=</span> \q i <span class="ot">-&gt;</span> updateIORef ref (fPut q i)</span>
+<span id="cb88-7"><a href="#cb88-7" aria-hidden="true" tabindex="-1"></a>    , iGet  <span class="ot">=</span> \q   <span class="ot">-&gt;</span> updateIORef ref (fGet q)</span>
+<span id="cb88-8"><a href="#cb88-8" aria-hidden="true" tabindex="-1"></a>    , iSize <span class="ot">=</span> \q   <span class="ot">-&gt;</span> updateIORef ref (fSize q)</span>
+<span id="cb88-9"><a href="#cb88-9" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb88-10"><a href="#cb88-10" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb88-11"><a href="#cb88-11" aria-hidden="true" tabindex="-1"></a><span class="ot">    updateIORef ::</span> <span class="dt">IORef</span> <span class="dt">State</span> <span class="ot">-&gt;</span> <span class="dt">FakeOp</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> a</span>
+<span id="cb88-12"><a href="#cb88-12" aria-hidden="true" tabindex="-1"></a>    updateIORef ref op <span class="ot">=</span></span>
+<span id="cb88-13"><a href="#cb88-13" aria-hidden="true" tabindex="-1"></a>      atomicModifyIORef&#39; ref (\fs <span class="ot">-&gt;</span> assoc fs (op fs)) <span class="op">&gt;&gt;=</span> \<span class="kw">case</span></span>
+<span id="cb88-14"><a href="#cb88-14" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Left</span> err <span class="ot">-&gt;</span> throwIO err</span>
+<span id="cb88-15"><a href="#cb88-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Right</span> x  <span class="ot">-&gt;</span> <span class="fu">return</span> x</span>
+<span id="cb88-16"><a href="#cb88-16" aria-hidden="true" tabindex="-1"></a>      <span class="kw">where</span></span>
+<span id="cb88-17"><a href="#cb88-17" aria-hidden="true" tabindex="-1"></a>        assoc fs  (<span class="dt">Left</span> err)       <span class="ot">=</span> (fs,  <span class="dt">Left</span> err)</span>
+<span id="cb88-18"><a href="#cb88-18" aria-hidden="true" tabindex="-1"></a>        assoc _fs (<span class="dt">Right</span> (fs&#39;, x)) <span class="ot">=</span> (fs&#39;, <span class="dt">Right</span> x)</span></code></pre></div>
 <p>We can now write components or services <em>against</em> this
 interface:</p>
-<div class="sourceCode" id="cb88"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb88-1"><a href="#cb88-1" aria-hidden="true" tabindex="-1"></a><span class="ot">prog ::</span> <span class="dt">IQueue</span> q <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb88-2"><a href="#cb88-2" aria-hidden="true" tabindex="-1"></a>prog iq <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb88-3"><a href="#cb88-3" aria-hidden="true" tabindex="-1"></a>  q <span class="ot">&lt;-</span> iNew iq <span class="dv">3</span></span>
-<span id="cb88-4"><a href="#cb88-4" aria-hidden="true" tabindex="-1"></a>  iPut iq q <span class="dv">0</span></span>
-<span id="cb88-5"><a href="#cb88-5" aria-hidden="true" tabindex="-1"></a>  iPut iq q <span class="dv">1</span></span>
-<span id="cb88-6"><a href="#cb88-6" aria-hidden="true" tabindex="-1"></a>  iPut iq q <span class="dv">2</span></span>
-<span id="cb88-7"><a href="#cb88-7" aria-hidden="true" tabindex="-1"></a>  x <span class="ot">&lt;-</span> iGet iq q</span>
-<span id="cb88-8"><a href="#cb88-8" aria-hidden="true" tabindex="-1"></a>  assert (x <span class="op">==</span> <span class="dv">0</span>) (<span class="fu">return</span> ())</span>
-<span id="cb88-9"><a href="#cb88-9" aria-hidden="true" tabindex="-1"></a>  sz <span class="ot">&lt;-</span> iSize iq q</span>
-<span id="cb88-10"><a href="#cb88-10" aria-hidden="true" tabindex="-1"></a>  assert (sz <span class="op">==</span> <span class="dv">2</span>) (<span class="fu">return</span> ())</span>
-<span id="cb88-11"><a href="#cb88-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb88-12"><a href="#cb88-12" aria-hidden="true" tabindex="-1"></a><span class="ot">test ::</span> <span class="dt">IO</span> ()</span>
-<span id="cb88-13"><a href="#cb88-13" aria-hidden="true" tabindex="-1"></a>test <span class="ot">=</span> prog <span class="op">=&lt;&lt;</span> fake</span>
-<span id="cb88-14"><a href="#cb88-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb88-15"><a href="#cb88-15" aria-hidden="true" tabindex="-1"></a><span class="ot">deploy ::</span> <span class="dt">IO</span> ()</span>
-<span id="cb88-16"><a href="#cb88-16" aria-hidden="true" tabindex="-1"></a>deploy <span class="ot">=</span> prog real</span></code></pre></div>
+<div class="sourceCode" id="cb89"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb89-1"><a href="#cb89-1" aria-hidden="true" tabindex="-1"></a><span class="ot">prog ::</span> <span class="dt">IQueue</span> q <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb89-2"><a href="#cb89-2" aria-hidden="true" tabindex="-1"></a>prog iq <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb89-3"><a href="#cb89-3" aria-hidden="true" tabindex="-1"></a>  q <span class="ot">&lt;-</span> iNew iq <span class="dv">3</span></span>
+<span id="cb89-4"><a href="#cb89-4" aria-hidden="true" tabindex="-1"></a>  iPut iq q <span class="dv">0</span></span>
+<span id="cb89-5"><a href="#cb89-5" aria-hidden="true" tabindex="-1"></a>  iPut iq q <span class="dv">1</span></span>
+<span id="cb89-6"><a href="#cb89-6" aria-hidden="true" tabindex="-1"></a>  iPut iq q <span class="dv">2</span></span>
+<span id="cb89-7"><a href="#cb89-7" aria-hidden="true" tabindex="-1"></a>  x <span class="ot">&lt;-</span> iGet iq q</span>
+<span id="cb89-8"><a href="#cb89-8" aria-hidden="true" tabindex="-1"></a>  assert (x <span class="op">==</span> <span class="dv">0</span>) (<span class="fu">return</span> ())</span>
+<span id="cb89-9"><a href="#cb89-9" aria-hidden="true" tabindex="-1"></a>  sz <span class="ot">&lt;-</span> iSize iq q</span>
+<span id="cb89-10"><a href="#cb89-10" aria-hidden="true" tabindex="-1"></a>  assert (sz <span class="op">==</span> <span class="dv">2</span>) (<span class="fu">return</span> ())</span>
+<span id="cb89-11"><a href="#cb89-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb89-12"><a href="#cb89-12" aria-hidden="true" tabindex="-1"></a><span class="ot">test ::</span> <span class="dt">IO</span> ()</span>
+<span id="cb89-13"><a href="#cb89-13" aria-hidden="true" tabindex="-1"></a>test <span class="ot">=</span> prog <span class="op">=&lt;&lt;</span> fake</span>
+<span id="cb89-14"><a href="#cb89-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb89-15"><a href="#cb89-15" aria-hidden="true" tabindex="-1"></a><span class="ot">deploy ::</span> <span class="dt">IO</span> ()</span>
+<span id="cb89-16"><a href="#cb89-16" aria-hidden="true" tabindex="-1"></a>deploy <span class="ot">=</span> prog real</span></code></pre></div>
 <p>When we integration test our new component we can use the
 <code>fake</code> instance to make the tests fast and deterministic,
 while when we deploy we use the <code>real</code> instance and because
@@ -2764,138 +2785,138 @@ href="https://www.well-typed.com/blog/2019/01/qsm-in-depth/">post</a>
 <p>The interface is parametrised by a file handle. We can create
 directories, open files to get a hold of a file handle, file handles can
 then be read from and written to, and finally closed:</p>
-<div class="sourceCode" id="cb89"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb89-1"><a href="#cb89-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">IFileSystem</span> h <span class="ot">=</span> <span class="dt">IFileSystem</span></span>
-<span id="cb89-2"><a href="#cb89-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> iMkDir ::</span> <span class="dt">Dir</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb89-3"><a href="#cb89-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> iOpen  ::</span> <span class="dt">File</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> h</span>
-<span id="cb89-4"><a href="#cb89-4" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> iWrite ::</span> h <span class="ot">-&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb89-5"><a href="#cb89-5" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> iClose ::</span> h <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb89-6"><a href="#cb89-6" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> iRead  ::</span> <span class="dt">File</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">String</span></span>
-<span id="cb89-7"><a href="#cb89-7" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
+<div class="sourceCode" id="cb90"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb90-1"><a href="#cb90-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">IFileSystem</span> h <span class="ot">=</span> <span class="dt">IFileSystem</span></span>
+<span id="cb90-2"><a href="#cb90-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> iMkDir ::</span> <span class="dt">Dir</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb90-3"><a href="#cb90-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> iOpen  ::</span> <span class="dt">File</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> h</span>
+<span id="cb90-4"><a href="#cb90-4" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> iWrite ::</span> h <span class="ot">-&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb90-5"><a href="#cb90-5" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> iClose ::</span> h <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb90-6"><a href="#cb90-6" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> iRead  ::</span> <span class="dt">File</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">String</span></span>
+<span id="cb90-7"><a href="#cb90-7" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
 <p>The real implementation of this interface uses the real file system.
 In order to isolate the tests all operations will be relative to some
 <code>root</code> directory:</p>
-<div class="sourceCode" id="cb90"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb90-1"><a href="#cb90-1" aria-hidden="true" tabindex="-1"></a><span class="ot">root ::</span> <span class="dt">FilePath</span></span>
-<span id="cb90-2"><a href="#cb90-2" aria-hidden="true" tabindex="-1"></a>root <span class="ot">=</span> <span class="st">&quot;/tmp/qc-test&quot;</span></span>
-<span id="cb90-3"><a href="#cb90-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb90-4"><a href="#cb90-4" aria-hidden="true" tabindex="-1"></a><span class="ot">rMkDir ::</span> <span class="dt">Dir</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb90-5"><a href="#cb90-5" aria-hidden="true" tabindex="-1"></a>rMkDir d <span class="ot">=</span> createDirectory (dirFP root d)</span>
-<span id="cb90-6"><a href="#cb90-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb90-7"><a href="#cb90-7" aria-hidden="true" tabindex="-1"></a><span class="ot">rOpen ::</span> <span class="dt">File</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Handle</span></span>
-<span id="cb90-8"><a href="#cb90-8" aria-hidden="true" tabindex="-1"></a>rOpen f <span class="ot">=</span> openFile (fileFP root f) <span class="dt">AppendMode</span></span>
-<span id="cb90-9"><a href="#cb90-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb90-10"><a href="#cb90-10" aria-hidden="true" tabindex="-1"></a><span class="ot">rWrite ::</span> <span class="dt">Handle</span> <span class="ot">-&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb90-11"><a href="#cb90-11" aria-hidden="true" tabindex="-1"></a>rWrite h s <span class="ot">=</span> hPutStr h s</span>
-<span id="cb90-12"><a href="#cb90-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb90-13"><a href="#cb90-13" aria-hidden="true" tabindex="-1"></a><span class="ot">rClose ::</span> <span class="dt">Handle</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb90-14"><a href="#cb90-14" aria-hidden="true" tabindex="-1"></a>rClose h <span class="ot">=</span> hClose h</span>
-<span id="cb90-15"><a href="#cb90-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb90-16"><a href="#cb90-16" aria-hidden="true" tabindex="-1"></a><span class="ot">rRead ::</span> <span class="dt">File</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">String</span></span>
-<span id="cb90-17"><a href="#cb90-17" aria-hidden="true" tabindex="-1"></a>rRead f <span class="ot">=</span> <span class="fu">readFile</span> (fileFP root f)</span></code></pre></div>
 <div class="sourceCode" id="cb91"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb91-1"><a href="#cb91-1" aria-hidden="true" tabindex="-1"></a><span class="ot">real ::</span> <span class="dt">IFileSystem</span> <span class="dt">Handle</span></span>
-<span id="cb91-2"><a href="#cb91-2" aria-hidden="true" tabindex="-1"></a>real <span class="ot">=</span> <span class="dt">IFileSystem</span></span>
-<span id="cb91-3"><a href="#cb91-3" aria-hidden="true" tabindex="-1"></a>  { iMkDir <span class="ot">=</span> rMkDir</span>
-<span id="cb91-4"><a href="#cb91-4" aria-hidden="true" tabindex="-1"></a>  , iOpen  <span class="ot">=</span> rOpen</span>
-<span id="cb91-5"><a href="#cb91-5" aria-hidden="true" tabindex="-1"></a>  , iWrite <span class="ot">=</span> rWrite</span>
-<span id="cb91-6"><a href="#cb91-6" aria-hidden="true" tabindex="-1"></a>  , iClose <span class="ot">=</span> rClose</span>
-<span id="cb91-7"><a href="#cb91-7" aria-hidden="true" tabindex="-1"></a>  , iRead  <span class="ot">=</span> rRead</span>
-<span id="cb91-8"><a href="#cb91-8" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb91-1"><a href="#cb91-1" aria-hidden="true" tabindex="-1"></a><span class="ot">root ::</span> <span class="dt">FilePath</span></span>
+<span id="cb91-2"><a href="#cb91-2" aria-hidden="true" tabindex="-1"></a>root <span class="ot">=</span> <span class="st">&quot;/tmp/qc-test&quot;</span></span>
+<span id="cb91-3"><a href="#cb91-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb91-4"><a href="#cb91-4" aria-hidden="true" tabindex="-1"></a><span class="ot">rMkDir ::</span> <span class="dt">Dir</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb91-5"><a href="#cb91-5" aria-hidden="true" tabindex="-1"></a>rMkDir d <span class="ot">=</span> createDirectory (dirFP root d)</span>
+<span id="cb91-6"><a href="#cb91-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb91-7"><a href="#cb91-7" aria-hidden="true" tabindex="-1"></a><span class="ot">rOpen ::</span> <span class="dt">File</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Handle</span></span>
+<span id="cb91-8"><a href="#cb91-8" aria-hidden="true" tabindex="-1"></a>rOpen f <span class="ot">=</span> openFile (fileFP root f) <span class="dt">AppendMode</span></span>
+<span id="cb91-9"><a href="#cb91-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb91-10"><a href="#cb91-10" aria-hidden="true" tabindex="-1"></a><span class="ot">rWrite ::</span> <span class="dt">Handle</span> <span class="ot">-&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb91-11"><a href="#cb91-11" aria-hidden="true" tabindex="-1"></a>rWrite h s <span class="ot">=</span> hPutStr h s</span>
+<span id="cb91-12"><a href="#cb91-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb91-13"><a href="#cb91-13" aria-hidden="true" tabindex="-1"></a><span class="ot">rClose ::</span> <span class="dt">Handle</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb91-14"><a href="#cb91-14" aria-hidden="true" tabindex="-1"></a>rClose h <span class="ot">=</span> hClose h</span>
+<span id="cb91-15"><a href="#cb91-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb91-16"><a href="#cb91-16" aria-hidden="true" tabindex="-1"></a><span class="ot">rRead ::</span> <span class="dt">File</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">String</span></span>
+<span id="cb91-17"><a href="#cb91-17" aria-hidden="true" tabindex="-1"></a>rRead f <span class="ot">=</span> <span class="fu">readFile</span> (fileFP root f)</span></code></pre></div>
+<div class="sourceCode" id="cb92"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb92-1"><a href="#cb92-1" aria-hidden="true" tabindex="-1"></a><span class="ot">real ::</span> <span class="dt">IFileSystem</span> <span class="dt">Handle</span></span>
+<span id="cb92-2"><a href="#cb92-2" aria-hidden="true" tabindex="-1"></a>real <span class="ot">=</span> <span class="dt">IFileSystem</span></span>
+<span id="cb92-3"><a href="#cb92-3" aria-hidden="true" tabindex="-1"></a>  { iMkDir <span class="ot">=</span> rMkDir</span>
+<span id="cb92-4"><a href="#cb92-4" aria-hidden="true" tabindex="-1"></a>  , iOpen  <span class="ot">=</span> rOpen</span>
+<span id="cb92-5"><a href="#cb92-5" aria-hidden="true" tabindex="-1"></a>  , iWrite <span class="ot">=</span> rWrite</span>
+<span id="cb92-6"><a href="#cb92-6" aria-hidden="true" tabindex="-1"></a>  , iClose <span class="ot">=</span> rClose</span>
+<span id="cb92-7"><a href="#cb92-7" aria-hidden="true" tabindex="-1"></a>  , iRead  <span class="ot">=</span> rRead</span>
+<span id="cb92-8"><a href="#cb92-8" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
 <p>The fake implementation of the interface is, as usual, implemented
 using an in-memory data structure:</p>
-<div class="sourceCode" id="cb92"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb92-1"><a href="#cb92-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">FHandle</span> <span class="ot">=</span> <span class="dt">Var</span> <span class="dt">Handle</span></span>
-<span id="cb92-2"><a href="#cb92-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb92-3"><a href="#cb92-3" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">FakeFS</span> <span class="ot">=</span> <span class="dt">F</span> {</span>
-<span id="cb92-4"><a href="#cb92-4" aria-hidden="true" tabindex="-1"></a><span class="ot">    dirs  ::</span> <span class="dt">Set</span> <span class="dt">Dir</span></span>
-<span id="cb92-5"><a href="#cb92-5" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> files ::</span> <span class="dt">Map</span> <span class="dt">File</span> <span class="dt">String</span></span>
-<span id="cb92-6"><a href="#cb92-6" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> open  ::</span> <span class="dt">Map</span> <span class="dt">FHandle</span> <span class="dt">File</span></span>
-<span id="cb92-7"><a href="#cb92-7" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> next  ::</span> <span class="dt">FHandle</span></span>
-<span id="cb92-8"><a href="#cb92-8" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb92-9"><a href="#cb92-9" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> <span class="dt">Show</span></span>
-<span id="cb92-10"><a href="#cb92-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb92-11"><a href="#cb92-11" aria-hidden="true" tabindex="-1"></a><span class="ot">emptyFakeFS ::</span> <span class="dt">FakeFS</span></span>
-<span id="cb92-12"><a href="#cb92-12" aria-hidden="true" tabindex="-1"></a>emptyFakeFS <span class="ot">=</span> <span class="dt">F</span> (Set.singleton (<span class="dt">Dir</span> [])) Map.empty Map.empty (<span class="dt">Var</span> <span class="dv">0</span>)</span>
-<span id="cb92-13"><a href="#cb92-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb92-14"><a href="#cb92-14" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">FakeOp</span> a <span class="ot">=</span> <span class="dt">FakeFS</span> <span class="ot">-&gt;</span> (<span class="dt">Either</span> <span class="dt">PrecondFail</span> a, <span class="dt">FakeFS</span>)</span>
-<span id="cb92-15"><a href="#cb92-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb92-16"><a href="#cb92-16" aria-hidden="true" tabindex="-1"></a><span class="ot">fMkDir ::</span> <span class="dt">Dir</span> <span class="ot">-&gt;</span> <span class="dt">FakeOp</span> ()</span>
-<span id="cb92-17"><a href="#cb92-17" aria-hidden="true" tabindex="-1"></a>fMkDir d m<span class="op">@</span>(<span class="dt">F</span> ds fs hs n)</span>
-<span id="cb92-18"><a href="#cb92-18" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> d        <span class="ot">`Set.member`</span>    ds <span class="ot">=</span> (<span class="dt">Left</span> <span class="dt">AlreadyExists</span>, m)</span>
-<span id="cb92-19"><a href="#cb92-19" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> parent d <span class="ot">`Set.notMember`</span> ds <span class="ot">=</span> (<span class="dt">Left</span> <span class="dt">DoesNotExist</span>, m)</span>
-<span id="cb92-20"><a href="#cb92-20" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="fu">otherwise</span>                   <span class="ot">=</span> (<span class="dt">Right</span> (), <span class="dt">F</span> (Set.insert d ds) fs hs n)</span>
-<span id="cb92-21"><a href="#cb92-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb92-22"><a href="#cb92-22" aria-hidden="true" tabindex="-1"></a><span class="ot">fOpen ::</span> <span class="dt">File</span> <span class="ot">-&gt;</span> <span class="dt">FakeOp</span> <span class="dt">FHandle</span></span>
-<span id="cb92-23"><a href="#cb92-23" aria-hidden="true" tabindex="-1"></a>fOpen f m<span class="op">@</span>(<span class="dt">F</span> ds fs hs n<span class="op">@</span>(<span class="dt">Var</span> n_))</span>
-<span id="cb92-24"><a href="#cb92-24" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> alreadyOpen   <span class="ot">=</span> (<span class="dt">Left</span> <span class="dt">Busy</span>, m)</span>
-<span id="cb92-25"><a href="#cb92-25" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="fu">not</span> dirExists <span class="ot">=</span> (<span class="dt">Left</span> <span class="dt">DoesNotExist</span>, m)</span>
-<span id="cb92-26"><a href="#cb92-26" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> fileExists    <span class="ot">=</span> (<span class="dt">Right</span> n, <span class="dt">F</span> ds fs hs&#39; n&#39;)</span>
-<span id="cb92-27"><a href="#cb92-27" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="fu">otherwise</span>     <span class="ot">=</span> (<span class="dt">Right</span> n, <span class="dt">F</span> ds (Map.insert f <span class="st">&quot;&quot;</span> fs) hs&#39; n&#39;)</span>
-<span id="cb92-28"><a href="#cb92-28" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
-<span id="cb92-29"><a href="#cb92-29" aria-hidden="true" tabindex="-1"></a>    hs&#39; <span class="ot">=</span> Map.insert n f hs</span>
-<span id="cb92-30"><a href="#cb92-30" aria-hidden="true" tabindex="-1"></a>    n&#39;  <span class="ot">=</span> <span class="dt">Var</span> (<span class="fu">succ</span> n_)</span>
-<span id="cb92-31"><a href="#cb92-31" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb92-32"><a href="#cb92-32" aria-hidden="true" tabindex="-1"></a>    fileExists  <span class="ot">=</span>         f <span class="ot">`Map.member`</span> fs</span>
-<span id="cb92-33"><a href="#cb92-33" aria-hidden="true" tabindex="-1"></a>    dirExists   <span class="ot">=</span> fileDir f <span class="ot">`Set.member`</span> ds</span>
-<span id="cb92-34"><a href="#cb92-34" aria-hidden="true" tabindex="-1"></a>    alreadyOpen <span class="ot">=</span> f <span class="ot">`List.elem`</span> Map.elems hs</span>
-<span id="cb92-35"><a href="#cb92-35" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb92-36"><a href="#cb92-36" aria-hidden="true" tabindex="-1"></a><span class="ot">fWrite ::</span> <span class="dt">FHandle</span> <span class="ot">-&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">FakeOp</span> ()</span>
-<span id="cb92-37"><a href="#cb92-37" aria-hidden="true" tabindex="-1"></a>fWrite h s m<span class="op">@</span>(<span class="dt">F</span> ds fs hs n)</span>
-<span id="cb92-38"><a href="#cb92-38" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">Just</span> f <span class="ot">&lt;-</span> Map.lookup h hs <span class="ot">=</span> (<span class="dt">Right</span> (), <span class="dt">F</span> ds (Map.adjust (<span class="op">++</span> s) f fs) hs n)</span>
-<span id="cb92-39"><a href="#cb92-39" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="fu">otherwise</span>                 <span class="ot">=</span> (<span class="dt">Left</span> <span class="dt">HandleClosed</span>, m)</span>
-<span id="cb92-40"><a href="#cb92-40" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb92-41"><a href="#cb92-41" aria-hidden="true" tabindex="-1"></a><span class="ot">fClose ::</span> <span class="dt">FHandle</span> <span class="ot">-&gt;</span> <span class="dt">FakeOp</span> ()</span>
-<span id="cb92-42"><a href="#cb92-42" aria-hidden="true" tabindex="-1"></a>fClose h (<span class="dt">F</span> ds fs hs n) <span class="ot">=</span> (<span class="dt">Right</span> (), <span class="dt">F</span> ds fs (Map.delete h hs) n)</span>
-<span id="cb92-43"><a href="#cb92-43" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb92-44"><a href="#cb92-44" aria-hidden="true" tabindex="-1"></a><span class="ot">fRead ::</span> <span class="dt">File</span> <span class="ot">-&gt;</span> <span class="dt">FakeOp</span> <span class="dt">String</span></span>
-<span id="cb92-45"><a href="#cb92-45" aria-hidden="true" tabindex="-1"></a>fRead f m<span class="op">@</span>(<span class="dt">F</span> _ fs hs _)</span>
-<span id="cb92-46"><a href="#cb92-46" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> alreadyOpen               <span class="ot">=</span> (<span class="dt">Left</span> <span class="dt">Busy</span>         , m)</span>
-<span id="cb92-47"><a href="#cb92-47" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">Just</span> s <span class="ot">&lt;-</span> Map.lookup f fs <span class="ot">=</span> (<span class="dt">Right</span> s           , m)</span>
-<span id="cb92-48"><a href="#cb92-48" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="fu">otherwise</span>                 <span class="ot">=</span> (<span class="dt">Left</span> <span class="dt">DoesNotExist</span> , m)</span>
-<span id="cb92-49"><a href="#cb92-49" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
-<span id="cb92-50"><a href="#cb92-50" aria-hidden="true" tabindex="-1"></a>    alreadyOpen <span class="ot">=</span> f <span class="ot">`List.elem`</span> Map.elems hs</span></code></pre></div>
 <div class="sourceCode" id="cb93"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb93-1"><a href="#cb93-1" aria-hidden="true" tabindex="-1"></a><span class="ot">fake ::</span> <span class="dt">IO</span> (<span class="dt">IFileSystem</span> <span class="dt">FHandle</span>)</span>
-<span id="cb93-2"><a href="#cb93-2" aria-hidden="true" tabindex="-1"></a>fake <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb93-3"><a href="#cb93-3" aria-hidden="true" tabindex="-1"></a>  ref <span class="ot">&lt;-</span> newIORef emptyFakeFS</span>
-<span id="cb93-4"><a href="#cb93-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> <span class="dt">IFileSystem</span></span>
-<span id="cb93-5"><a href="#cb93-5" aria-hidden="true" tabindex="-1"></a>    { iMkDir <span class="ot">=</span> \d   <span class="ot">-&gt;</span> updateIORef ref (fMkDir d)</span>
-<span id="cb93-6"><a href="#cb93-6" aria-hidden="true" tabindex="-1"></a>    , iOpen  <span class="ot">=</span> \f   <span class="ot">-&gt;</span> updateIORef ref (fOpen f)</span>
-<span id="cb93-7"><a href="#cb93-7" aria-hidden="true" tabindex="-1"></a>    , iWrite <span class="ot">=</span> \h s <span class="ot">-&gt;</span> updateIORef ref (fWrite h s)</span>
-<span id="cb93-8"><a href="#cb93-8" aria-hidden="true" tabindex="-1"></a>    , iClose <span class="ot">=</span> \h   <span class="ot">-&gt;</span> updateIORef ref (fClose h)</span>
-<span id="cb93-9"><a href="#cb93-9" aria-hidden="true" tabindex="-1"></a>    , iRead  <span class="ot">=</span> \f   <span class="ot">-&gt;</span> updateIORef ref (fRead f)</span>
-<span id="cb93-10"><a href="#cb93-10" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb93-11"><a href="#cb93-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
-<span id="cb93-12"><a href="#cb93-12" aria-hidden="true" tabindex="-1"></a><span class="ot">    updateIORef ::</span> <span class="dt">IORef</span> <span class="dt">FakeFS</span> <span class="ot">-&gt;</span> <span class="dt">FakeOp</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> a</span>
-<span id="cb93-13"><a href="#cb93-13" aria-hidden="true" tabindex="-1"></a>    updateIORef ref op <span class="ot">=</span></span>
-<span id="cb93-14"><a href="#cb93-14" aria-hidden="true" tabindex="-1"></a>      atomicModifyIORef&#39; ref (\fs <span class="ot">-&gt;</span> swap (op fs)) <span class="op">&gt;&gt;=</span> \<span class="kw">case</span></span>
-<span id="cb93-15"><a href="#cb93-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Left</span> err <span class="ot">-&gt;</span> throwIO err</span>
-<span id="cb93-16"><a href="#cb93-16" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Right</span> x  <span class="ot">-&gt;</span> <span class="fu">return</span> x</span>
-<span id="cb93-17"><a href="#cb93-17" aria-hidden="true" tabindex="-1"></a>      <span class="kw">where</span></span>
-<span id="cb93-18"><a href="#cb93-18" aria-hidden="true" tabindex="-1"></a>        swap (x, y) <span class="ot">=</span> (y, x)</span></code></pre></div>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb93-1"><a href="#cb93-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">FHandle</span> <span class="ot">=</span> <span class="dt">Var</span> <span class="dt">Handle</span></span>
+<span id="cb93-2"><a href="#cb93-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-3"><a href="#cb93-3" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">FakeFS</span> <span class="ot">=</span> <span class="dt">F</span> {</span>
+<span id="cb93-4"><a href="#cb93-4" aria-hidden="true" tabindex="-1"></a><span class="ot">    dirs  ::</span> <span class="dt">Set</span> <span class="dt">Dir</span></span>
+<span id="cb93-5"><a href="#cb93-5" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> files ::</span> <span class="dt">Map</span> <span class="dt">File</span> <span class="dt">String</span></span>
+<span id="cb93-6"><a href="#cb93-6" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> open  ::</span> <span class="dt">Map</span> <span class="dt">FHandle</span> <span class="dt">File</span></span>
+<span id="cb93-7"><a href="#cb93-7" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> next  ::</span> <span class="dt">FHandle</span></span>
+<span id="cb93-8"><a href="#cb93-8" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb93-9"><a href="#cb93-9" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> <span class="dt">Show</span></span>
+<span id="cb93-10"><a href="#cb93-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-11"><a href="#cb93-11" aria-hidden="true" tabindex="-1"></a><span class="ot">emptyFakeFS ::</span> <span class="dt">FakeFS</span></span>
+<span id="cb93-12"><a href="#cb93-12" aria-hidden="true" tabindex="-1"></a>emptyFakeFS <span class="ot">=</span> <span class="dt">F</span> (Set.singleton (<span class="dt">Dir</span> [])) Map.empty Map.empty (<span class="dt">Var</span> <span class="dv">0</span>)</span>
+<span id="cb93-13"><a href="#cb93-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-14"><a href="#cb93-14" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">FakeOp</span> a <span class="ot">=</span> <span class="dt">FakeFS</span> <span class="ot">-&gt;</span> (<span class="dt">Either</span> <span class="dt">PrecondFail</span> a, <span class="dt">FakeFS</span>)</span>
+<span id="cb93-15"><a href="#cb93-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-16"><a href="#cb93-16" aria-hidden="true" tabindex="-1"></a><span class="ot">fMkDir ::</span> <span class="dt">Dir</span> <span class="ot">-&gt;</span> <span class="dt">FakeOp</span> ()</span>
+<span id="cb93-17"><a href="#cb93-17" aria-hidden="true" tabindex="-1"></a>fMkDir d m<span class="op">@</span>(<span class="dt">F</span> ds fs hs n)</span>
+<span id="cb93-18"><a href="#cb93-18" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> d        <span class="ot">`Set.member`</span>    ds <span class="ot">=</span> (<span class="dt">Left</span> <span class="dt">AlreadyExists</span>, m)</span>
+<span id="cb93-19"><a href="#cb93-19" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> parent d <span class="ot">`Set.notMember`</span> ds <span class="ot">=</span> (<span class="dt">Left</span> <span class="dt">DoesNotExist</span>, m)</span>
+<span id="cb93-20"><a href="#cb93-20" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="fu">otherwise</span>                   <span class="ot">=</span> (<span class="dt">Right</span> (), <span class="dt">F</span> (Set.insert d ds) fs hs n)</span>
+<span id="cb93-21"><a href="#cb93-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-22"><a href="#cb93-22" aria-hidden="true" tabindex="-1"></a><span class="ot">fOpen ::</span> <span class="dt">File</span> <span class="ot">-&gt;</span> <span class="dt">FakeOp</span> <span class="dt">FHandle</span></span>
+<span id="cb93-23"><a href="#cb93-23" aria-hidden="true" tabindex="-1"></a>fOpen f m<span class="op">@</span>(<span class="dt">F</span> ds fs hs n<span class="op">@</span>(<span class="dt">Var</span> n_))</span>
+<span id="cb93-24"><a href="#cb93-24" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> alreadyOpen   <span class="ot">=</span> (<span class="dt">Left</span> <span class="dt">Busy</span>, m)</span>
+<span id="cb93-25"><a href="#cb93-25" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="fu">not</span> dirExists <span class="ot">=</span> (<span class="dt">Left</span> <span class="dt">DoesNotExist</span>, m)</span>
+<span id="cb93-26"><a href="#cb93-26" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> fileExists    <span class="ot">=</span> (<span class="dt">Right</span> n, <span class="dt">F</span> ds fs hs&#39; n&#39;)</span>
+<span id="cb93-27"><a href="#cb93-27" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="fu">otherwise</span>     <span class="ot">=</span> (<span class="dt">Right</span> n, <span class="dt">F</span> ds (Map.insert f <span class="st">&quot;&quot;</span> fs) hs&#39; n&#39;)</span>
+<span id="cb93-28"><a href="#cb93-28" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb93-29"><a href="#cb93-29" aria-hidden="true" tabindex="-1"></a>    hs&#39; <span class="ot">=</span> Map.insert n f hs</span>
+<span id="cb93-30"><a href="#cb93-30" aria-hidden="true" tabindex="-1"></a>    n&#39;  <span class="ot">=</span> <span class="dt">Var</span> (<span class="fu">succ</span> n_)</span>
+<span id="cb93-31"><a href="#cb93-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-32"><a href="#cb93-32" aria-hidden="true" tabindex="-1"></a>    fileExists  <span class="ot">=</span>         f <span class="ot">`Map.member`</span> fs</span>
+<span id="cb93-33"><a href="#cb93-33" aria-hidden="true" tabindex="-1"></a>    dirExists   <span class="ot">=</span> fileDir f <span class="ot">`Set.member`</span> ds</span>
+<span id="cb93-34"><a href="#cb93-34" aria-hidden="true" tabindex="-1"></a>    alreadyOpen <span class="ot">=</span> f <span class="ot">`List.elem`</span> Map.elems hs</span>
+<span id="cb93-35"><a href="#cb93-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-36"><a href="#cb93-36" aria-hidden="true" tabindex="-1"></a><span class="ot">fWrite ::</span> <span class="dt">FHandle</span> <span class="ot">-&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">FakeOp</span> ()</span>
+<span id="cb93-37"><a href="#cb93-37" aria-hidden="true" tabindex="-1"></a>fWrite h s m<span class="op">@</span>(<span class="dt">F</span> ds fs hs n)</span>
+<span id="cb93-38"><a href="#cb93-38" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">Just</span> f <span class="ot">&lt;-</span> Map.lookup h hs <span class="ot">=</span> (<span class="dt">Right</span> (), <span class="dt">F</span> ds (Map.adjust (<span class="op">++</span> s) f fs) hs n)</span>
+<span id="cb93-39"><a href="#cb93-39" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="fu">otherwise</span>                 <span class="ot">=</span> (<span class="dt">Left</span> <span class="dt">HandleClosed</span>, m)</span>
+<span id="cb93-40"><a href="#cb93-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-41"><a href="#cb93-41" aria-hidden="true" tabindex="-1"></a><span class="ot">fClose ::</span> <span class="dt">FHandle</span> <span class="ot">-&gt;</span> <span class="dt">FakeOp</span> ()</span>
+<span id="cb93-42"><a href="#cb93-42" aria-hidden="true" tabindex="-1"></a>fClose h (<span class="dt">F</span> ds fs hs n) <span class="ot">=</span> (<span class="dt">Right</span> (), <span class="dt">F</span> ds fs (Map.delete h hs) n)</span>
+<span id="cb93-43"><a href="#cb93-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-44"><a href="#cb93-44" aria-hidden="true" tabindex="-1"></a><span class="ot">fRead ::</span> <span class="dt">File</span> <span class="ot">-&gt;</span> <span class="dt">FakeOp</span> <span class="dt">String</span></span>
+<span id="cb93-45"><a href="#cb93-45" aria-hidden="true" tabindex="-1"></a>fRead f m<span class="op">@</span>(<span class="dt">F</span> _ fs hs _)</span>
+<span id="cb93-46"><a href="#cb93-46" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> alreadyOpen               <span class="ot">=</span> (<span class="dt">Left</span> <span class="dt">Busy</span>         , m)</span>
+<span id="cb93-47"><a href="#cb93-47" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">Just</span> s <span class="ot">&lt;-</span> Map.lookup f fs <span class="ot">=</span> (<span class="dt">Right</span> s           , m)</span>
+<span id="cb93-48"><a href="#cb93-48" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="fu">otherwise</span>                 <span class="ot">=</span> (<span class="dt">Left</span> <span class="dt">DoesNotExist</span> , m)</span>
+<span id="cb93-49"><a href="#cb93-49" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb93-50"><a href="#cb93-50" aria-hidden="true" tabindex="-1"></a>    alreadyOpen <span class="ot">=</span> f <span class="ot">`List.elem`</span> Map.elems hs</span></code></pre></div>
+<div class="sourceCode" id="cb94"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb94-1"><a href="#cb94-1" aria-hidden="true" tabindex="-1"></a><span class="ot">fake ::</span> <span class="dt">IO</span> (<span class="dt">IFileSystem</span> <span class="dt">FHandle</span>)</span>
+<span id="cb94-2"><a href="#cb94-2" aria-hidden="true" tabindex="-1"></a>fake <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb94-3"><a href="#cb94-3" aria-hidden="true" tabindex="-1"></a>  ref <span class="ot">&lt;-</span> newIORef emptyFakeFS</span>
+<span id="cb94-4"><a href="#cb94-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> <span class="dt">IFileSystem</span></span>
+<span id="cb94-5"><a href="#cb94-5" aria-hidden="true" tabindex="-1"></a>    { iMkDir <span class="ot">=</span> \d   <span class="ot">-&gt;</span> updateIORef ref (fMkDir d)</span>
+<span id="cb94-6"><a href="#cb94-6" aria-hidden="true" tabindex="-1"></a>    , iOpen  <span class="ot">=</span> \f   <span class="ot">-&gt;</span> updateIORef ref (fOpen f)</span>
+<span id="cb94-7"><a href="#cb94-7" aria-hidden="true" tabindex="-1"></a>    , iWrite <span class="ot">=</span> \h s <span class="ot">-&gt;</span> updateIORef ref (fWrite h s)</span>
+<span id="cb94-8"><a href="#cb94-8" aria-hidden="true" tabindex="-1"></a>    , iClose <span class="ot">=</span> \h   <span class="ot">-&gt;</span> updateIORef ref (fClose h)</span>
+<span id="cb94-9"><a href="#cb94-9" aria-hidden="true" tabindex="-1"></a>    , iRead  <span class="ot">=</span> \f   <span class="ot">-&gt;</span> updateIORef ref (fRead f)</span>
+<span id="cb94-10"><a href="#cb94-10" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb94-11"><a href="#cb94-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb94-12"><a href="#cb94-12" aria-hidden="true" tabindex="-1"></a><span class="ot">    updateIORef ::</span> <span class="dt">IORef</span> <span class="dt">FakeFS</span> <span class="ot">-&gt;</span> <span class="dt">FakeOp</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> a</span>
+<span id="cb94-13"><a href="#cb94-13" aria-hidden="true" tabindex="-1"></a>    updateIORef ref op <span class="ot">=</span></span>
+<span id="cb94-14"><a href="#cb94-14" aria-hidden="true" tabindex="-1"></a>      atomicModifyIORef&#39; ref (\fs <span class="ot">-&gt;</span> swap (op fs)) <span class="op">&gt;&gt;=</span> \<span class="kw">case</span></span>
+<span id="cb94-15"><a href="#cb94-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Left</span> err <span class="ot">-&gt;</span> throwIO err</span>
+<span id="cb94-16"><a href="#cb94-16" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Right</span> x  <span class="ot">-&gt;</span> <span class="fu">return</span> x</span>
+<span id="cb94-17"><a href="#cb94-17" aria-hidden="true" tabindex="-1"></a>      <span class="kw">where</span></span>
+<span id="cb94-18"><a href="#cb94-18" aria-hidden="true" tabindex="-1"></a>        swap (x, y) <span class="ot">=</span> (y, x)</span></code></pre></div>
 <p>Assuming we’ve tested that the fake file system is faithful to the
 real one, we can depend on the interface in all components of our system
 that need the file system:</p>
-<div class="sourceCode" id="cb94"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb94-1"><a href="#cb94-1" aria-hidden="true" tabindex="-1"></a><span class="ot">prog ::</span> <span class="dt">IFileSystem</span> h <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb94-2"><a href="#cb94-2" aria-hidden="true" tabindex="-1"></a>prog ifs <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb94-3"><a href="#cb94-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> d <span class="ot">=</span> <span class="dt">Dir</span> [<span class="st">&quot;foo&quot;</span>]</span>
-<span id="cb94-4"><a href="#cb94-4" aria-hidden="true" tabindex="-1"></a>  iMkDir ifs d</span>
-<span id="cb94-5"><a href="#cb94-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> f <span class="ot">=</span> <span class="dt">File</span> d <span class="st">&quot;bar&quot;</span></span>
-<span id="cb94-6"><a href="#cb94-6" aria-hidden="true" tabindex="-1"></a>  h <span class="ot">&lt;-</span> iOpen ifs f</span>
-<span id="cb94-7"><a href="#cb94-7" aria-hidden="true" tabindex="-1"></a>  iWrite ifs h <span class="st">&quot;baz&quot;</span></span>
-<span id="cb94-8"><a href="#cb94-8" aria-hidden="true" tabindex="-1"></a>  iClose ifs h</span>
-<span id="cb94-9"><a href="#cb94-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">putStrLn</span> <span class="op">=&lt;&lt;</span> iRead ifs f</span></code></pre></div>
+<div class="sourceCode" id="cb95"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb95-1"><a href="#cb95-1" aria-hidden="true" tabindex="-1"></a><span class="ot">prog ::</span> <span class="dt">IFileSystem</span> h <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb95-2"><a href="#cb95-2" aria-hidden="true" tabindex="-1"></a>prog ifs <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb95-3"><a href="#cb95-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> d <span class="ot">=</span> <span class="dt">Dir</span> [<span class="st">&quot;foo&quot;</span>]</span>
+<span id="cb95-4"><a href="#cb95-4" aria-hidden="true" tabindex="-1"></a>  iMkDir ifs d</span>
+<span id="cb95-5"><a href="#cb95-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> f <span class="ot">=</span> <span class="dt">File</span> d <span class="st">&quot;bar&quot;</span></span>
+<span id="cb95-6"><a href="#cb95-6" aria-hidden="true" tabindex="-1"></a>  h <span class="ot">&lt;-</span> iOpen ifs f</span>
+<span id="cb95-7"><a href="#cb95-7" aria-hidden="true" tabindex="-1"></a>  iWrite ifs h <span class="st">&quot;baz&quot;</span></span>
+<span id="cb95-8"><a href="#cb95-8" aria-hidden="true" tabindex="-1"></a>  iClose ifs h</span>
+<span id="cb95-9"><a href="#cb95-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">putStrLn</span> <span class="op">=&lt;&lt;</span> iRead ifs f</span></code></pre></div>
 <p>We can then use the fake file system when we integration test and
 thus get fast and deterministic tests, and then use the real file system
 when we deploy.</p>
-<div class="sourceCode" id="cb95"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb95-1"><a href="#cb95-1" aria-hidden="true" tabindex="-1"></a><span class="ot">test ::</span> <span class="dt">IO</span> ()</span>
-<span id="cb95-2"><a href="#cb95-2" aria-hidden="true" tabindex="-1"></a>test <span class="ot">=</span> prog <span class="op">=&lt;&lt;</span> fake</span>
-<span id="cb95-3"><a href="#cb95-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb95-4"><a href="#cb95-4" aria-hidden="true" tabindex="-1"></a><span class="ot">deploy ::</span> <span class="dt">IO</span> ()</span>
-<span id="cb95-5"><a href="#cb95-5" aria-hidden="true" tabindex="-1"></a>deploy <span class="ot">=</span> prog real</span></code></pre></div>
+<div class="sourceCode" id="cb96"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb96-1"><a href="#cb96-1" aria-hidden="true" tabindex="-1"></a><span class="ot">test ::</span> <span class="dt">IO</span> ()</span>
+<span id="cb96-2"><a href="#cb96-2" aria-hidden="true" tabindex="-1"></a>test <span class="ot">=</span> prog <span class="op">=&lt;&lt;</span> fake</span>
+<span id="cb96-3"><a href="#cb96-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb96-4"><a href="#cb96-4" aria-hidden="true" tabindex="-1"></a><span class="ot">deploy ::</span> <span class="dt">IO</span> ()</span>
+<span id="cb96-5"><a href="#cb96-5" aria-hidden="true" tabindex="-1"></a>deploy <span class="ot">=</span> prog real</span></code></pre></div>
 <p>Because of the fact that we know that the fake is faithful to the
 real file system implementation, we can be relatively sure that swapping
 in the real file system instead of the fake one when deploying will not
@@ -2929,16 +2950,16 @@ same technique scales to a bigger system of components or services.</p>
   +---+      +---+      +---+</code></pre>
 <p>Following the pattern that we did for the queue and file system
 example, we’d define three interfaces:</p>
-<div class="sourceCode" id="cb97"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb97-1"><a href="#cb97-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">IA</span> <span class="ot">=</span> <span class="op">...</span></span>
-<span id="cb97-2"><a href="#cb97-2" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">IB</span> <span class="ot">=</span> <span class="op">...</span></span>
-<span id="cb97-3"><a href="#cb97-3" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">IC</span> <span class="ot">=</span> <span class="op">...</span></span></code></pre></div>
+<div class="sourceCode" id="cb98"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb98-1"><a href="#cb98-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">IA</span> <span class="ot">=</span> <span class="op">...</span></span>
+<span id="cb98-2"><a href="#cb98-2" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">IB</span> <span class="ot">=</span> <span class="op">...</span></span>
+<span id="cb98-3"><a href="#cb98-3" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">IC</span> <span class="ot">=</span> <span class="op">...</span></span></code></pre></div>
 <p>And the dependencies are made clear when we instantiate the
 interfaces:</p>
-<div class="sourceCode" id="cb98"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb98-1"><a href="#cb98-1" aria-hidden="true" tabindex="-1"></a><span class="ot">iC ::</span> <span class="dt">IO</span> <span class="dt">IC</span>       <span class="co">-- C has no dependencies.</span></span>
-<span id="cb98-2"><a href="#cb98-2" aria-hidden="true" tabindex="-1"></a><span class="ot">iB ::</span> <span class="dt">IC</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">IB</span> <span class="co">-- B depends on C.</span></span>
-<span id="cb98-3"><a href="#cb98-3" aria-hidden="true" tabindex="-1"></a><span class="ot">iA ::</span> <span class="dt">IB</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">IA</span> <span class="co">-- A depends on B.</span></span></code></pre></div>
+<div class="sourceCode" id="cb99"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb99-1"><a href="#cb99-1" aria-hidden="true" tabindex="-1"></a><span class="ot">iC ::</span> <span class="dt">IO</span> <span class="dt">IC</span>       <span class="co">-- C has no dependencies.</span></span>
+<span id="cb99-2"><a href="#cb99-2" aria-hidden="true" tabindex="-1"></a><span class="ot">iB ::</span> <span class="dt">IC</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">IB</span> <span class="co">-- B depends on C.</span></span>
+<span id="cb99-3"><a href="#cb99-3" aria-hidden="true" tabindex="-1"></a><span class="ot">iA ::</span> <span class="dt">IB</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">IA</span> <span class="co">-- A depends on B.</span></span></code></pre></div>
 <p>The testing strategy is then as follows:</p>
 <ol type="1">
 <li>Stateful and parallel test C, this gives us a fake of C which is
