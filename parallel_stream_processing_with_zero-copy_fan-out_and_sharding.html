@@ -10,6 +10,7 @@
   <link rel="alternate" type="application/rss+xml"
         title="RSS feed"
         href="rss.xml" />
+  <script src="script.js"></script>
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
@@ -84,7 +85,8 @@ pipelines backed by Disruptors where all low-level details are hidden
 away from the user of the library. We’ll also have a look at how we can
 monitor and visualise such pipelines for debugging and performance
 troubleshooting purposes.</p>
-<h2 id="motivation-and-inspiration">Motivation and inspiration</h2>
+<section id="motivation-and-inspiration" class="level2">
+<h2>Motivation and inspiration</h2>
 <p>Before we dive into <em>how</em> we can achieve this, let’s start
 with the question of <em>why</em> I’d like to do it.</p>
 <p>I believe the way we write programs for multiprocessor networks,
@@ -166,7 +168,9 @@ href="https://www.youtube.com/watch?v=8M0wTX6EOVI">calls</a> a
 substrate should be based on shared memory, but overall I agree with her
 goal of making it easier to program distributed systems by providing
 generic building blocks.</p>
-<h2 id="prior-work">Prior work</h2>
+</section>
+<section id="prior-work" class="level2">
+<h2>Prior work</h2>
 <p>Working with streams of data is common. The reason for this is that
 it’s a nice abstraction when dealing with data that cannot fit in
 memory. The alternative is to manually load chunks of data one wants to
@@ -309,7 +313,9 @@ load.</li>
 “substrate for distributed systems”. We’ll not get all the way there in
 this post, but at least this should give you a sense of the direction
 I’d like to go.</p>
-<h2 id="plan">Plan</h2>
+</section>
+<section id="plan" class="level2">
+<h2>Plan</h2>
 <p>The rest of this post is organised as follows.</p>
 <p>First we’ll have a look at how to model pipelines as a transformation
 of lists. The purpose of this is to give us an easy to understand
@@ -324,7 +330,9 @@ identified in the previous section.</p>
 <p>Finally we’ll have enough background to be able to sketch the
 Disruptor implementation of pipelines. We’ll also discuss how
 monitoring/observability can be added.</p>
-<h2 id="list-transformer-model">List transformer model</h2>
+</section>
+<section id="list-transformer-model" class="level2">
+<h2>List transformer model</h2>
 <p>Let’s first introduce the type for our pipelines. We index our
 pipeline datatype by two types, in order to be able to precisely specify
 its input and output types. For example, the <code>Id</code>entity
@@ -397,7 +405,9 @@ section.</p>
 <p>We can now run our example pipeline in the REPL:</p>
 <pre><code>&gt; model examplePipeline [1,2,3,4,5]
 [(1,False),(2,True),(3,False),(4,True),(5,False)]</code></pre>
-<h2 id="queue-pipeline-deployment">Queue pipeline deployment</h2>
+</section>
+<section id="queue-pipeline-deployment" class="level2">
+<h2>Queue pipeline deployment</h2>
 <p>In the previous section we saw how to deploy pipelines in a purely
 sequential way in order to process lists. The purpose of this is merely
 to give ourselves an intuition of what pipelines should do as well as an
@@ -565,7 +575,9 @@ to go back and reread the <a
 href="https://stevana.github.io/pipelined_state_machines.html">old
 post</a>, as I spent some more time constructing an intuitive example
 there.</p>
-<h2 id="disruptor">Disruptor</h2>
+</section>
+<section id="disruptor" class="level2">
+<h2>Disruptor</h2>
 <p>Before we can understand how the Disruptor can help us avoid the
 problem copying between queues that we just saw, we need to first
 understand a bit about how the Disruptor is implemented.</p>
@@ -669,8 +681,9 @@ consumers without copying data. The fact that we can batch on both the
 write side (with <code>tryClaimBatch</code>) and on the reader side
 (with <code>waitFor</code>) also helps. All this taken together
 contributes to the Disruptor’s performance.</p>
-<h2 id="disruptor-pipeline-deployment">Disruptor pipeline
-deployment</h2>
+</section>
+<section id="disruptor-pipeline-deployment" class="level2">
+<h2>Disruptor pipeline deployment</h2>
 <p>Recall that the reason we introduced the Disruptor was to avoid
 copying elements of the queue when fanning out (using the
 <code>:&amp;&amp;&amp;</code> combinator) and sharding.</p>
@@ -832,7 +845,9 @@ sys     0m0.778s</code></pre>
 introduce more fan-out, this expected as the queue implementation will
 have more copying of data to do<a href="#fn8" class="footnote-ref"
 id="fnref8" role="doc-noteref"><sup>8</sup></a>.</p>
-<h2 id="observability">Observability</h2>
+</section>
+<section id="observability" class="level2">
+<h2>Observability</h2>
 <p>Given that pipelines are directed acyclic graphs and that we have a
 concrete datatype constructor for each pipeline combinator, it’s
 relatively straight forward to add a visualisation of a deployment.</p>
@@ -862,7 +877,9 @@ there’s a lot of items to be processed.</p>
 <p>I have written a separate write up on how to make the SVG interactive
 over <a
 href="https://stevana.github.io/visualising_datastructures_over_time_using_svg.html">here</a>.</p>
-<h2 id="running">Running</h2>
+</section>
+<section id="running" class="level2">
+<h2>Running</h2>
 <p>All of the above Haskell code is available on <a
 href="https://github.com/stevana/pipelining-with-disruptor/">GitHub</a>.
 The easiest way to install the right version of GHC and cabal is
@@ -894,8 +911,9 @@ class="sourceCode bash"><code class="sourceCode bash"><span id="cb44-1"><a href=
 <span id="cb44-9"><a href="#cb44-9" aria-hidden="true" tabindex="-1"></a>    <span class="ex">firefox</span> copying.eventlog.html <span class="kw">&amp;&amp;</span> <span class="dt">\</span></span>
 <span id="cb44-10"><a href="#cb44-10" aria-hidden="true" tabindex="-1"></a>    <span class="ex">firefox</span> copying.svg</span>
 <span id="cb44-11"><a href="#cb44-11" aria-hidden="true" tabindex="-1"></a><span class="cf">done</span></span></code></pre></div>
-<h2 id="further-work-and-contributing">Further work and
-contributing</h2>
+</section>
+<section id="further-work-and-contributing" class="level2">
+<h2>Further work and contributing</h2>
 <p>There’s still a lot to do, but I thought it would be a good place to
 stop for now. Here are a bunch of improvements, in no particular
 order:</p>
@@ -971,7 +989,9 @@ role="doc-noteref"><sup>9</sup></a>, as well as benchmarks against other
 streaming libraries.</li>
 </ul>
 <p>If any of this seems interesting, feel free to get involved.</p>
-<h2 id="see-also">See also</h2>
+</section>
+<section id="see-also" class="level2">
+<h2>See also</h2>
 <ul>
 <li>Guy Steele’s talk <a
 href="https://www.infoq.com/presentations/Thinking-Parallel-Programming/">How
@@ -1013,7 +1033,9 @@ Distributed Systems</a> by Mae Milano (Strange Loop, 2023);</li>
 href="https://www.youtube.com/watch?v=ipceTuJlw-M">Pipeline-oriented
 programming</a> by Scott Wlaschin (NDC Porto, 2023).</li>
 </ul>
-<h2 id="discussion">Discussion</h2>
+</section>
+<section id="discussion" class="level2">
+<h2>Discussion</h2>
 <ul>
 <li><a
 href="https://discourse.haskell.org/t/parallel-stream-processing-with-zero-copy-fan-out-and-sharding/8632">discourse.haskell.org</a>;</li>
@@ -1022,6 +1044,7 @@ href="https://old.reddit.com/r/haskell/comments/19ef2b6/parallel_stream_processi
 <li><a
 href="https://lobste.rs/s/mvgdev/parallel_stream_processing_with_zero">lobste.rs</a>.</li>
 </ul>
+</section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
 <hr />

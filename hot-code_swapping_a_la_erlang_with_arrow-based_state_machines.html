@@ -10,6 +10,7 @@
   <link rel="alternate" type="application/rss+xml"
         title="RSS feed"
         href="rss.xml" />
+  <script src="script.js"></script>
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
@@ -42,7 +43,8 @@ id="toc-acknowledgments">Acknowledgments</a></li>
 <div class="date">Posted on Feb 21, 2023</div>
 <p>An experiment in implementing remote hot code swapping, or dynamic
 code upgrade, for state machines.</p>
-<h2 id="background">Background</h2>
+<section id="background" class="level2">
+<h2>Background</h2>
 <p>In Erlang it’s possible to seamlessly hot swap the code on a running
 process.</p>
 <p>Consider the following <code>gen_server</code> implementation of a
@@ -150,7 +152,9 @@ ok
 <p>This repository is an experiment which tries to do something similar
 in Haskell for state machines of type
 <code>input -&gt; state -&gt; (state, output)</code>.</p>
-<h2 id="usage">Usage</h2>
+</section>
+<section id="usage" class="level2">
+<h2>Usage</h2>
 <p>Before we go into the details of how this is implemented in Haskell,
 lets have a look at how it looks from the user’s perspective.</p>
 <p>In one terminal run <code>cabal run exe</code> and in another
@@ -186,7 +190,9 @@ Output:    R (Int 2)
 New state: Pair (Int 1) (Int 2)</code></pre>
 <p>If we try to upgrade again, we get an error:</p>
 <pre><code>The version running isn&#39;t the one the upgrade expects. Aborting upgrade.</code></pre>
-<h2 id="how-it-works">How it works</h2>
+</section>
+<section id="how-it-works" class="level2">
+<h2>How it works</h2>
 <p>The basic idea is that we want our state machines to be seralisable
 so that we can send them over the network in order to perform remote
 upgrades.</p>
@@ -302,7 +308,9 @@ imagine situations where the syntax for writing state machines changes
 or gets more expressive, but the bytecode stays the same. Which is a
 good thing, since upgrading the abstract machine on a node can probably
 not be done as easily without any downtime.</p>
-<h2 id="contributing">Contributing</h2>
+</section>
+<section id="contributing" class="level2">
+<h2>Contributing</h2>
 <p>I believe this is a good starting point for further experiments, here
 are a few ideas:</p>
 <ul class="task-list">
@@ -366,7 +374,9 @@ there’s the problem of working with combinators vs arrow syntax… Is
 there a more low-tech solution that would be easier to port to less
 featureful languages?</li>
 </ul>
-<h2 id="see-also">See also</h2>
+</section>
+<section id="see-also" class="level2">
+<h2>See also</h2>
 <ul>
 <li><a
 href="https://github.com/turion/essence-of-live-coding"><code>essence-of-live-coding</code></a>:
@@ -388,10 +398,13 @@ PhD <a
 href="http://kth.diva-portal.org/smash/record.jsf?pid=diva2%3A9492&amp;dswid=2250">thesis</a>
 (2003).</li>
 </ul>
-<h2 id="acknowledgments">Acknowledgments</h2>
+</section>
+<section id="acknowledgments" class="level2">
+<h2>Acknowledgments</h2>
 <p>Thanks to Daniel Gustafsson for helping me understand
 <code>Port</code> from the <em>Overloading the lambda abstraction in
 Haskell</em> blog post!</p>
+</section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
 <hr />

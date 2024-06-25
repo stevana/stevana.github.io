@@ -10,6 +10,7 @@
   <link rel="alternate" type="application/rss+xml"
         title="RSS feed"
         href="rss.xml" />
+  <script src="script.js"></script>
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
@@ -48,7 +49,8 @@ inputs.</p>
 if the I/O is blocking, but actually it’s non-blocking and inputs can
 continue to be processes while we wait for the I/O action to
 complete.</p>
-<h2 id="usage">Usage</h2>
+<section id="usage" class="level2">
+<h2>Usage</h2>
 <p>To make things more concrete we will be implementing a key-value
 store as a state machine.</p>
 <p>To start the key-value store in a terminal issue:</p>
@@ -72,7 +74,9 @@ class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="
 <span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="ex">Transfer-Encoding:</span> chunked</span>
 <span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="ex">Result</span> 1</span></code></pre></div>
-<h2 id="how-it-works">How it works</h2>
+</section>
+<section id="how-it-works" class="level2">
+<h2>How it works</h2>
 <p>The state machine for the key-value store example looks like
 this:</p>
 <div class="sourceCode" id="cb3"><pre
@@ -102,7 +106,9 @@ will enqueue the I/O action to a separate thread that deals with I/O and
 continue feeding the state machine new inputs, until the I/O thread
 completes the write to disk, at which point the state machine will be
 resumed with the latest state.</p>
-<h2 id="contributing">Contributing</h2>
+</section>
+<section id="contributing" class="level2">
+<h2>Contributing</h2>
 <p>Any feedback, comments or suggestions are most welcome!</p>
 <p>In particular if you know how to solve this problem in a different or
 better way.</p>
@@ -122,7 +128,9 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a 
 <p>Arguably the await makes it more clear where the suspension and
 resumption happen, which could help against the confusion regarding that
 the state might change.</p>
-<h2 id="see-also">See also</h2>
+</section>
+<section id="see-also" class="level2">
+<h2>See also</h2>
 <ul>
 <li><em>Development and Deployment of Multiplayer Online Games, Vol.
 II</em> by Sergey Ignatchenko (2020), especially chapter 5;</li>
@@ -145,6 +153,7 @@ pattern</a>;</li>
 href="https://github.com/bytecodealliance/wasmtime/blob/main/docs/WASI-rationale.md#why-not-async">WebAssembly
 Reactors</a>.</li>
 </ul>
+</section>
 </main>
 </body>
 </html>

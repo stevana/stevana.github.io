@@ -10,6 +10,7 @@
   <link rel="alternate" type="application/rss+xml"
         title="RSS feed"
         href="rss.xml" />
+  <script src="script.js"></script>
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
@@ -90,7 +91,8 @@ testing</a> and formal verification.</li>
 </ul>
 <p>The goal of the language is to provide a testbed for experimenting
 with how to program distributed systems.</p>
-<h2 id="why-a-new-language">Why a new language?</h2>
+<section id="why-a-new-language" class="level2">
+<h2>Why a new language?</h2>
 <p>Barbara Liskov gave two good reasons in her Turing award <a
 href="https://amturing.acm.org/vp/liskov_1108679.cfm">lecture</a>
 (2008):</p>
@@ -106,7 +108,9 @@ together you’re out of the programming language and into this other
 world. Maybe we need languages that are a little bit more complete now,
 so that we can write the whole thing in the language.”</p>
 </blockquote>
-<h2 id="getting-started">Getting started</h2>
+</section>
+<section id="getting-started" class="level2">
+<h2>Getting started</h2>
 <div class="sourceCode" id="cb1"><pre
 class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> cabal run smarrow-deploy <span class="kw">&amp;</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> cat example/Counter.smarr</span></code></pre></div>
@@ -145,12 +149,17 @@ class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> fg</span>
 <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="ex">cabal</span> run smarrow-deploy</span>
 <span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="ex">^C</span></span></code></pre></div>
-<h2 id="features">Features</h2>
-<h3 id="first-class-state-machines">First-class state machines</h3>
+</section>
+<section id="features" class="level2">
+<h2>Features</h2>
+<section id="first-class-state-machines" class="level3">
+<h3>First-class state machines</h3>
 <p>In functional programming languages functions are first-class. In
 <code>smarrow</code> we experiment with making state machines
 first-class instead.</p>
-<h3 id="arrow-notation">Arrow notation</h3>
+</section>
+<section id="arrow-notation" class="level3">
+<h3>Arrow notation</h3>
 <p>State machines are to <code>smarrow</code> what functions are to
 functional programing languages. A state machine has the type:</p>
 <div class="sourceCode" id="cb6"><pre
@@ -160,7 +169,9 @@ though. We could have used a state monad and thereby get do-notation,
 which would improve the egonomics of writing state machines, but in
 <code>smarrow</code> we go down an other path and use arrow notation
 instead for reasons we shall explain next.</p>
-<h3 id="hot-code-swapping">Hot-code swapping</h3>
+</section>
+<section id="hot-code-swapping" class="level3">
+<h3>Hot-code swapping</h3>
 <p>Conal Elliott’s work on <a
 href="http://conal.net/papers/compiling-to-categories/">compiling to
 categories</a> shows how <code>Arrow</code>s that don’t use
@@ -171,14 +182,18 @@ closed categories).</p>
 inspired by Cartesian closed categories. This bytecode can be sent over
 the write to remote nodes and update state machines without downtime,
 similar to hot-code swapping à la Erlang.</p>
-<h3 id="adapters">Adapters</h3>
+</section>
+<section id="adapters" class="level3">
+<h3>Adapters</h3>
 <p>State machines are pure, if we want them to do something useful we
 must hook them up to inputs from the “real world”. Adapters allow us to
 turn, for example, an HTTP server request into an input which we can
 then feed to a state machine and reply to the request using the output
 that the state machine produced.</p>
 <p>Similary console I/O or a REPL could be used as adapters.</p>
-<h3 id="simulation-testing">Simulation testing</h3>
+</section>
+<section id="simulation-testing" class="level3">
+<h3>Simulation testing</h3>
 <p>Another useful adaptor is to deploy a bunch of communicating state
 machines on a fake network where all messages are kept in an in-memory
 priorty queue sorted by arrival time. We can then simulate the network,
@@ -192,17 +207,22 @@ timeouts happen without having to wait for them, which is useful when
 combined with fault injection of network faults. Essentially this gives
 us a discrete-event simulation, which is much faster than testing using
 Jepsen and is determinstic too!</p>
-<h3 id="time-travelling-debugger">Time-travelling debugger</h3>
+</section>
+<section id="time-travelling-debugger" class="level3">
+<h3>Time-travelling debugger</h3>
 <p>If we record all inputs that we feed the state machines, then we can
 implement a time-travelling debugger by merely feeding the inputs
 one-by-one to the state machines and observing how the states change
 over time.</p>
 <p>We can use snapshots and fixed sized ring-buffers of inputs in case
 there are too many inputs to store then all.</p>
-<h3 id="deployments-via-supervision-trees">Deployments via supervision
-trees</h3>
+</section>
+<section id="deployments-via-supervision-trees" class="level3">
+<h3>Deployments via supervision trees</h3>
 <p>XXX:</p>
-<h3 id="no-modules-or-packages">No modules or packages</h3>
+</section>
+<section id="no-modules-or-packages" class="level3">
+<h3>No modules or packages</h3>
 <p>A state machine is a unit of deployment, unlike a (pure) function. A
 state machine must be under version control before it can be deployed,
 it’s therefore globally uniquely identifiable and therefore there’s no
@@ -220,7 +240,9 @@ href="https://lobste.rs/s/xi3mi0/does_programming_language_with_ml_style"
 class="uri">https://lobste.rs/s/xi3mi0/does_programming_language_with_ml_style</a></li>
 <li>Unison</li>
 </ul>
-<h3 id="upgrades">Upgrades</h3>
+</section>
+<section id="upgrades" class="level3">
+<h3>Upgrades</h3>
 <p>After a system is deployed it will likely need to be upgraded.</p>
 <p>XXX: we already talked about hot-code swapping…</p>
 <ul>
@@ -228,7 +250,9 @@ class="uri">https://lobste.rs/s/xi3mi0/does_programming_language_with_ml_style</
 changes?</p></li>
 <li><p>VM upgrades? How does Erlang deal with them?</p></li>
 </ul>
-<h3 id="protocols">Protocols</h3>
+</section>
+<section id="protocols" class="level3">
+<h3>Protocols</h3>
 <p>A state machines input type essentially defines its API, it doesn’t
 say anything about which sequences of inputs are allowed. Consider the
 POSIX filesystem API where we can open a file to get a file handle,
@@ -238,15 +262,20 @@ These legal sequences of inputs define the protocol. One way to encode
 protocols is by means of a state machines.</p>
 <p>Protocols can be enforced at run-time by protocol checkers that sit
 in-between state machines.</p>
-<h3 id="horizonal-composition--pipelining">Horizonal composition –
-pipelining</h3>
+</section>
+<section id="horizonal-composition--pipelining" class="level3">
+<h3>Horizonal composition – pipelining</h3>
 <p>XXX: Horizontally compose state machines.</p>
 <ul>
 <li><a href="https://youtu.be/U3eo49nVxcA?t=1949">Jim Gray on
 parallelism via pipelining</a></li>
 </ul>
-<h3 id="vertical-composition">Vertical composition</h3>
-<h3 id="capabilities">Capabilities</h3>
+</section>
+<section id="vertical-composition" class="level3">
+<h3>Vertical composition</h3>
+</section>
+<section id="capabilities" class="level3">
+<h3>Capabilities</h3>
 <ul>
 <li>Lecture on <a
 href="https://youtube.com/watch?v=TQhmua7Z2cY">capabilities</a> from
@@ -255,7 +284,9 @@ MIT’s 6.858 Computer Systems Security course (2014)</li>
 href="https://spritely.institute/static/papers/spritely-core.html">The
 Heart of Spritely: Distributed Objects and Capability Security</a></li>
 </ul>
-<h3 id="formal-verification">Formal verification</h3>
+</section>
+<section id="formal-verification" class="level3">
+<h3>Formal verification</h3>
 <ul>
 <li>Model-checking à la TLA+: <a
 href="https://github.com/Gabriella439/HasCal"
@@ -264,9 +295,13 @@ class="uri">https://github.com/Gabriella439/HasCal</a></li>
 href="https://lawrencecpaulson.github.io/2022/10/12/verifying-distributed-systems-isabelle.html"
 class="uri">https://lawrencecpaulson.github.io/2022/10/12/verifying-distributed-systems-isabelle.html</a></li>
 </ul>
-<h2 id="contributing">Contributing</h2>
+</section>
+</section>
+<section id="contributing" class="level2">
+<h2>Contributing</h2>
 <p>If any of this sounds interesting, feel free to get in touch.</p>
-<h3 id="to-do">To do</h3>
+<section id="to-do" class="level3">
+<h3>To do</h3>
 <ul>
 <li>records</li>
 <li>state migration</li>
@@ -300,7 +335,10 @@ class="uri">https://github.com/pcarrier/srv.us</a> ?</li>
 deployment?</li>
 <li>echo server benchmark</li>
 </ul>
-<h2 id="see-also">See also</h2>
+</section>
+</section>
+<section id="see-also" class="level2">
+<h2>See also</h2>
 <ul>
 <li>The P programming language</li>
 <li><a
@@ -314,6 +352,7 @@ class="uri">https://hackage.haskell.org/package/arrowp-qq-0.3.0/src/</a></li>
 href="https://karczmarczuk.users.greyc.fr/TEACH/Stage/ArrComp.pdf"
 class="uri">https://karczmarczuk.users.greyc.fr/TEACH/Stage/ArrComp.pdf</a></li>
 </ul>
+</section>
 </main>
 </body>
 </html>

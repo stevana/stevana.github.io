@@ -10,6 +10,7 @@
   <link rel="alternate" type="application/rss+xml"
         title="RSS feed"
         href="rss.xml" />
+  <script src="script.js"></script>
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
@@ -50,7 +51,8 @@ id="toc-presentations">Presentations</a></li>
 <div class="date">Posted on Mar  1, 2023</div>
 <p>An experiment in declaratively programming parallel pipelines of
 state machines.</p>
-<h2 id="motivation">Motivation</h2>
+<section id="motivation" class="level2">
+<h2>Motivation</h2>
 <p>Imagine a flat complex in Sweden. Being the socialist utopia Sweden
 is there’s a shared laundry room which the people in the flat complex
 can book. In the laundry room there’s everything one needs to wash, dry
@@ -97,7 +99,9 @@ href="https://en.wikipedia.org/wiki/Instruction_pipelining">pipeline
 instructions</a>.</p>
 <p>The rest of this document is an experiment in how we can construct
 such pipelining in software in a declarative way.</p>
-<h2 id="usage">Usage</h2>
+</section>
+<section id="usage" class="level2">
+<h2>Usage</h2>
 <p>The workers or stages in our pipeline will be state machines of the
 following type.</p>
 <div class="sourceCode" id="cb3"><pre
@@ -301,7 +305,9 @@ e.g. <code>shardQ{In, Out}</code> above;</li>
 <p>I believe all these problems can be solved by choosing a better
 concurrent queue data structure than <code>TQueue</code>, so that’s what
 we’ll have a look at next.</p>
-<h2 id="disruptor">Disruptor</h2>
+</section>
+<section id="disruptor" class="level2">
+<h2>Disruptor</h2>
 <p>The <code>Disruptor*</code> modules are a Haskell port of the <a
 href="https://github.com/LMAX-Exchange/disruptor">LMAX Disruptor</a>,
 which is a high performance inter-thread messaging library. The
@@ -323,7 +329,8 @@ event);</li>
 </ul>
 <p>It’s also performs better than most queues, as we shall see further
 down.</p>
-<h3 id="example">Example</h3>
+<section id="example" class="level3">
+<h3>Example</h3>
 <div class="sourceCode" id="cb17"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Control.Concurrent</span></span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Control.Concurrent.Async</span></span>
@@ -401,7 +408,9 @@ does something with the event only if it has both been logged and stored
 to disk (i.e. the third consumer depends on both the first and the
 second).</p></li>
 </ol>
-<h3 id="how-it-works">How it works</h3>
+</section>
+<section id="how-it-works" class="level3">
+<h3>How it works</h3>
 <p>The ring buffer is implemented using a bounded array, it keeps track
 of a monotonically increasing sequence number and it knows its the
 capacity of the array, so to find out where to write the next value by
@@ -437,7 +446,9 @@ it wait strategy, or the ring buffer can reply that there are new
 events, the consumer the handles each one in turn and the last one will
 be have the end of batch flag set, so that the consumer can effectively
 batch the processing.</p>
-<h3 id="performance">Performance</h3>
+</section>
+<section id="performance" class="level3">
+<h3>Performance</h3>
 <p>Our Disruptor implementation, which hasn’t been optimised much yet,
 is about 2x slower than LMAX’s Java version on their single-producer
 single-consumer <a
@@ -492,7 +503,10 @@ them as fair with respect to each other and as true to the original Java
 versions as possible. If you see anything that seems unfair, or if you
 get very different results when trying to reproduce the numbers, then
 please file an issue.</p>
-<h2 id="contributing">Contributing</h2>
+</section>
+</section>
+<section id="contributing" class="level2">
+<h2>Contributing</h2>
 <p>There’s a lot of possible paths to explore from here, including:</p>
 <ul class="task-list">
 <li><input type="checkbox" />Can we swap out our use of
@@ -567,8 +581,11 @@ should be something like a <code>Topology</code> data type which
 describes how multiple pipelines interact and a topology is deployed by
 deploying multiple pipelines over multiple machines?</li>
 </ul>
-<h2 id="see-also">See also</h2>
-<h3 id="presentations">Presentations</h3>
+</section>
+<section id="see-also" class="level2">
+<h2>See also</h2>
+<section id="presentations" class="level3">
+<h3>Presentations</h3>
 <ul>
 <li><p><a href="https://www.infoq.com/presentations/LMAX/">LMAX - How to
 Do 100K TPS at Less than 1ms Latency</a> by Martin Thompson (QCon
@@ -607,7 +624,9 @@ Thompson (GOTO, 2018);</p></li>
 href="https://youtube.com/watch?v=H9yqzfNiEb4">talk</a> by Todd
 Montgomery (2022).</p></li>
 </ul>
-<h3 id="writings">Writings</h3>
+</section>
+<section id="writings" class="level3">
+<h3>Writings</h3>
 <ul>
 <li>Martin Thompson’s <a
 href="https://mechanical-sympathy.blogspot.com/">blog</a>;</li>
@@ -627,6 +646,8 @@ Manifesto</a>;</li>
 href="https://en.wikipedia.org/wiki/Flow-based_programming">Flow-based
 programming</a>.</li>
 </ul>
+</section>
+</section>
 </main>
 </body>
 </html>

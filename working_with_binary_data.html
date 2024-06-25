@@ -10,6 +10,7 @@
   <link rel="alternate" type="application/rss+xml"
         title="RSS feed"
         href="rss.xml" />
+  <script src="script.js"></script>
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
@@ -63,7 +64,8 @@ encodings</a></li>
 <p>Can we make binary encodings “human-readable”? This post explores
 this question by means of implementing a library inspired by Erlang’s
 bit syntax.</p>
-<h2 id="motivation">Motivation</h2>
+<section id="motivation" class="level2">
+<h2>Motivation</h2>
 <p>JSON is probably the most commonly used format for serialising data
 today. A frequent argument for using it is that JSON is
 human-readable.</p>
@@ -122,7 +124,9 @@ desired.</p>
 <p>In the rest of this post we’ll have first have a look at how Erlang’s
 bit syntax works, then we’ll turn to its shortcomings and try to start
 addressing them by means of implementing a library.</p>
-<h2 id="erlangs-bit-syntax">Erlang’s bit syntax</h2>
+</section>
+<section id="erlangs-bit-syntax" class="level2">
+<h2>Erlang’s bit syntax</h2>
 <p>Erlang has a feature called bit syntax which allows the user to
 encode and decode data at the bit-level. Here’s an example, where we
 encode three integers into two bytes:</p>
@@ -180,7 +184,9 @@ class="sourceCode erlang"><code class="sourceCode erlang"><span id="cb5-1"><a hr
 <p>Note how we can match on the header length, <code>HLen</code>, and
 later use the value of that match as the size when pattern matching on
 later values.</p>
-<h2 id="usage">Usage</h2>
+</section>
+<section id="usage" class="level2">
+<h2>Usage</h2>
 <p>We can implement a library that lets us do similar things to Erlang’s
 bit syntax, but in a more clunky way (it’s difficult to beat native
 syntax support).</p>
@@ -202,7 +208,9 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a 
 href="https://github.com/stevana/bits-and-bobs/blob/main/src/BitsAndBobs.hs">implemented</a>
 in Haskell, but should be straightforward to port to most languages
 using the following recipe.</p>
-<h2 id="how-it-works">How it works</h2>
+</section>
+<section id="how-it-works" class="level2">
+<h2>How it works</h2>
 <p>The high-level idea when encoding a bunch of, possibly sized, values
 into a <code>ByteString</code> is as follows:</p>
 <ol type="1">
@@ -234,14 +242,17 @@ converted into bits, and <code>Int</code>egers are encoding using <a
 href="https://en.wikipedia.org/wiki/Variable-length_quantity#Zigzag_encoding">zigzag</a>
 encoding<a href="#fn2" class="footnote-ref" id="fnref2"
 role="doc-noteref"><sup>2</sup></a>.</p>
-<h2 id="extending-erlangs-bit-syntax">Extending Erlang’s bit syntax</h2>
+</section>
+<section id="extending-erlangs-bit-syntax" class="level2">
+<h2>Extending Erlang’s bit syntax</h2>
 <p>Erlang’s bit syntax makes it possible to decode binary data into the
 host languague’s types, which can then be manipulated, and finally
 encoded back to binary.</p>
 <p>While already useful, it doesn’t cover some interesting use cases.
 Let me try to explain the use cases and at the same time sketch possible
 ways we can extend Erlang’s bit syntax to cover those.</p>
-<h3 id="in-place-updates">In-place updates</h3>
+<section id="in-place-updates" class="level3">
+<h3>In-place updates</h3>
 <p>What if we merely want to update some binary in-place without reading
 it all in and writing it all back out?</p>
 <p>For example, the de facto standard for metadata format for mp3 files
@@ -301,7 +312,9 @@ any <code>Schema</code>!</p>
 <a
 href="https://youtu.be/MUb8rD5mPvE?list=PLTj8twuHdQz-JcX7k6eOwyVPDB8CyfZc8&amp;t=830">diffs</a>
 and patches for cheap.</p>
-<h3 id="on-disk-data-structures">On-disk data structures</h3>
+</section>
+<section id="on-disk-data-structures" class="level3">
+<h3>On-disk data structures</h3>
 <p>Now that we can edit files in-place on the disk it would be nice to
 use this in order to implement on-disk data structures. For example
 imagine we’d like to do some kind of logging. If our schemas could
@@ -318,7 +331,9 @@ implement.</p>
 such data structures, but we’d probably want more tooling. For logging
 we probably want something like <code>cat</code> and <code>grep</code>
 but generic in <code>Schema</code>.</p>
-<h3 id="zero-copy">Zero-copy</h3>
+</section>
+<section id="zero-copy" class="level3">
+<h3>Zero-copy</h3>
 <p>When we <code>read</code> a <code>ByteString</code> field in the mp3
 metadata example above, we copied the bytes from the underlying file.
 Sometimes we might want to avoid doing that.</p>
@@ -337,12 +352,16 @@ able to decode the payload field as a pointer/slice of the buffer which
 we pass to <a
 href="https://linux.die.net/man/2/write"><code>write</code></a> (thus
 avoiding copying aka “zero-copy”).</p>
-<h3 id="backward--and-forward-compatiability-and-migrations">Backward-
-and forward-compatiability and migrations</h3>
+</section>
+<section id="backward--and-forward-compatiability-and-migrations"
+class="level3">
+<h3>Backward- and forward-compatiability and migrations</h3>
 <p>Another big topic is schema evolution. How can we maintain backward-
 and forward-compatibility as our software evolves? We probably want to
 be able to migrate old formats into newer ones somehow also.</p>
-<h3 id="compression">Compression</h3>
+</section>
+<section id="compression" class="level3">
+<h3>Compression</h3>
 <p>Currently our schemas cannot express how to compress fields on disk,
 or how to avoid sending unnecessary data in consecutive network
 messages.</p>
@@ -381,19 +400,25 @@ around). Some compression is also a lot easier to apply on columnar
 data, e.g. delta and run-length encoding. Perhaps it would make sense if
 the schema-based tools could do such data transformations in order to
 optimise for reads or archiving?</p>
-<h3 id="checksums">Checksums</h3>
+</section>
+<section id="checksums" class="level3">
+<h3>Checksums</h3>
 <p>If we can do encoding and decoding fields modulo compression, why not
 also handle checksums transparently? When we update a field which is
 part of a checksum, we’d probably want to check the checksum beforehand
 and recompute it afterwards.</p>
-<h3 id="validation">Validation</h3>
+</section>
+<section id="validation" class="level3">
+<h3>Validation</h3>
 <p>What if some input bytes don’t match the schema? Currently all magic
 tags in a schema get verified, but sometimes we might want to be able to
 edit incomplete or malformed inputs.</p>
 <p>Can we add refinements to the schema which allow us to express things
 like, integer between 18 and 150 or bytestring containing only
 alphanumeric characters, etc?</p>
-<h3 id="protocols">Protocols</h3>
+</section>
+<section id="protocols" class="level3">
+<h3>Protocols</h3>
 <p>So far we’ve looked at how to specify what data our programs use and
 how it’s transformed to and from bytes on disk or over the network.
 Another important aspect is what protocol is followed when said data is
@@ -418,7 +443,9 @@ even though he gave several <a
 href="https://youtu.be/ed7A7r6DBsM?t=1071">talks</a> about it. One
 implementation can be found <a
 href="https://ubf.github.io/ubf/ubf-user-guide.en.html">here</a>.</p>
-<h3 id="pandoc-for-binary-encodings">Pandoc for binary encodings</h3>
+</section>
+<section id="pandoc-for-binary-encodings" class="level3">
+<h3>Pandoc for binary encodings</h3>
 <p>There’s this neat tool called <a
 href="https://github.com/jgm/pandoc"><code>pandoc</code></a> that makes
 possible to convert between different text formats, e.g. from Markdown
@@ -444,7 +471,10 @@ operates on the abstract data (the <em>what</em> part). A clearer
 separation between IDL and its encoding could perhaps be useful when
 trying to solve the <code>pandoc</code> problem for binary.</p>
 <p>Another way to think of this is: can we make a DSL for IDLs?</p>
-<h2 id="discussion">Discussion</h2>
+</section>
+</section>
+<section id="discussion" class="level2">
+<h2>Discussion</h2>
 <ul>
 <li><p>Q: Why not just use <a
 href="https://en.wikipedia.org/wiki/Protocol_Buffers">Protobuf</a>?</p>
@@ -472,7 +502,9 @@ href="https://github.com/madthanu/alice"><em>ALICE: Application-Level
 Intelligent Crash Explorer</em></a>.</li>
 </ol></li>
 </ul>
-<h2 id="contributing">Contributing</h2>
+</section>
+<section id="contributing" class="level2">
+<h2>Contributing</h2>
 <p>The current implementation is in Haskell, but I’d really like to
 encourage a discussion beyond specific languages. In order to make
 binary “human-readable” we need solutions that are universal, i.e. work
@@ -489,7 +521,9 @@ with each other?</li>
 language?</li>
 </ul>
 <p>If so, feel free to get in touch!</p>
-<h2 id="see-also">See also</h2>
+</section>
+<section id="see-also" class="level2">
+<h2>See also</h2>
 <ul>
 <li>The Erlang reference manual on <a
 href="https://www.erlang.org/doc/reference_manual/expressions.html#bit_syntax">bit
@@ -522,6 +556,7 @@ crate;</li>
 <li><em>Development and Deployment of Multiplayer Online Games, Vol.
 I</em> by Sergey Ignatchenko (pp. 200-216 and 259-285, 2017).</li>
 </ul>
+</section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
 <hr />

@@ -10,6 +10,7 @@
   <link rel="alternate" type="application/rss+xml"
         title="RSS feed"
         href="rss.xml" />
+  <script src="script.js"></script>
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
@@ -58,7 +59,8 @@ id="toc-discussion-and-future-work">Discussion and future work</a></li>
 </ul>
 </nav>
 <div class="date">Posted on Mar  7, 2024</div>
-<h2 id="motivation">Motivation</h2>
+<section id="motivation" class="level2">
+<h2>Motivation</h2>
 <p>Most deployed programs need to be upgraded at some point. The reasons
 vary from adding new features to patching a bug and potentially fixing a
 broken state. Even though upgrades are an essential part of software
@@ -109,13 +111,16 @@ an earlier version.</li>
 </ul>
 <p>In the rest of this post I’d like to explore how we can achieve some
 of this.</p>
-<h2 id="terminology">Terminology</h2>
+</section>
+<section id="terminology" class="level2">
+<h2>Terminology</h2>
 <p>Having defined some desirable characteristics of upgrades, let’s move
 on to defining what we mean by upgrades.</p>
 <p>There are two notions I’d like clarify: what kind of software systems
 the upgrades are targeting, and then how we represent programs and their
 upgrades.</p>
-<h3 id="software-systems">Software systems</h3>
+<section id="software-systems" class="level3">
+<h3>Software systems</h3>
 <p>There’s different kinds of software systems one might want to
 upgrade.</p>
 <ol type="1">
@@ -185,7 +190,9 @@ listed above, making them more interesting to work on. That said I hope
 that the techniques can be used to simplify upgrades in the other kinds
 of systems too, and potentially enabling other possibilities like better
 debugging experience and live coding.</p>
-<h3 id="programs-and-their-upgrades">Programs and their upgrades</h3>
+</section>
+<section id="programs-and-their-upgrades" class="level3">
+<h3>Programs and their upgrades</h3>
 <p>Having defined what kind of systems we’d like to upgrade, let’s turn
 our attention to how we can represent programs and their upgrades.</p>
 <p>We could choose to use the syntax of a specific programming language
@@ -301,7 +308,10 @@ messages to which other process they like (graph-like structure), but
 rather only downstream (DAG-like structure)<a href="#fn3"
 class="footnote-ref" id="fnref3"
 role="doc-noteref"><sup>3</sup></a>.</p>
-<h2 id="implementation">Implementation</h2>
+</section>
+</section>
+<section id="implementation" class="level2">
+<h2>Implementation</h2>
 <p>I hope that I’ve managed to convey what I’d like to do, why and where
 my inspiration is coming from.</p>
 <p>Next I’d like to make things more concrete with some code. But first
@@ -329,7 +339,8 @@ code.</li>
 </ul>
 <p>In the rest of this section we’ll try to fleshing out details of the
 above.</p>
-<h3 id="state-machines">State machines</h3>
+<section id="state-machines" class="level3">
+<h3>State machines</h3>
 <p>Typed state machines are represented using a datatype parametrised by
 the state, <code>s</code>, and indexed by its input type,
 <code>a</code>, and output type <code>b</code><a href="#fn4"
@@ -362,7 +373,9 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a 
 <span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a><span class="co">-- Forward composition.</span></span>
 <span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a><span class="ot">(&gt;&gt;&gt;) ::</span> <span class="dt">T</span> s a b <span class="ot">-&gt;</span> <span class="dt">T</span> s b c <span class="ot">-&gt;</span> <span class="dt">T</span> s a c</span>
 <span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>f <span class="op">&gt;&gt;&gt;</span> g <span class="ot">=</span> g <span class="ot">`Compose`</span> f</span></code></pre></div>
-<h3 id="example">Example</h3>
+</section>
+<section id="example" class="level3">
+<h3>Example</h3>
 <p>To keep things concrete let’s reimplement the counter example from
 above.</p>
 <div class="sourceCode" id="cb6"><pre
@@ -383,7 +396,9 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a 
 <p>Notice how the two operations’ inputs and outputs are represented
 with an <code>Either</code> over which the <code>Case</code>
 operates.</p>
-<h3 id="semantics">Semantics</h3>
+</section>
+<section id="semantics" class="level3">
+<h3>Semantics</h3>
 <p>We can interpret our typed state machines in terms of the
 <code>State</code> monad as follows.</p>
 <div class="sourceCode" id="cb7"><pre
@@ -411,7 +426,9 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a 
 <p>These runs only step the counter by one input at the time, things get
 more interesting when state machines get streams of inputs via
 pipelines.</p>
-<h3 id="pipelines">Pipelines</h3>
+</section>
+<section id="pipelines" class="level3">
+<h3>Pipelines</h3>
 <p>Pipelines are represented by a type similar to that for typed state
 machines, it’s also indexed by the input and output types.</p>
 <p>We can picture a pipeline as a conveyor belt with state machines
@@ -425,7 +442,9 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a 
 <span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Name</span> <span class="ot">=</span> <span class="dt">String</span></span></code></pre></div>
 <p>Notice how the state type of the state machines is existentially
 quantified, meaning each state machine can have its own state.</p>
-<h3 id="deployment">Deployment</h3>
+</section>
+<section id="deployment" class="level3">
+<h3>Deployment</h3>
 <p>Pipelines can be deployed. Each state machine will be spawned on its
 own thread, meaning that all state machines run in parallel, and they
 will be connected via queues.</p>
@@ -499,7 +518,9 @@ continue processing with the new state machine.</li>
 </ol>
 <p>Next let’s have a look at how upgrades are represented and
 typechecked.</p>
-<h3 id="upgrades">Upgrades</h3>
+</section>
+<section id="upgrades" class="level3">
+<h3>Upgrades</h3>
 <p>Upgrades are sent over the wire in a serialised format and
 deserialised at the other end, so they need to be plain first-order
 data.</p>
@@ -600,7 +621,9 @@ href="https://github.com/stevana/hot-swapping-state-machines2/blob/main/src/Type
 but the main ingredient is to use the <code>Data.Typeable</code>
 instances to check if the types match up, similarly to how it was done
 above in <code>typeCheckUpgrade</code>.</p>
-<h3 id="sources-and-sinks">Sources and sinks</h3>
+</section>
+<section id="sources-and-sinks" class="level3">
+<h3>Sources and sinks</h3>
 <p>Almost there. When we deploy a pipeline <code>P a b</code> we need to
 provide a <code>Queue (Msg a)</code> and get a
 <code>Queue (Msg b)</code>, what are we supposed to do with those
@@ -618,7 +641,9 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb20-1"><a
 <code>ByteString</code> to <code>Maybe a</code> and a serialiser from
 <code>b</code> to <code>ByteString</code>. We need this because our
 sources and sinks produce and consume <code>ByteString</code>s.</p>
-<h3 id="remote-upgrades">Remote upgrades</h3>
+</section>
+<section id="remote-upgrades" class="level3">
+<h3>Remote upgrades</h3>
 <p>Putting it all together we can now create a TCP server for our
 counter:</p>
 <div class="sourceCode" id="cb21"><pre
@@ -754,7 +779,10 @@ Item &quot;Right (Right (Left 2))&quot;   -- The counter is 2.
 Item &quot;Left ()&quot;                  -- Toggle to decrementing.
 Item &quot;Right (Right (Right ()))&quot; -- Decrement.
 Item &quot;Right (Right (Left 1))&quot;   -- The value is 1.</code></pre>
-<h2 id="discussion-and-future-work">Discussion and future work</h2>
+</section>
+</section>
+<section id="discussion-and-future-work" class="level2">
+<h2>Discussion and future work</h2>
 <p>If we look back at the list, from the introduction, of properties
 that we wanted from our upgrades, then I hope that I’ve managed to
 provide a glimpse of a possible way of achieving zero-downtime upgrades
@@ -786,6 +814,7 @@ software systems are expected to evolve over time, wouldn’t it be neat
 if programming languages provided some notion of upgrade and could
 typecheck our code <em>across versions</em>, as opposed to merely
 typechecking a version of the code in isolation from the next?</p>
+</section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
 <hr />

@@ -10,6 +10,7 @@
   <link rel="alternate" type="application/rss+xml"
         title="RSS feed"
         href="rss.xml" />
+  <script src="script.js"></script>
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
@@ -98,8 +99,8 @@ while failing to copy behaviours – which, from my understanding of Joe’s
 thesis, are the key ingredients in being able to write reliable
 systems<a href="#fn3" class="footnote-ref" id="fnref3"
 role="doc-noteref"><sup>3</sup></a>.</p>
-<h2 id="lightweight-processes-and-message-passing">Lightweight processes
-and message passing</h2>
+<section id="lightweight-processes-and-message-passing" class="level2">
+<h2>Lightweight processes and message passing</h2>
 <p>Let’s start off by defining what we mean by lightweight processes and
 message passing.</p>
 <p>To really understand a concept one needs to understand the context in
@@ -219,7 +220,9 @@ the actor model…</p>
 implementations, for the purpose of this article we shall group them all
 together and say that they are implementations of lightweight processes
 and message passing.</p>
-<h2 id="generic-server">Generic server</h2>
+</section>
+<section id="generic-server" class="level2">
+<h2>Generic server</h2>
 <p>Now that we know how Erlang got its lightweight processes and message
 passing, lets implement behaviours without them.</p>
 <p>Let’s start with the perhaps most useful worker behaviour,
@@ -300,8 +303,10 @@ return <code>Ack</code>; * <code>[Increment, Reset, Read]</code> should
 return <code>Value 0</code>; * <code>[Reset, Reset, Read]</code> should
 crash (because of our deliberate bug in <code>Step</code>).</p>
 </blockquote>
-<h2 id="the-concurrent-infrastructure-for-a-single-generic-server">The
-concurrent infrastructure for a single generic server</h2>
+</section>
+<section id="the-concurrent-infrastructure-for-a-single-generic-server"
+class="level2">
+<h2>The concurrent infrastructure for a single generic server</h2>
 <p>Before we make things more complicated by introducing other
 behaviours than <code>gen_server</code>, lets see how we can get the
 concurrent server from merely using our sequential
@@ -377,7 +382,9 @@ of this</p></li>
 href="https://github.com/stevana/coroutine-state-machines">async writing
 to disk</a></p></li>
 </ul>
-<h2 id="supervisor">Supervisor</h2>
+</section>
+<section id="supervisor" class="level2">
+<h2>Supervisor</h2>
 <p>Next lets have a look at how we can add supervisors.</p>
 <blockquote>
 <p>data type <code>Supervisor</code> is a recursive tagged union with
@@ -415,8 +422,10 @@ depth-first fashion and <code>Terminate</code> all
 <code>SomeServer</code>s, then do another traversal and
 <code>Init</code> all of them again.</p>
 </blockquote>
-<h2 id="the-concurrent-infrastructure-for-supervisor-trees">The
-concurrent infrastructure for supervisor trees</h2>
+</section>
+<section id="the-concurrent-infrastructure-for-supervisor-trees"
+class="level2">
+<h2>The concurrent infrastructure for supervisor trees</h2>
 <p>Since our plan is to be able to deploy several
 <code>SomeServer</code>s arranged in a <code>Supervisor</code> tree, we
 need to change the event data type to also include the name of which
@@ -462,8 +471,9 @@ functionality, etc.</p></li>
 <li><p>Save log that lead up to crash for later debugging</p></li>
 <li><p>Frequently restarted processes further down the tree</p></li>
 </ul>
-<h2 id="generic-event-manager-and-performance">Generic event manager and
-performance</h2>
+</section>
+<section id="generic-event-manager-and-performance" class="level2">
+<h2>Generic event manager and performance</h2>
 <ul>
 <li><p>Concurrent queue = <a
 href="https://en.wikipedia.org/wiki/Fan-in">fan-in</a></p></li>
@@ -536,7 +546,9 @@ loop</a>
 <li>also determinism and io_uring</li>
 </ul></li>
 </ul>
-<h2 id="application-and-release">Application and release</h2>
+</section>
+<section id="application-and-release" class="level2">
+<h2>Application and release</h2>
 <p>Recall that an <code>application</code> is a <code>supervisor</code>
 tree together with whatever else the application needs that is not the
 code itself, e.g. graphical assets, configuration files, etc.</p>
@@ -573,7 +585,9 @@ processes and message passing.</p>
 <ul>
 <li>packaging, dependency management, dependency hell, nix…</li>
 </ul>
-<h2 id="summary-and-contributing">Summary and contributing</h2>
+</section>
+<section id="summary-and-contributing" class="level2">
+<h2>Summary and contributing</h2>
 <ul>
 <li><p>Hopefully it’s clear by now that <code>gen_server</code>,
 <code>gen_event</code> and <code>supervisor</code> don’t <em>have</em>
@@ -603,7 +617,9 @@ downtime?</p></li>
 <li><p>What about the original problem of many concurrent state
 machines?</p></li>
 </ul>
-<h2 id="see-also">See also</h2>
+</section>
+<section id="see-also" class="level2">
+<h2>See also</h2>
 <ul>
 <li><p>My Haskell <a
 href="https://github.com/stevana/supervised-state-machines">implementation</a>
@@ -638,6 +654,7 @@ class="uri">https://github.com/mitchellh/libxev</a></p></li>
 <li><p><a href="https://unixism.net/loti/index.html">Welcome to Lord of
 the io_uring</a></p></li>
 </ul>
+</section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
 <hr />

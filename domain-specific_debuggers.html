@@ -10,6 +10,7 @@
   <link rel="alternate" type="application/rss+xml"
         title="RSS feed"
         href="rss.xml" />
+  <script src="script.js"></script>
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
@@ -44,7 +45,8 @@ id="toc-optimisations">Optimisations</a></li>
 <li><a href="#see-also" id="toc-see-also">See also</a></li>
 </ul>
 </nav>
-<h2 id="motivation">Motivation</h2>
+<section id="motivation" class="level2">
+<h2>Motivation</h2>
 <ul>
 <li><p>General purpose debuggers such as <a
 href="https://www.sourceware.org/gdb/"><code>gdb</code></a> are
@@ -66,14 +68,19 @@ your application state at the level of abstraction that you think of it,
 rather than how the programming language that you are using happens to
 lay it out in memory</p></li>
 </ul>
-<h2 id="idea">Idea</h2>
+</section>
+<section id="idea" class="level2">
+<h2>Idea</h2>
 <ul>
 <li>Assumptions: determinism, state machine</li>
 <li>Record inputs (and states) in circular buffer, dump to disk/SQLite
 db on error</li>
 </ul>
-<h2 id="examples">Examples</h2>
-<h3 id="distributed-systems">Distributed systems</h3>
+</section>
+<section id="examples" class="level2">
+<h2>Examples</h2>
+<section id="distributed-systems" class="level3">
+<h3>Distributed systems</h3>
 <ul>
 <li>TigerbeetleDB’s demo <a href="https://youtu.be/w3WYdYyjek4?t=3175"
 class="uri">https://youtu.be/w3WYdYyjek4?t=3175</a></li>
@@ -81,24 +88,33 @@ class="uri">https://youtu.be/w3WYdYyjek4?t=3175</a></li>
 href="https://spritely.institute/news/introducing-a-distributed-debugger-for-goblins-with-time-travel.html"
 class="uri">https://spritely.institute/news/introducing-a-distributed-debugger-for-goblins-with-time-travel.html</a></li>
 </ul>
-<h3 id="games">Games</h3>
+</section>
+<section id="games" class="level3">
+<h3>Games</h3>
 <ul>
 <li><a href="https://www.youtube.com/watch?v=72y2EC5fkcE">Tomorrow
 Corporation Tech Demo</a></li>
 </ul>
-<h2 id="optimisations">Optimisations</h2>
+</section>
+</section>
+<section id="optimisations" class="level2">
+<h2>Optimisations</h2>
 <ul>
 <li>Avoid storing the state in the trace (if deterministic)</li>
 <li>Avoiding infinite traces via state snapshots</li>
 <li>Turn off logging (if deterministic)</li>
 <li>Audit trails</li>
 </ul>
-<h2 id="contributing">Contributing</h2>
+</section>
+<section id="contributing" class="level2">
+<h2>Contributing</h2>
 <ul>
 <li>General purpose formats for states, inputs and outputs against which
 generic debuggers can be written against? Structured JSON? Binary?</li>
 </ul>
-<h2 id="see-also">See also</h2>
+</section>
+<section id="see-also" class="level2">
+<h2>See also</h2>
 <ul>
 <li><p>The history of <a
 href="http://jakob.engbloms.se/archives/1564">time traveling
@@ -118,6 +134,7 @@ state is harmful</em></a></p>
 <li></li>
 </ol></li>
 </ul>
+</section>
 </main>
 </body>
 </html>
