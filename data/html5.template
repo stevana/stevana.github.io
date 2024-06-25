@@ -29,6 +29,7 @@ $if(mathjax)$
 $endif$
   $math$
 $endif$
+  <script src="script.js"></script>
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>

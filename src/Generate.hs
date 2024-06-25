@@ -42,6 +42,9 @@ cSS_FILE = "style.css"
 rSS_SVG_FILE :: FilePath
 rSS_SVG_FILE = "rss.svg"
 
+jAVASCRIPT_FILE :: FilePath
+jAVASCRIPT_FILE = "script.js"
+
 ------------------------------------------------------------------------
 
 writeIndex :: Site -> FilePath -> IO ()
@@ -56,12 +59,14 @@ writeAbout :: Site -> FilePath -> IO ()
 writeAbout site outputDir =
   T.writeFile (outputDir </> aBOUT_FILE) =<< generateAbout site
 
-installCssAndSvg :: FilePath -> IO ()
-installCssAndSvg outputDir = do
+installDataFiles :: FilePath -> IO ()
+installDataFiles outputDir = do
   cssFile <- getDataFileName ("data" </> cSS_FILE)
   copyFile cssFile (outputDir </> cSS_FILE)
   svgFeedFile <- getDataFileName ("data" </> rSS_SVG_FILE)
   copyFile svgFeedFile (outputDir </> rSS_SVG_FILE)
+  jsFile <- getDataFileName ("data" </> jAVASCRIPT_FILE)
+  copyFile jsFile (outputDir </> jAVASCRIPT_FILE)
 
 context :: [(Text, Text)] -> Context Text
 context = toContext . Map.fromList
@@ -114,6 +119,7 @@ markdownToHtml site markdownFile = do
           { writerTOCDepth = 4
           , writerTableOfContents = True
           , writerTemplate = Just template
+          , writerSectionDivs = True
           , writerVariables = context $
               [ ("lang", "en")
               , ("title", title)

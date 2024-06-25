@@ -20,7 +20,7 @@ libMain inputFile outputDir skipDownload = do
   -- writeReverseChronologicalIndex site outputDir
   writeAbout site outputDir
   mapM_ (markdownToHtml site) markdowns
-  installCssAndSvg outputDir
+  installDataFiles outputDir
   installRssFeed site outputDir
   cleanUp outputDir skipDownload
 
