@@ -25,7 +25,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     // Adapted from: https://stackoverflow.com/a/40475478
-    document.querySelectorAll("h2, h3, h4, h5, h6").forEach(heading => {
+    document.querySelectorAll("section h2, h3, h4, h5, h6").forEach(heading => {
         heading.innerHTML =
             '<a href="#' + heading.parentElement.id + '">' +
             heading.innerText +
