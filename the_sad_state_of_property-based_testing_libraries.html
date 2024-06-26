@@ -604,7 +604,7 @@ class="level4">
 side-effectful code is good practice in any programming language, and I
 do agree with John that you can get far by merely property-based testing
 those pure fragments.</p>
-<p>However I also think that stateful and parallel testing is almost
+<p>However, I also think that stateful and parallel testing is almost
 equally important for many non-trivial software systems. Most systems in
 industry will have some database, stateful protocol or use concurrent
 data structures, which all benefit from the stateful and parallel
@@ -700,8 +700,9 @@ this post as follows:</p>
 <li><p>Show how one can implement stateful and parallel property-based
 testing in about 400 lines of code (similar to the size of the original
 QuickCheck implementation);</p></li>
-<li><p>Make specifications simpler by using <a
-href="https://martinfowler.com/bliki/TestDouble.html">fakes</a> rather
+<li><p>Make specifications simpler by using in-memory reference
+implementations similar to mocks, more accurately called <a
+href="https://martinfowler.com/bliki/TestDouble.html">fakes</a>, rather
 than state machines.</p></li>
 </ol>
 <p>Before we get started with stateful testing, let’s first recap how
@@ -815,7 +816,7 @@ picture of the test setup looks a bit like this:</p>
          |     |
          +-----+</code></pre>
 <p>Where <code>i</code> is the input we generate, <code>f</code> is the
-function we are applying the generated input to to produce the output
+function we are applying the generated input to produce the output
 <code>o</code>. In the case of the <code>reverse</code> example, from
 before, <code>i</code> and <code>o</code> are of type list of integers
 (<code>[Int]</code>), <code>f</code> is <code>reverse . reverse</code>
@@ -854,24 +855,27 @@ stateful case our properties would need to be generalised to
 changes over time. Writing such properties is cumbersome, an alternative
 is to account for the state explicitly by means of some kind of
 model.</p>
-<p>This model could be a state machine of type
-<code>m -&gt; i -&gt; (m, o)</code>, i.e. a function from the old model
-and an input to the next model and the output. From this we can derive a
-property that for each input checks if the outputs of the stateful
-component agrees with the output of the state machine:</p>
-<pre><code>   +------+     +------+     +------+
-   |      | i1  |      | i2  |      |
-   |  s0  +-----&gt;  s1  +-----&gt;  s2  | ...
-   |      |     |      |     |      |
-   +------+     +--++--+     +--++--+
-                   ||           ||
-                   ||o1         || o2
-                   ||           ||
-   +------+     +--++--+     +--++--+
-   |      | i1  |      | i2  |      |
-   |  m0  +-----&gt;  m1  +-----&gt;  m2  | ...
-   |      |     |      |     |      |
-   +------+     +------+     +------+</code></pre>
+<p>This is where our in-memory reference implementation, or fake, comes
+in. We’ll use a function of type <code>m -&gt; i -&gt; (m, o)</code>,
+i.e. from the old model and an input compute the next model and the
+output. From this we can derive a property that for each input checks if
+the outputs of the stateful component agrees with the output of the
+fake:</p>
+<pre><code>         +------+     +------+     +------+
+         |      | i1  |      | i2  |      |
+ real:   |  s0  +-----&gt;  s1  +-----&gt;  s2  | ...
+         |      |     |      |     |      |
+         +------+     +--++--+     +--++--+
+                         ||           ||
+                         ||o1         || o2
+                         ||           ||
+         +------+     +--++--+     +--++--+
+         |      | i1  |      | i2  |      |
+ fake:   |  m0  +-----&gt;  m1  +-----&gt;  m2  | ...
+         |      |     |      |     |      |
+         +------+     +------+     +------+
+
+         ---------------------------------&gt; time</code></pre>
 <p>In case the outputs disagree we shrink the sequence of inputs and try
 to present the smallest counterexample, as in the pure case.</p>
 <p>Let’s make things more concrete with some actual code that we can
@@ -1163,11 +1167,11 @@ to more examples where we’ll use these optional types, hopefully these
 examples will help make things more concrete.</p>
 <p>We’ve already seen that the user needs to provide a way to generate
 single command, the only thing worth mentioning is that in case our
-commands contain references then during the generation phase we only
-deal with <code>Var</code>s of references, where
+commands contain references then during generation we only deal with
+<code>Var</code>s of references, where
 <code>data Var a = Var Int</code>. The reason for this is that we cannot
 generate, for example, real file handles (only the operating system
-can), so instead we generate symbolic references which are just
+can), so instead we generate “symbolic” references which are just
 <code>Int</code>s. Think of these as placeholders for which real
 references will be substituted in once the real references are created
 during execution.</p>
@@ -3068,6 +3072,8 @@ get <a href="https://stevana.github.io/about.html">in touch</a>).</p>
 discussing a fix for parallel commands generation <a
 href="https://github.com/stevana/quickcheck-state-machine/issues/51">issue</a>
 that I found while writing this post, and for proofreading.</p>
+<p>I also want to thank Larry Diehl for proofreading and making several
+suggestions on how to improve the text and make it more readable.</p>
 </section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
