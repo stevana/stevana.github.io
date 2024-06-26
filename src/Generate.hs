@@ -42,6 +42,9 @@ cSS_FILE = "style.css"
 rSS_SVG_FILE :: FilePath
 rSS_SVG_FILE = "rss.svg"
 
+lINK_SVG_FILE :: FilePath
+lINK_SVG_FILE = "link.svg"
+
 jAVASCRIPT_FILE :: FilePath
 jAVASCRIPT_FILE = "script.js"
 
@@ -65,6 +68,8 @@ installDataFiles outputDir = do
   copyFile cssFile (outputDir </> cSS_FILE)
   svgFeedFile <- getDataFileName ("data" </> rSS_SVG_FILE)
   copyFile svgFeedFile (outputDir </> rSS_SVG_FILE)
+  linkFeedFile <- getDataFileName ("data" </> lINK_SVG_FILE)
+  copyFile linkFeedFile (outputDir </> lINK_SVG_FILE)
   jsFile <- getDataFileName ("data" </> jAVASCRIPT_FILE)
   copyFile jsFile (outputDir </> jAVASCRIPT_FILE)
 
