@@ -5,7 +5,7 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Stevan A" />
-  <title>Implementing Erlang's behaviours without using lightweight processes</title>
+  <title>Implementing Erlang’s behaviours without using lightweight processes</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="alternate" type="application/rss+xml"
         title="RSS feed"
@@ -14,7 +14,7 @@
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
-    <img src="https://stevana-github-io.goatcounter.com/count?p=/implementing_behaviours.html&t=Implementing Erlang's behaviours without using lightweight processes">
+    <img src="https://stevana-github-io.goatcounter.com/count?p=/implementing_behaviours.html&t=Implementing Erlang’s behaviours without using lightweight processes">
   </noscript>
 </head>
 <body>
@@ -27,7 +27,7 @@
 </header>
 <hr />
 <main>
-<h1>Implementing Erlang's behaviours without using lightweight processes</h1>
+<h1>Implementing Erlang’s behaviours without using lightweight processes</h1>
 <nav id="TOC" class="sidenote" role="doc-toc">
 <h2 id="toc-title">Table of contents</h2>
 <ul>
@@ -100,7 +100,9 @@ thesis, are the key ingredients in being able to write reliable
 systems<a href="#fn3" class="footnote-ref" id="fnref3"
 role="doc-noteref"><sup>3</sup></a>.</p>
 <section id="lightweight-processes-and-message-passing" class="level2">
-<h2>Lightweight processes and message passing</h2>
+<h2><a href="#lightweight-processes-and-message-passing"
+title="Lightweight processes and message passing">Lightweight processes
+and message passing</a></h2>
 <p>Let’s start off by defining what we mean by lightweight processes and
 message passing.</p>
 <p>To really understand a concept one needs to understand the context in
@@ -222,7 +224,8 @@ together and say that they are implementations of lightweight processes
 and message passing.</p>
 </section>
 <section id="generic-server" class="level2">
-<h2>Generic server</h2>
+<h2><a href="#generic-server" title="Generic server">Generic
+server</a></h2>
 <p>Now that we know how Erlang got its lightweight processes and message
 passing, lets implement behaviours without them.</p>
 <p>Let’s start with the perhaps most useful worker behaviour,
@@ -306,7 +309,9 @@ crash (because of our deliberate bug in <code>Step</code>).</p>
 </section>
 <section id="the-concurrent-infrastructure-for-a-single-generic-server"
 class="level2">
-<h2>The concurrent infrastructure for a single generic server</h2>
+<h2><a href="#the-concurrent-infrastructure-for-a-single-generic-server"
+title="The concurrent infrastructure for a single generic server">The
+concurrent infrastructure for a single generic server</a></h2>
 <p>Before we make things more complicated by introducing other
 behaviours than <code>gen_server</code>, lets see how we can get the
 concurrent server from merely using our sequential
@@ -384,7 +389,7 @@ to disk</a></p></li>
 </ul>
 </section>
 <section id="supervisor" class="level2">
-<h2>Supervisor</h2>
+<h2><a href="#supervisor" title="Supervisor">Supervisor</a></h2>
 <p>Next lets have a look at how we can add supervisors.</p>
 <blockquote>
 <p>data type <code>Supervisor</code> is a recursive tagged union with
@@ -425,7 +430,9 @@ depth-first fashion and <code>Terminate</code> all
 </section>
 <section id="the-concurrent-infrastructure-for-supervisor-trees"
 class="level2">
-<h2>The concurrent infrastructure for supervisor trees</h2>
+<h2><a href="#the-concurrent-infrastructure-for-supervisor-trees"
+title="The concurrent infrastructure for supervisor trees">The
+concurrent infrastructure for supervisor trees</a></h2>
 <p>Since our plan is to be able to deploy several
 <code>SomeServer</code>s arranged in a <code>Supervisor</code> tree, we
 need to change the event data type to also include the name of which
@@ -473,7 +480,9 @@ functionality, etc.</p></li>
 </ul>
 </section>
 <section id="generic-event-manager-and-performance" class="level2">
-<h2>Generic event manager and performance</h2>
+<h2><a href="#generic-event-manager-and-performance"
+title="Generic event manager and performance">Generic event manager and
+performance</a></h2>
 <ul>
 <li><p>Concurrent queue = <a
 href="https://en.wikipedia.org/wiki/Fan-in">fan-in</a></p></li>
@@ -548,7 +557,8 @@ loop</a>
 </ul>
 </section>
 <section id="application-and-release" class="level2">
-<h2>Application and release</h2>
+<h2><a href="#application-and-release"
+title="Application and release">Application and release</a></h2>
 <p>Recall that an <code>application</code> is a <code>supervisor</code>
 tree together with whatever else the application needs that is not the
 code itself, e.g. graphical assets, configuration files, etc.</p>
@@ -587,7 +597,8 @@ processes and message passing.</p>
 </ul>
 </section>
 <section id="summary-and-contributing" class="level2">
-<h2>Summary and contributing</h2>
+<h2><a href="#summary-and-contributing"
+title="Summary and contributing">Summary and contributing</a></h2>
 <ul>
 <li><p>Hopefully it’s clear by now that <code>gen_server</code>,
 <code>gen_event</code> and <code>supervisor</code> don’t <em>have</em>
@@ -619,7 +630,7 @@ machines?</p></li>
 </ul>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <ul>
 <li><p>My Haskell <a
 href="https://github.com/stevana/supervised-state-machines">implementation</a>

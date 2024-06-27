@@ -52,7 +52,7 @@ id="toc-presentations">Presentations</a></li>
 <p>An experiment in declaratively programming parallel pipelines of
 state machines.</p>
 <section id="motivation" class="level2">
-<h2>Motivation</h2>
+<h2><a href="#motivation" title="Motivation">Motivation</a></h2>
 <p>Imagine a flat complex in Sweden. Being the socialist utopia Sweden
 is there’s a shared laundry room which the people in the flat complex
 can book. In the laundry room there’s everything one needs to wash, dry
@@ -101,7 +101,7 @@ instructions</a>.</p>
 such pipelining in software in a declarative way.</p>
 </section>
 <section id="usage" class="level2">
-<h2>Usage</h2>
+<h2><a href="#usage" title="Usage">Usage</a></h2>
 <p>The workers or stages in our pipeline will be state machines of the
 following type.</p>
 <div class="sourceCode" id="cb3"><pre
@@ -307,7 +307,7 @@ concurrent queue data structure than <code>TQueue</code>, so that’s what
 we’ll have a look at next.</p>
 </section>
 <section id="disruptor" class="level2">
-<h2>Disruptor</h2>
+<h2><a href="#disruptor" title="Disruptor">Disruptor</a></h2>
 <p>The <code>Disruptor*</code> modules are a Haskell port of the <a
 href="https://github.com/LMAX-Exchange/disruptor">LMAX Disruptor</a>,
 which is a high performance inter-thread messaging library. The
@@ -330,7 +330,7 @@ event);</li>
 <p>It’s also performs better than most queues, as we shall see further
 down.</p>
 <section id="example" class="level3">
-<h3>Example</h3>
+<h3><a href="#example" title="Example">Example</a></h3>
 <div class="sourceCode" id="cb17"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Control.Concurrent</span></span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Control.Concurrent.Async</span></span>
@@ -410,7 +410,7 @@ second).</p></li>
 </ol>
 </section>
 <section id="how-it-works" class="level3">
-<h3>How it works</h3>
+<h3><a href="#how-it-works" title="How it works">How it works</a></h3>
 <p>The ring buffer is implemented using a bounded array, it keeps track
 of a monotonically increasing sequence number and it knows its the
 capacity of the array, so to find out where to write the next value by
@@ -448,7 +448,7 @@ be have the end of batch flag set, so that the consumer can effectively
 batch the processing.</p>
 </section>
 <section id="performance" class="level3">
-<h3>Performance</h3>
+<h3><a href="#performance" title="Performance">Performance</a></h3>
 <p>Our Disruptor implementation, which hasn’t been optimised much yet,
 is about 2x slower than LMAX’s Java version on their single-producer
 single-consumer <a
@@ -506,7 +506,7 @@ please file an issue.</p>
 </section>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>There’s a lot of possible paths to explore from here, including:</p>
 <ul class="task-list">
 <li><input type="checkbox" />Can we swap out our use of
@@ -583,9 +583,10 @@ deploying multiple pipelines over multiple machines?</li>
 </ul>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <section id="presentations" class="level3">
-<h3>Presentations</h3>
+<h3><a href="#presentations"
+title="Presentations">Presentations</a></h3>
 <ul>
 <li><p><a href="https://www.infoq.com/presentations/LMAX/">LMAX - How to
 Do 100K TPS at Less than 1ms Latency</a> by Martin Thompson (QCon
@@ -626,7 +627,7 @@ Montgomery (2022).</p></li>
 </ul>
 </section>
 <section id="writings" class="level3">
-<h3>Writings</h3>
+<h3><a href="#writings" title="Writings">Writings</a></h3>
 <ul>
 <li>Martin Thompson’s <a
 href="https://mechanical-sympathy.blogspot.com/">blog</a>;</li>

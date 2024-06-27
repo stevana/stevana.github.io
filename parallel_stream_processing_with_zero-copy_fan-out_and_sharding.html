@@ -86,7 +86,8 @@ away from the user of the library. We’ll also have a look at how we can
 monitor and visualise such pipelines for debugging and performance
 troubleshooting purposes.</p>
 <section id="motivation-and-inspiration" class="level2">
-<h2>Motivation and inspiration</h2>
+<h2><a href="#motivation-and-inspiration"
+title="Motivation and inspiration">Motivation and inspiration</a></h2>
 <p>Before we dive into <em>how</em> we can achieve this, let’s start
 with the question of <em>why</em> I’d like to do it.</p>
 <p>I believe the way we write programs for multiprocessor networks,
@@ -170,7 +171,7 @@ goal of making it easier to program distributed systems by providing
 generic building blocks.</p>
 </section>
 <section id="prior-work" class="level2">
-<h2>Prior work</h2>
+<h2><a href="#prior-work" title="Prior work">Prior work</a></h2>
 <p>Working with streams of data is common. The reason for this is that
 it’s a nice abstraction when dealing with data that cannot fit in
 memory. The alternative is to manually load chunks of data one wants to
@@ -315,7 +316,7 @@ this post, but at least this should give you a sense of the direction
 I’d like to go.</p>
 </section>
 <section id="plan" class="level2">
-<h2>Plan</h2>
+<h2><a href="#plan" title="Plan">Plan</a></h2>
 <p>The rest of this post is organised as follows.</p>
 <p>First we’ll have a look at how to model pipelines as a transformation
 of lists. The purpose of this is to give us an easy to understand
@@ -332,7 +333,8 @@ Disruptor implementation of pipelines. We’ll also discuss how
 monitoring/observability can be added.</p>
 </section>
 <section id="list-transformer-model" class="level2">
-<h2>List transformer model</h2>
+<h2><a href="#list-transformer-model"
+title="List transformer model">List transformer model</a></h2>
 <p>Let’s first introduce the type for our pipelines. We index our
 pipeline datatype by two types, in order to be able to precisely specify
 its input and output types. For example, the <code>Id</code>entity
@@ -407,7 +409,8 @@ section.</p>
 [(1,False),(2,True),(3,False),(4,True),(5,False)]</code></pre>
 </section>
 <section id="queue-pipeline-deployment" class="level2">
-<h2>Queue pipeline deployment</h2>
+<h2><a href="#queue-pipeline-deployment"
+title="Queue pipeline deployment">Queue pipeline deployment</a></h2>
 <p>In the previous section we saw how to deploy pipelines in a purely
 sequential way in order to process lists. The purpose of this is merely
 to give ourselves an intuition of what pipelines should do as well as an
@@ -577,7 +580,7 @@ post</a>, as I spent some more time constructing an intuitive example
 there.</p>
 </section>
 <section id="disruptor" class="level2">
-<h2>Disruptor</h2>
+<h2><a href="#disruptor" title="Disruptor">Disruptor</a></h2>
 <p>Before we can understand how the Disruptor can help us avoid the
 problem copying between queues that we just saw, we need to first
 understand a bit about how the Disruptor is implemented.</p>
@@ -683,7 +686,9 @@ write side (with <code>tryClaimBatch</code>) and on the reader side
 contributes to the Disruptor’s performance.</p>
 </section>
 <section id="disruptor-pipeline-deployment" class="level2">
-<h2>Disruptor pipeline deployment</h2>
+<h2><a href="#disruptor-pipeline-deployment"
+title="Disruptor pipeline deployment">Disruptor pipeline
+deployment</a></h2>
 <p>Recall that the reason we introduced the Disruptor was to avoid
 copying elements of the queue when fanning out (using the
 <code>:&amp;&amp;&amp;</code> combinator) and sharding.</p>
@@ -847,7 +852,8 @@ have more copying of data to do<a href="#fn8" class="footnote-ref"
 id="fnref8" role="doc-noteref"><sup>8</sup></a>.</p>
 </section>
 <section id="observability" class="level2">
-<h2>Observability</h2>
+<h2><a href="#observability"
+title="Observability">Observability</a></h2>
 <p>Given that pipelines are directed acyclic graphs and that we have a
 concrete datatype constructor for each pipeline combinator, it’s
 relatively straight forward to add a visualisation of a deployment.</p>
@@ -879,7 +885,7 @@ over <a
 href="https://stevana.github.io/visualising_datastructures_over_time_using_svg.html">here</a>.</p>
 </section>
 <section id="running" class="level2">
-<h2>Running</h2>
+<h2><a href="#running" title="Running">Running</a></h2>
 <p>All of the above Haskell code is available on <a
 href="https://github.com/stevana/pipelining-with-disruptor/">GitHub</a>.
 The easiest way to install the right version of GHC and cabal is
@@ -913,7 +919,9 @@ class="sourceCode bash"><code class="sourceCode bash"><span id="cb44-1"><a href=
 <span id="cb44-11"><a href="#cb44-11" aria-hidden="true" tabindex="-1"></a><span class="cf">done</span></span></code></pre></div>
 </section>
 <section id="further-work-and-contributing" class="level2">
-<h2>Further work and contributing</h2>
+<h2><a href="#further-work-and-contributing"
+title="Further work and contributing">Further work and
+contributing</a></h2>
 <p>There’s still a lot to do, but I thought it would be a good place to
 stop for now. Here are a bunch of improvements, in no particular
 order:</p>
@@ -991,7 +999,7 @@ streaming libraries.</li>
 <p>If any of this seems interesting, feel free to get involved.</p>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <ul>
 <li>Guy Steele’s talk <a
 href="https://www.infoq.com/presentations/Thinking-Parallel-Programming/">How
@@ -1035,7 +1043,7 @@ programming</a> by Scott Wlaschin (NDC Porto, 2023).</li>
 </ul>
 </section>
 <section id="discussion" class="level2">
-<h2>Discussion</h2>
+<h2><a href="#discussion" title="Discussion">Discussion</a></h2>
 <ul>
 <li><a
 href="https://discourse.haskell.org/t/parallel-stream-processing-with-zero-copy-fan-out-and-sharding/8632">discourse.haskell.org</a>;</li>

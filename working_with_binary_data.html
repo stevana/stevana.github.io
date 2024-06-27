@@ -65,7 +65,7 @@ encodings</a></li>
 this question by means of implementing a library inspired by Erlang’s
 bit syntax.</p>
 <section id="motivation" class="level2">
-<h2>Motivation</h2>
+<h2><a href="#motivation" title="Motivation">Motivation</a></h2>
 <p>JSON is probably the most commonly used format for serialising data
 today. A frequent argument for using it is that JSON is
 human-readable.</p>
@@ -126,7 +126,8 @@ bit syntax works, then we’ll turn to its shortcomings and try to start
 addressing them by means of implementing a library.</p>
 </section>
 <section id="erlangs-bit-syntax" class="level2">
-<h2>Erlang’s bit syntax</h2>
+<h2><a href="#erlangs-bit-syntax" title="Erlang’s bit syntax">Erlang’s
+bit syntax</a></h2>
 <p>Erlang has a feature called bit syntax which allows the user to
 encode and decode data at the bit-level. Here’s an example, where we
 encode three integers into two bytes:</p>
@@ -186,7 +187,7 @@ later use the value of that match as the size when pattern matching on
 later values.</p>
 </section>
 <section id="usage" class="level2">
-<h2>Usage</h2>
+<h2><a href="#usage" title="Usage">Usage</a></h2>
 <p>We can implement a library that lets us do similar things to Erlang’s
 bit syntax, but in a more clunky way (it’s difficult to beat native
 syntax support).</p>
@@ -210,7 +211,7 @@ in Haskell, but should be straightforward to port to most languages
 using the following recipe.</p>
 </section>
 <section id="how-it-works" class="level2">
-<h2>How it works</h2>
+<h2><a href="#how-it-works" title="How it works">How it works</a></h2>
 <p>The high-level idea when encoding a bunch of, possibly sized, values
 into a <code>ByteString</code> is as follows:</p>
 <ol type="1">
@@ -244,7 +245,9 @@ encoding<a href="#fn2" class="footnote-ref" id="fnref2"
 role="doc-noteref"><sup>2</sup></a>.</p>
 </section>
 <section id="extending-erlangs-bit-syntax" class="level2">
-<h2>Extending Erlang’s bit syntax</h2>
+<h2><a href="#extending-erlangs-bit-syntax"
+title="Extending Erlang’s bit syntax">Extending Erlang’s bit
+syntax</a></h2>
 <p>Erlang’s bit syntax makes it possible to decode binary data into the
 host languague’s types, which can then be manipulated, and finally
 encoded back to binary.</p>
@@ -252,7 +255,8 @@ encoded back to binary.</p>
 Let me try to explain the use cases and at the same time sketch possible
 ways we can extend Erlang’s bit syntax to cover those.</p>
 <section id="in-place-updates" class="level3">
-<h3>In-place updates</h3>
+<h3><a href="#in-place-updates" title="In-place updates">In-place
+updates</a></h3>
 <p>What if we merely want to update some binary in-place without reading
 it all in and writing it all back out?</p>
 <p>For example, the de facto standard for metadata format for mp3 files
@@ -314,7 +318,8 @@ href="https://youtu.be/MUb8rD5mPvE?list=PLTj8twuHdQz-JcX7k6eOwyVPDB8CyfZc8&amp;t
 and patches for cheap.</p>
 </section>
 <section id="on-disk-data-structures" class="level3">
-<h3>On-disk data structures</h3>
+<h3><a href="#on-disk-data-structures"
+title="On-disk data structures">On-disk data structures</a></h3>
 <p>Now that we can edit files in-place on the disk it would be nice to
 use this in order to implement on-disk data structures. For example
 imagine we’d like to do some kind of logging. If our schemas could
@@ -333,7 +338,7 @@ we probably want something like <code>cat</code> and <code>grep</code>
 but generic in <code>Schema</code>.</p>
 </section>
 <section id="zero-copy" class="level3">
-<h3>Zero-copy</h3>
+<h3><a href="#zero-copy" title="Zero-copy">Zero-copy</a></h3>
 <p>When we <code>read</code> a <code>ByteString</code> field in the mp3
 metadata example above, we copied the bytes from the underlying file.
 Sometimes we might want to avoid doing that.</p>
@@ -355,13 +360,15 @@ avoiding copying aka “zero-copy”).</p>
 </section>
 <section id="backward--and-forward-compatiability-and-migrations"
 class="level3">
-<h3>Backward- and forward-compatiability and migrations</h3>
+<h3><a href="#backward--and-forward-compatiability-and-migrations"
+title="Backward- and forward-compatiability and migrations">Backward-
+and forward-compatiability and migrations</a></h3>
 <p>Another big topic is schema evolution. How can we maintain backward-
 and forward-compatibility as our software evolves? We probably want to
 be able to migrate old formats into newer ones somehow also.</p>
 </section>
 <section id="compression" class="level3">
-<h3>Compression</h3>
+<h3><a href="#compression" title="Compression">Compression</a></h3>
 <p>Currently our schemas cannot express how to compress fields on disk,
 or how to avoid sending unnecessary data in consecutive network
 messages.</p>
@@ -402,14 +409,14 @@ the schema-based tools could do such data transformations in order to
 optimise for reads or archiving?</p>
 </section>
 <section id="checksums" class="level3">
-<h3>Checksums</h3>
+<h3><a href="#checksums" title="Checksums">Checksums</a></h3>
 <p>If we can do encoding and decoding fields modulo compression, why not
 also handle checksums transparently? When we update a field which is
 part of a checksum, we’d probably want to check the checksum beforehand
 and recompute it afterwards.</p>
 </section>
 <section id="validation" class="level3">
-<h3>Validation</h3>
+<h3><a href="#validation" title="Validation">Validation</a></h3>
 <p>What if some input bytes don’t match the schema? Currently all magic
 tags in a schema get verified, but sometimes we might want to be able to
 edit incomplete or malformed inputs.</p>
@@ -418,7 +425,7 @@ like, integer between 18 and 150 or bytestring containing only
 alphanumeric characters, etc?</p>
 </section>
 <section id="protocols" class="level3">
-<h3>Protocols</h3>
+<h3><a href="#protocols" title="Protocols">Protocols</a></h3>
 <p>So far we’ve looked at how to specify what data our programs use and
 how it’s transformed to and from bytes on disk or over the network.
 Another important aspect is what protocol is followed when said data is
@@ -445,7 +452,8 @@ implementation can be found <a
 href="https://ubf.github.io/ubf/ubf-user-guide.en.html">here</a>.</p>
 </section>
 <section id="pandoc-for-binary-encodings" class="level3">
-<h3>Pandoc for binary encodings</h3>
+<h3><a href="#pandoc-for-binary-encodings"
+title="Pandoc for binary encodings">Pandoc for binary encodings</a></h3>
 <p>There’s this neat tool called <a
 href="https://github.com/jgm/pandoc"><code>pandoc</code></a> that makes
 possible to convert between different text formats, e.g. from Markdown
@@ -474,7 +482,7 @@ trying to solve the <code>pandoc</code> problem for binary.</p>
 </section>
 </section>
 <section id="discussion" class="level2">
-<h2>Discussion</h2>
+<h2><a href="#discussion" title="Discussion">Discussion</a></h2>
 <ul>
 <li><p>Q: Why not just use <a
 href="https://en.wikipedia.org/wiki/Protocol_Buffers">Protobuf</a>?</p>
@@ -504,7 +512,7 @@ Intelligent Crash Explorer</em></a>.</li>
 </ul>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>The current implementation is in Haskell, but I’d really like to
 encourage a discussion beyond specific languages. In order to make
 binary “human-readable” we need solutions that are universal, i.e. work
@@ -523,7 +531,7 @@ language?</li>
 <p>If so, feel free to get in touch!</p>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <ul>
 <li>The Erlang reference manual on <a
 href="https://www.erlang.org/doc/reference_manual/expressions.html#bit_syntax">bit

@@ -44,7 +44,7 @@ id="toc-acknowledgments">Acknowledgments</a></li>
 <p>An experiment in implementing remote hot code swapping, or dynamic
 code upgrade, for state machines.</p>
 <section id="background" class="level2">
-<h2>Background</h2>
+<h2><a href="#background" title="Background">Background</a></h2>
 <p>In Erlang it’s possible to seamlessly hot swap the code on a running
 process.</p>
 <p>Consider the following <code>gen_server</code> implementation of a
@@ -154,7 +154,7 @@ in Haskell for state machines of type
 <code>input -&gt; state -&gt; (state, output)</code>.</p>
 </section>
 <section id="usage" class="level2">
-<h2>Usage</h2>
+<h2><a href="#usage" title="Usage">Usage</a></h2>
 <p>Before we go into the details of how this is implemented in Haskell,
 lets have a look at how it looks from the user’s perspective.</p>
 <p>In one terminal run <code>cabal run exe</code> and in another
@@ -192,7 +192,7 @@ New state: Pair (Int 1) (Int 2)</code></pre>
 <pre><code>The version running isn&#39;t the one the upgrade expects. Aborting upgrade.</code></pre>
 </section>
 <section id="how-it-works" class="level2">
-<h2>How it works</h2>
+<h2><a href="#how-it-works" title="How it works">How it works</a></h2>
 <p>The basic idea is that we want our state machines to be seralisable
 so that we can send them over the network in order to perform remote
 upgrades.</p>
@@ -310,7 +310,7 @@ good thing, since upgrading the abstract machine on a node can probably
 not be done as easily without any downtime.</p>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>I believe this is a good starting point for further experiments, here
 are a few ideas:</p>
 <ul class="task-list">
@@ -376,7 +376,7 @@ featureful languages?</li>
 </ul>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <ul>
 <li><a
 href="https://github.com/turion/essence-of-live-coding"><code>essence-of-live-coding</code></a>:
@@ -400,7 +400,8 @@ href="http://kth.diva-portal.org/smash/record.jsf?pid=diva2%3A9492&amp;dswid=225
 </ul>
 </section>
 <section id="acknowledgments" class="level2">
-<h2>Acknowledgments</h2>
+<h2><a href="#acknowledgments"
+title="Acknowledgments">Acknowledgments</a></h2>
 <p>Thanks to Daniel Gustafsson for helping me understand
 <code>Port</code> from the <em>Overloading the lambda abstraction in
 Haskell</em> blog post!</p>

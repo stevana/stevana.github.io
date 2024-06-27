@@ -128,7 +128,9 @@ property-based testing features. In order to best explain what’s missing
 and why I think we ended up in this situation, let me start by telling
 the brief history of property-based testing.</p>
 <section id="the-history-of-property-based-testing" class="level2">
-<h2>The history of property-based testing</h2>
+<h2><a href="#the-history-of-property-based-testing"
+title="The history of property-based testing">The history of
+property-based testing</a></h2>
 <p>In Gothenburg, Sweden’s second most populated city, there’s a
 university called Chalmers. At the computer science department of
 Chalmers there are several research groups, two of which are
@@ -262,7 +264,9 @@ remain the same.</p>
 </section>
 <section id="a-survey-of-property-based-testing-libraries"
 class="level2">
-<h2>A survey of property-based testing libraries</h2>
+<h2><a href="#a-survey-of-property-based-testing-libraries"
+title="A survey of property-based testing libraries">A survey of
+property-based testing libraries</a></h2>
 <p>As we’ve seen above, the current state-of-the-art when it comes to
 property-based testing is <em>stateful</em> testing via a state machine
 model and reusing the same sequential state machine model combined with
@@ -538,7 +542,7 @@ though.</td>
 </table>
 </section>
 <section id="analysis" class="level2">
-<h2>Analysis</h2>
+<h2><a href="#analysis" title="Analysis">Analysis</a></h2>
 <p>By now I hope that I’ve managed to convince you that most
 property-based testing libraries do not implement what used to be the
 state-of-the-art fifteen years ago.</p>
@@ -553,7 +557,10 @@ added later, rather than designed for from the start.</p>
 <section
 id="why-are-property-based-testing-libraries-in-such-a-sad-state"
 class="level3">
-<h3>Why are property-based testing libraries in such a sad state?</h3>
+<h3><a
+href="#why-are-property-based-testing-libraries-in-such-a-sad-state"
+title="Why are property-based testing libraries in such a sad state?">Why
+are property-based testing libraries in such a sad state?</a></h3>
 <p>Here are three reasons I’ve heard from John:</p>
 <ol type="1">
 <li><p>The stateful and parallel testing features are not as useful as
@@ -599,7 +606,10 @@ Having said that let me try to address John’s points.</p>
 <section
 id="stateful-and-parallel-testing-isnt-as-useful-as-pure-testing"
 class="level4">
-<h4>Stateful and parallel testing isn’t as useful as pure testing</h4>
+<h4><a
+href="#stateful-and-parallel-testing-isnt-as-useful-as-pure-testing"
+title="Stateful and parallel testing isn’t as useful as pure testing">Stateful
+and parallel testing isn’t as useful as pure testing</a></h4>
 <p>I think many people will agree that separating pure from
 side-effectful code is good practice in any programming language, and I
 do agree with John that you can get far by merely property-based testing
@@ -611,7 +621,9 @@ data structures, which all benefit from the stateful and parallel
 testing features.</p>
 </section>
 <section id="stateful-modelling-requires-training" class="level4">
-<h4>Stateful modelling requires training</h4>
+<h4><a href="#stateful-modelling-requires-training"
+title="Stateful modelling requires training">Stateful modelling requires
+training</a></h4>
 <p>Regarding formal specification requiring a special way of thinking
 and therefor training, I believe this is a correct assessment. However I
 also believe that this is already true for property-based testing of
@@ -647,7 +659,9 @@ href="https://htmlpreview.github.io/?https://raw.githubusercontent.com/strangelo
 at LambdaJam 2013 about it.</p>
 </section>
 <section id="closed-source-helps-industry-adoption" class="level4">
-<h4>Closed source helps industry adoption</h4>
+<h4><a href="#closed-source-helps-industry-adoption"
+title="Closed source helps industry adoption">Closed source helps
+industry adoption</a></h4>
 <p>Regarding keeping the source closed helping with adoption, I think
 this is perhaps the most controversial point that John makes.</p>
 <p>If we try to see it from John’s perspective, how else would an
@@ -673,7 +687,8 @@ and port the library in another language.</p>
 </section>
 </section>
 <section id="what-can-we-do-about-it" class="level3">
-<h3>What can we do about it?</h3>
+<h3><a href="#what-can-we-do-about-it"
+title="What can we do about it?">What can we do about it?</a></h3>
 <p>I think there’s at least two things worth trying.</p>
 <ol type="1">
 <li><p>Provide a short open source implementation of stateful and
@@ -693,7 +708,7 @@ generally?</p></li>
 </section>
 </section>
 <section id="synthesis" class="level2">
-<h2>Synthesis</h2>
+<h2><a href="#synthesis" title="Synthesis">Synthesis</a></h2>
 <p>In order to test the above hypothesis, I’d like to spend the rest of
 this post as follows:</p>
 <ol type="1">
@@ -708,7 +723,9 @@ than state machines.</p></li>
 <p>Before we get started with stateful testing, let’s first recap how
 property-based testing of pure functions works.</p>
 <section id="pure-property-based-testing-recap" class="level3">
-<h3>Pure property-based testing recap</h3>
+<h3><a href="#pure-property-based-testing-recap"
+title="Pure property-based testing recap">Pure property-based testing
+recap</a></h3>
 <p>It’s considered good practice to test new functions or functionality,
 to make sure it does what we want. For example, imagine we’ve written a
 linked-list reversal function called <code>reverse</code>, then it might
@@ -806,7 +823,9 @@ e.g. <code>\(i j k :: Int) -&gt; (i + j) + k == i + (j + k)</code>;</li>
 above.</p>
 </section>
 <section id="stateful-property-based-testing" class="level3">
-<h3>Stateful property-based testing</h3>
+<h3><a href="#stateful-property-based-testing"
+title="Stateful property-based testing">Stateful property-based
+testing</a></h3>
 <p>In the pure property-based testing case, that we just looked at, the
 picture of the test setup looks a bit like this:</p>
 <pre><code>         +-----+
@@ -880,7 +899,8 @@ to present the smallest counterexample, as in the pure case.</p>
 <p>Let’s make things more concrete with some actual code that we can
 run.</p>
 <section id="example-counter" class="level4">
-<h4>Example: counter</h4>
+<h4><a href="#example-counter" title="Example: counter">Example:
+counter</a></h4>
 <p>All examples, in the rest of this post, will have three parts:</p>
 <ol type="1">
 <li>The software under test;</li>
@@ -893,7 +913,8 @@ implementing an interface (type class). We’ll look at the definition of
 the type class after the example. The final part is how to write the
 actual property and interpret the output from running them.</p>
 <section id="software-under-test" class="level5">
-<h5>Software under test</h5>
+<h5><a href="#software-under-test" title="Software under test">Software
+under test</a></h5>
 <p>This is how you can implement a counter using a global mutable
 variable in Haskell:</p>
 <div class="sourceCode" id="cb9"><pre
@@ -913,7 +934,7 @@ above, and instead we have a separate operation <code>get</code> which
 returns the current value of the counter.</p>
 </section>
 <section id="model" class="level5">
-<h5>Model</h5>
+<h5><a href="#model" title="Model">Model</a></h5>
 <p>To model our counter we’ll use an integer.</p>
 <div class="sourceCode" id="cb10"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">Counter</span> <span class="ot">=</span> <span class="dt">Counter</span> <span class="dt">Int</span></span>
@@ -968,7 +989,7 @@ communicating over the network, or perform various time or space
 optimisations. Recall the LevelDB example from above.</p>
 </section>
 <section id="tests" class="level5">
-<h5>Tests</h5>
+<h5><a href="#tests" title="Tests">Tests</a></h5>
 <p>The tests, or property, can now be written as follows.</p>
 <div class="sourceCode" id="cb11"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="ot">prop_counter ::</span> <span class="dt">Commands</span> <span class="dt">Counter</span> <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
@@ -1075,13 +1096,16 @@ minimise it.</p>
 </section>
 </section>
 <section id="stateful-library-implementation" class="level4">
-<h4>Stateful library implementation</h4>
+<h4><a href="#stateful-library-implementation"
+title="Stateful library implementation">Stateful library
+implementation</a></h4>
 <p>In the example above we implemented the <code>StateModel</code>
 interface (or type class), next we’ll have a look at the definition of
 this interface and the testing functionality we can derive by
 programming against the interface.</p>
 <section id="stateful-testing-interface" class="level5">
-<h5>Stateful testing interface</h5>
+<h5><a href="#stateful-testing-interface"
+title="Stateful testing interface">Stateful testing interface</a></h5>
 <p>Let me give you the full definition of the interface and then I’ll
 explain it in words afterwards.</p>
 <div class="sourceCode" id="cb16"><pre
@@ -1193,7 +1217,8 @@ more examples after we’ve defined our stateful property-based testing
 library.</p>
 </section>
 <section id="generating-and-shrinking" class="level5">
-<h5>Generating and shrinking</h5>
+<h5><a href="#generating-and-shrinking"
+title="Generating and shrinking">Generating and shrinking</a></h5>
 <p>Once we have our interface we can start writing functions against the
 interface. These functions are what the user gets once they implement
 the interface. In this section we’ll have a look at generation of
@@ -1300,7 +1325,9 @@ reference then we must also remove the commands that depend on the
 reference.</p>
 </section>
 <section id="running-and-assertion-checking" class="level5">
-<h5>Running and assertion checking</h5>
+<h5><a href="#running-and-assertion-checking"
+title="Running and assertion checking">Running and assertion
+checking</a></h5>
 <p>Once we’ve generated <code>Commands</code> we need to execute them
 against the model and the real system using <code>runFake</code> and
 <code>runReal</code>. In the process of doing so <code>runReal</code>
@@ -1352,12 +1379,14 @@ references.</p>
 </section>
 </section>
 <section id="example-circular-buffer" class="level4">
-<h4>Example: circular buffer</h4>
+<h4><a href="#example-circular-buffer"
+title="Example: circular buffer">Example: circular buffer</a></h4>
 <p>This example is taken from John’s paper <a
 href="https://publications.lib.chalmers.se/records/fulltext/232550/local_232550.pdf"><em>Testing
 the hard stuff and staying sane</em></a> (2014).</p>
 <section id="software-under-test-1" class="level5">
-<h5>Software under test</h5>
+<h5><a href="#software-under-test-1"
+title="Software under test">Software under test</a></h5>
 <p>The implementation is written in C and uses two indices which keep
 track of the front and back of the queue, this allows us to implement
 the queue in a circular fashion. I’ve copied the C code straight from
@@ -1395,7 +1424,7 @@ function interface.</p>
 memory.</p>
 </section>
 <section id="model-1" class="level5">
-<h5>Model</h5>
+<h5><a href="#model-1" title="Model">Model</a></h5>
 <p>The circular buffer implementation is efficient, because it reuses
 the allocated memory as we go around in circles, but it’s not obviously
 correct.</p>
@@ -1529,7 +1558,7 @@ response, so that we can substitute them in later
 <code>Command</code>s.</p>
 </section>
 <section id="testing" class="level5">
-<h5>Testing</h5>
+<h5><a href="#testing" title="Testing">Testing</a></h5>
 <p>Having implemented the interface, we can write our property as
 follows.</p>
 <div class="sourceCode" id="cb30"><pre
@@ -1730,7 +1759,9 @@ development and debugging of the code.</p>
 </section>
 </section>
 <section id="example-jug-puzzle-from-die-hard-3" class="level4">
-<h4>Example: jug puzzle from Die Hard 3</h4>
+<h4><a href="#example-jug-puzzle-from-die-hard-3"
+title="Example: jug puzzle from Die Hard 3">Example: jug puzzle from Die
+Hard 3</a></h4>
 <p>In the movie Die Hard 3 there’s a <a
 href="https://www.youtube.com/watch?v=BVtQNK_ZUJg">scene</a> where Bruce
 Willis and Samuel L. Jackson have to solve a puzzle in order to stop a
@@ -1839,7 +1870,9 @@ role="doc-noteref"><sup>3</sup></a>.</p>
 </section>
 </section>
 <section id="parallel-property-based-testing" class="level3">
-<h3>Parallel property-based testing</h3>
+<h3><a href="#parallel-property-based-testing"
+title="Parallel property-based testing">Parallel property-based
+testing</a></h3>
 <p>Let’s now turn our focus to parallel property-based testing.</p>
 <p>Debugging buggy concurrent code is not fun. The main reason for this
 is that the threads interleave in different ways between executions,
@@ -1977,7 +2010,9 @@ history linearises and that the concurrent execution is correct, if we
 cannot find a sequential interleaving that respects the model then the
 history doesn’t linearise and we have found a problem.</p>
 <section id="parallel-library-implementation" class="level4">
-<h4>Parallel library implementation</h4>
+<h4><a href="#parallel-library-implementation"
+title="Parallel library implementation">Parallel library
+implementation</a></h4>
 <p>Let’s try to implement the above. We’ll split up the implementation
 in three parts. First, we’ll show how to generate and shrink parallel
 commands, these will be different than the sequential commands as we
@@ -1987,7 +2022,9 @@ concurrent history. Finally, we’ll implement linearisability checking by
 trying to find an interleaving of the concurrent history which respects
 the sequential model.</p>
 <section id="parallel-program-generation-and-shrinking" class="level5">
-<h5>Parallel program generation and shrinking</h5>
+<h5><a href="#parallel-program-generation-and-shrinking"
+title="Parallel program generation and shrinking">Parallel program
+generation and shrinking</a></h5>
 <p>First we need define what a parallel program is:</p>
 <div class="sourceCode" id="cb53"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">ParallelCommands</span> state <span class="ot">=</span> <span class="dt">ParallelCommands</span> [<span class="dt">Fork</span> state]</span>
@@ -2137,7 +2174,8 @@ href="#fn4" class="footnote-ref" id="fnref4"
 role="doc-noteref"><sup>4</sup></a>.</p>
 </section>
 <section id="parallel-running" class="level5">
-<h5>Parallel running</h5>
+<h5><a href="#parallel-running" title="Parallel running">Parallel
+running</a></h5>
 <p>One final difference between the sequential and the parallel case is
 that because of the use of threads to achieve parallel execution, and
 the fact we can only spawn threads of things of type <code>IO</code>, we
@@ -2230,7 +2268,8 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb62-1"><a
 we check the result of an execution.</p>
 </section>
 <section id="linearisability-checking" class="level5">
-<h5>Linearisability checking</h5>
+<h5><a href="#linearisability-checking"
+title="Linearisability checking">Linearisability checking</a></h5>
 <p>Recall from our parallel counter example in the introduction to
 parallel testing that it’s enough to find <em>any</em> possible
 interleaving which respects the sequential model. So let’s start by
@@ -2290,7 +2329,8 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb64-1"><a
 </section>
 </section>
 <section id="example-parallel-counter" class="level4">
-<h4>Example: parallel counter</h4>
+<h4><a href="#example-parallel-counter"
+title="Example: parallel counter">Example: parallel counter</a></h4>
 <p>Having defined the <code>ParallelModel</code> interface (which
 depends on the <code>StateModel</code> interface from the sequential
 testing) and programmed our parallel generation, shrinking and parallel
@@ -2298,7 +2338,7 @@ execution and linearisability checking against this interface, we
 basically get parallel testing for free by reusing the sequential
 model.</p>
 <section id="testing-1" class="level5">
-<h5>Testing</h5>
+<h5><a href="#testing-1" title="Testing">Testing</a></h5>
 <p>This is the only new code we need to add to enable parallel testing
 of our <code>Counter</code> example<a href="#fn5" class="footnote-ref"
 id="fnref5" role="doc-noteref"><sup>5</sup></a> from before:</p>
@@ -2378,13 +2418,15 @@ smaller.</p>
 </section>
 </section>
 <section id="example-process-registry" class="level4">
-<h4>Example: process registry</h4>
+<h4><a href="#example-process-registry"
+title="Example: process registry">Example: process registry</a></h4>
 <p>For a slightly more complicated example containing race conditions,
 let’s have a look at an implementation of the Erlang process registry<a
 href="#fn6" class="footnote-ref" id="fnref6"
 role="doc-noteref"><sup>6</sup></a>.</p>
 <section id="software-under-test-2" class="level5">
-<h5>Software under test</h5>
+<h5><a href="#software-under-test-2"
+title="Software under test">Software under test</a></h5>
 <p>The idea behind Erlang’s process registry is that you can spawn
 threads, register the <code>ThreadId</code> to some name of type string,
 and then lookup the thread by name rather than its thread id. Threads
@@ -2457,7 +2499,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb72-1"><a
 <span id="cb72-62"><a href="#cb72-62" aria-hidden="true" tabindex="-1"></a>      <span class="kw">else</span> <span class="fu">return</span> ()</span></code></pre></div>
 </section>
 <section id="model-2" class="level5">
-<h5>Model</h5>
+<h5><a href="#model-2" title="Model">Model</a></h5>
 <p>The model of the process registry contains three things that we
 haven’t seen before. The first thing to note is that
 <code>Register</code> and <code>Unregister</code> might fail, so we use
@@ -2596,7 +2638,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb74-1"><a
 <span id="cb74-8"><a href="#cb74-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">foldMap</span> _f (<span class="dt">NonFoldable</span> _x) <span class="ot">=</span> <span class="fu">mempty</span></span></code></pre></div>
 </section>
 <section id="testing-2" class="level5">
-<h5>Testing</h5>
+<h5><a href="#testing-2" title="Testing">Testing</a></h5>
 <p>We can now write our sequential testing property as we’ve done
 earlier for the other examples.</p>
 <div class="sourceCode" id="cb75"><pre
@@ -2742,7 +2784,9 @@ parallel testing examples!</p>
 </section>
 <section id="integration-testing-with-contract-tested-fakes"
 class="level3">
-<h3>Integration testing with contract tested fakes</h3>
+<h3><a href="#integration-testing-with-contract-tested-fakes"
+title="Integration testing with contract tested fakes">Integration
+testing with contract tested fakes</a></h3>
 <p>Throughout this post we’ve used in-memory models, or fakes, as
 reference implementations to test against. The use of fakes diverges
 from the original work on Quviq’s Erlang QuickCheck, where a more
@@ -2778,7 +2822,7 @@ enable component <span class="math inline"><em>B</em></span> and then
 start testing component <span class="math inline"><em>A</em></span>. In
 a larger system there can be many dependencies and integration tests can
 get slow and flaky due to the infrastructure for starting up the
-dependendencies.</p>
+dependencies.</p>
 <p>With fakes we can get fast and deterministic integration tests by
 depending on the fake of the dependency instead of the real
 dependency:</p>
@@ -2804,7 +2848,8 @@ testing against fakes works. Hopefully this shows how the testing
 methodology that we’ve explored in this post can be scaled to a bigger
 system of components.</p>
 <section id="example-queue-again" class="level4">
-<h4>Example: queue (again)</h4>
+<h4><a href="#example-queue-again"
+title="Example: queue (again)">Example: queue (again)</a></h4>
 <p>As our first example of integration testing, let’s recall our queue
 example from the section on stateful testing. We can introduce an
 interface for it as follows:</p>
@@ -2873,7 +2918,8 @@ of our stateful property-based tests we know that the fake is faithful
 to the real implementation.</p>
 </section>
 <section id="example-file-system" class="level4">
-<h4>Example: file system</h4>
+<h4><a href="#example-file-system" title="Example: file system">Example:
+file system</a></h4>
 <p>The next example is a file system, first used by Edsko in the <a
 href="https://www.well-typed.com/blog/2019/01/qsm-in-depth/">post</a>
 that also introduced using fakes as models.</p>
@@ -3045,7 +3091,9 @@ is the file system:</p>
    +---------+</code></pre>
 </section>
 <section id="example-bigger-system-of-components" class="level4">
-<h4>Example: bigger system of components</h4>
+<h4><a href="#example-bigger-system-of-components"
+title="Example: bigger system of components">Example: bigger system of
+components</a></h4>
 <p>The examples given above, a queue and a file system, might not seems
 necessary to fake<a href="#fn8" class="footnote-ref" id="fnref8"
 role="doc-noteref"><sup>8</sup></a> so to finish of let’s sketch how the
@@ -3084,7 +3132,8 @@ role="doc-noteref"><sup>9</sup></a>.</p>
 </section>
 </section>
 <section id="conclusion-and-future-work" class="level2">
-<h2>Conclusion and future work</h2>
+<h2><a href="#conclusion-and-future-work"
+title="Conclusion and future work">Conclusion and future work</a></h2>
 <p>We’ve seen how stateful and parallel property-based testing can be
 implemented in about 400 lines of code, which is comparable to the 300
 lines of code of the first version of QuickCheck (which didn’t have
@@ -3092,22 +3141,18 @@ shrinking). We’ve also had a look at several examples of how we can use
 fakes as models and how to test bigger systems in a compositional manner
 by reusing the fakes.</p>
 <p>I hope that this is enough material to get people curious and
-experimenting in other programming languages. I used Haskell, because
-it’s what the original QuickCheck library is written in, but I think it
-would be good to translate code to other programming language paradigms,
-thus making it easier for others to learn and experiment. If anyone is
-interested in starting such a port to a different language, then I’d be
-happy to help. Feel free to open issues and ask questions in the <a
-href="https://github.com/stevana/stateful-pbt-with-fakes">code
-repository</a> of this post.</p>
-<p>I’ve also writen down a bunch of <a
-href="https://github.com/stevana/stateful-pbt-with-fakes/blob/main/TODO.md">ideas</a>
-for improvements and further exploration, in case anyone’s interested in
-digging deeper into this topic (again, happy to elaborate, feel free to
-get <a href="https://stevana.github.io/about.html">in touch</a>).</p>
+experimenting in their favorite programming languages<a href="#fn10"
+class="footnote-ref" id="fnref10" role="doc-noteref"><sup>10</sup></a>.
+Feel free to get <a href="https://stevana.github.io/about.html">in
+touch</a> or open an <a
+href="https://github.com/stevana/stateful-pbt-with-fakes">issue</a> in
+case there’s anything I can help with. Who knows, together, we might
+even be able to slightly improve the state of property-based testing
+libraries!</p>
 </section>
 <section id="acknowledgments" class="level2">
-<h2>Acknowledgments</h2>
+<h2><a href="#acknowledgments"
+title="Acknowledgments">Acknowledgments</a></h2>
 <p>I’d like to thank Daniel Gustafsson for helping implement the
 <code>quickcheck-state-machine</code> library with me seven years ago,
 discussing a fix for parallel commands generation <a
@@ -3201,6 +3246,12 @@ role="doc-backlink">↩︎</a></p></li>
 href="https://www.youtube.com/watch?v=fhFa4tkFUFw">Integrated Tests Are
 A Scam</a> by J.B. Rainsberger for a longer presentation of this idea.<a
 href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn10"><p>In the unlikely case that there’s someone out there who
+wants to dig even deeper into this topic, then I’ve compiled a list of
+<a
+href="https://github.com/stevana/stateful-pbt-with-fakes/blob/main/TODO.md">ideas</a>
+for improvements and further exploration.<a href="#fnref10"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
 </main>

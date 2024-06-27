@@ -23,13 +23,4 @@ window.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('section[id]').forEach((section) => {
         observer.observe(section);
     });
-
-    // Adapted from: https://stackoverflow.com/a/40475478
-    document.querySelectorAll("section h2, h3, h4, h5, h6").forEach(heading => {
-        heading.innerHTML =
-            '<a href="#' + heading.parentElement.id + '">' +
-            heading.innerText +
-            '</a>';
-    });
-
 });

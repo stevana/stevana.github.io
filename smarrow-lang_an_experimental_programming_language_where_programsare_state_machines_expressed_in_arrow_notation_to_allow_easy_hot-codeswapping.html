@@ -92,7 +92,8 @@ testing</a> and formal verification.</li>
 <p>The goal of the language is to provide a testbed for experimenting
 with how to program distributed systems.</p>
 <section id="why-a-new-language" class="level2">
-<h2>Why a new language?</h2>
+<h2><a href="#why-a-new-language" title="Why a new language?">Why a new
+language?</a></h2>
 <p>Barbara Liskov gave two good reasons in her Turing award <a
 href="https://amturing.acm.org/vp/liskov_1108679.cfm">lecture</a>
 (2008):</p>
@@ -110,7 +111,8 @@ so that we can write the whole thing in the language.”</p>
 </blockquote>
 </section>
 <section id="getting-started" class="level2">
-<h2>Getting started</h2>
+<h2><a href="#getting-started" title="Getting started">Getting
+started</a></h2>
 <div class="sourceCode" id="cb1"><pre
 class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> cabal run smarrow-deploy <span class="kw">&amp;</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> cat example/Counter.smarr</span></code></pre></div>
@@ -151,15 +153,17 @@ class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="
 <span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="ex">^C</span></span></code></pre></div>
 </section>
 <section id="features" class="level2">
-<h2>Features</h2>
+<h2><a href="#features" title="Features">Features</a></h2>
 <section id="first-class-state-machines" class="level3">
-<h3>First-class state machines</h3>
+<h3><a href="#first-class-state-machines"
+title="First-class state machines">First-class state machines</a></h3>
 <p>In functional programming languages functions are first-class. In
 <code>smarrow</code> we experiment with making state machines
 first-class instead.</p>
 </section>
 <section id="arrow-notation" class="level3">
-<h3>Arrow notation</h3>
+<h3><a href="#arrow-notation" title="Arrow notation">Arrow
+notation</a></h3>
 <p>State machines are to <code>smarrow</code> what functions are to
 functional programing languages. A state machine has the type:</p>
 <div class="sourceCode" id="cb6"><pre
@@ -171,7 +175,8 @@ which would improve the egonomics of writing state machines, but in
 instead for reasons we shall explain next.</p>
 </section>
 <section id="hot-code-swapping" class="level3">
-<h3>Hot-code swapping</h3>
+<h3><a href="#hot-code-swapping" title="Hot-code swapping">Hot-code
+swapping</a></h3>
 <p>Conal Elliott’s work on <a
 href="http://conal.net/papers/compiling-to-categories/">compiling to
 categories</a> shows how <code>Arrow</code>s that don’t use
@@ -184,7 +189,7 @@ the write to remote nodes and update state machines without downtime,
 similar to hot-code swapping à la Erlang.</p>
 </section>
 <section id="adapters" class="level3">
-<h3>Adapters</h3>
+<h3><a href="#adapters" title="Adapters">Adapters</a></h3>
 <p>State machines are pure, if we want them to do something useful we
 must hook them up to inputs from the “real world”. Adapters allow us to
 turn, for example, an HTTP server request into an input which we can
@@ -193,7 +198,8 @@ that the state machine produced.</p>
 <p>Similary console I/O or a REPL could be used as adapters.</p>
 </section>
 <section id="simulation-testing" class="level3">
-<h3>Simulation testing</h3>
+<h3><a href="#simulation-testing" title="Simulation testing">Simulation
+testing</a></h3>
 <p>Another useful adaptor is to deploy a bunch of communicating state
 machines on a fake network where all messages are kept in an in-memory
 priorty queue sorted by arrival time. We can then simulate the network,
@@ -209,7 +215,8 @@ us a discrete-event simulation, which is much faster than testing using
 Jepsen and is determinstic too!</p>
 </section>
 <section id="time-travelling-debugger" class="level3">
-<h3>Time-travelling debugger</h3>
+<h3><a href="#time-travelling-debugger"
+title="Time-travelling debugger">Time-travelling debugger</a></h3>
 <p>If we record all inputs that we feed the state machines, then we can
 implement a time-travelling debugger by merely feeding the inputs
 one-by-one to the state machines and observing how the states change
@@ -218,11 +225,14 @@ over time.</p>
 there are too many inputs to store then all.</p>
 </section>
 <section id="deployments-via-supervision-trees" class="level3">
-<h3>Deployments via supervision trees</h3>
+<h3><a href="#deployments-via-supervision-trees"
+title="Deployments via supervision trees">Deployments via supervision
+trees</a></h3>
 <p>XXX:</p>
 </section>
 <section id="no-modules-or-packages" class="level3">
-<h3>No modules or packages</h3>
+<h3><a href="#no-modules-or-packages" title="No modules or packages">No
+modules or packages</a></h3>
 <p>A state machine is a unit of deployment, unlike a (pure) function. A
 state machine must be under version control before it can be deployed,
 it’s therefore globally uniquely identifiable and therefore there’s no
@@ -242,7 +252,7 @@ class="uri">https://lobste.rs/s/xi3mi0/does_programming_language_with_ml_style</
 </ul>
 </section>
 <section id="upgrades" class="level3">
-<h3>Upgrades</h3>
+<h3><a href="#upgrades" title="Upgrades">Upgrades</a></h3>
 <p>After a system is deployed it will likely need to be upgraded.</p>
 <p>XXX: we already talked about hot-code swapping…</p>
 <ul>
@@ -252,7 +262,7 @@ changes?</p></li>
 </ul>
 </section>
 <section id="protocols" class="level3">
-<h3>Protocols</h3>
+<h3><a href="#protocols" title="Protocols">Protocols</a></h3>
 <p>A state machines input type essentially defines its API, it doesn’t
 say anything about which sequences of inputs are allowed. Consider the
 POSIX filesystem API where we can open a file to get a file handle,
@@ -264,7 +274,9 @@ protocols is by means of a state machines.</p>
 in-between state machines.</p>
 </section>
 <section id="horizonal-composition--pipelining" class="level3">
-<h3>Horizonal composition – pipelining</h3>
+<h3><a href="#horizonal-composition--pipelining"
+title="Horizonal composition – pipelining">Horizonal composition –
+pipelining</a></h3>
 <p>XXX: Horizontally compose state machines.</p>
 <ul>
 <li><a href="https://youtu.be/U3eo49nVxcA?t=1949">Jim Gray on
@@ -272,10 +284,11 @@ parallelism via pipelining</a></li>
 </ul>
 </section>
 <section id="vertical-composition" class="level3">
-<h3>Vertical composition</h3>
+<h3><a href="#vertical-composition"
+title="Vertical composition">Vertical composition</a></h3>
 </section>
 <section id="capabilities" class="level3">
-<h3>Capabilities</h3>
+<h3><a href="#capabilities" title="Capabilities">Capabilities</a></h3>
 <ul>
 <li>Lecture on <a
 href="https://youtube.com/watch?v=TQhmua7Z2cY">capabilities</a> from
@@ -286,7 +299,8 @@ Heart of Spritely: Distributed Objects and Capability Security</a></li>
 </ul>
 </section>
 <section id="formal-verification" class="level3">
-<h3>Formal verification</h3>
+<h3><a href="#formal-verification" title="Formal verification">Formal
+verification</a></h3>
 <ul>
 <li>Model-checking à la TLA+: <a
 href="https://github.com/Gabriella439/HasCal"
@@ -298,10 +312,10 @@ class="uri">https://lawrencecpaulson.github.io/2022/10/12/verifying-distributed-
 </section>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>If any of this sounds interesting, feel free to get in touch.</p>
 <section id="to-do" class="level3">
-<h3>To do</h3>
+<h3><a href="#to-do" title="To do">To do</a></h3>
 <ul>
 <li>records</li>
 <li>state migration</li>
@@ -338,7 +352,7 @@ deployment?</li>
 </section>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <ul>
 <li>The P programming language</li>
 <li><a

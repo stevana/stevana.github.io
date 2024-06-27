@@ -5,7 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Stevan A" />
-  <title>Erlang's not about lightweight processes and message passing...</title>
+  <meta name="dcterms.date" content="2023-01-18" />
+  <title>Erlang’s not about lightweight processes and message passing…</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="alternate" type="application/rss+xml"
         title="RSS feed"
@@ -14,7 +15,7 @@
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
-    <img src="https://stevana-github-io.goatcounter.com/count?p=/erlangs_not_about_lightweight_processes_and_message_passing.html&t=Erlang's not about lightweight processes and message passing...">
+    <img src="https://stevana-github-io.goatcounter.com/count?p=/erlangs_not_about_lightweight_processes_and_message_passing.html&t=Erlang’s not about lightweight processes and message passing…">
   </noscript>
 </head>
 <body>
@@ -27,7 +28,7 @@
 </header>
 <hr />
 <main>
-<h1>Erlang's not about lightweight processes and message passing...</h1>
+<h1>Erlang’s not about lightweight processes and message passing…</h1>
 <nav id="TOC" class="sidenote" role="doc-toc">
 <h2 id="toc-title">Table of contents</h2>
 <ul>
@@ -62,7 +63,7 @@ processes and message passing. Over the last couple of years I’ve
 realised that there’s a bigger insight to be had, and in this post I’d
 like to share it with you.</p>
 <section id="background" class="level2">
-<h2>Background</h2>
+<h2><a href="#background" title="Background">Background</a></h2>
 <p>Erlang has an interesting history. If I understand things correctly,
 it started off as a Prolog library for building reliable distributed
 systems, morphed into a Prolog dialect, before finally becoming a
@@ -105,7 +106,7 @@ rather the generic components which in Erlang are called
 <em>behaviours</em>.</p>
 </section>
 <section id="behaviours" class="level2">
-<h2>Behaviours</h2>
+<h2><a href="#behaviours" title="Behaviours">Behaviours</a></h2>
 <p>I’ll first explain in more detail what behaviours are, and then I’ll
 come back to the point that they are more important than the idea of
 lightweight processes.</p>
@@ -150,7 +151,8 @@ Hello Joe!</code></pre>
 <p>This hopefully illustrates how <code>Greet</code> is generic in, or
 parametrised by, the interface <code>HasName</code>.</p>
 <section id="generic-server-behaviour" class="level3">
-<h3>Generic server behaviour</h3>
+<h3><a href="#generic-server-behaviour"
+title="Generic server behaviour">Generic server behaviour</a></h3>
 <p>Next lets have a look at a more complicated example in Erlang taken
 from Joe’s thesis (p. 136). It’s a key-value store where we can
 <code>store</code> a key value pair or <code>lookup</code> the value of
@@ -237,7 +239,8 @@ turn makes testing and formal verification much easier.</p></li>
 <p>We’ll come back to this last point about testing later.</p>
 </section>
 <section id="event-manager-behaviour" class="level3">
-<h3>Event manager behaviour</h3>
+<h3><a href="#event-manager-behaviour"
+title="Event manager behaviour">Event manager behaviour</a></h3>
 <p>Lets come back to the behaviours we listed above first. We looked at
 <code>gen_server</code>, but what are the others for? There’s
 <code>gen_event</code> which is a generic event manager, which lets you
@@ -289,7 +292,8 @@ and <code>report</code>. Together they let the user log, keep track and
 display the last five error messages.</p>
 </section>
 <section id="state-machine-behaviour" class="level3">
-<h3>State machine behaviour</h3>
+<h3><a href="#state-machine-behaviour"
+title="State machine behaviour">State machine behaviour</a></h3>
 <p>The <code>gen_fsm</code> behavior has been renamed to
 <code>gen_statem</code> (for state machine) since thesis was written.
 It’s very similar to <code>gen_server</code>, but more geared towards
@@ -299,7 +303,8 @@ believe any <code>gen_server</code> can be implemented as a
 of <code>gen_statem</code>.</p>
 </section>
 <section id="supervisor-behaviour" class="level3">
-<h3>Supervisor behaviour</h3>
+<h3><a href="#supervisor-behaviour"
+title="Supervisor behaviour">Supervisor behaviour</a></h3>
 <p>The next interesting behavior is <code>supervisor</code>. Supervisors
 are processes which sole job is to make sure that other processes are
 healthy and doing their job. If a supervised process fails then the
@@ -384,7 +389,9 @@ still a big difference, but not 31.56 milliseconds (nine nines) of
 downtime per year vs 1.6 hours of downtime per week.</p>
 </section>
 <section id="application-and-release-behaviours" class="level3">
-<h3>Application and release behaviours</h3>
+<h3><a href="#application-and-release-behaviours"
+title="Application and release behaviours">Application and release
+behaviours</a></h3>
 <p>I’m not sure if <code>application</code> and <code>release</code>
 technically are behaviours, i.e. interfaces. They are part of the same
 chapter as the other behaviours in the thesis and they do provide a
@@ -407,7 +414,9 @@ state.</p>
 </section>
 </section>
 <section id="how-behaviours-can-be-implemented" class="level2">
-<h2>How behaviours can be implemented</h2>
+<h2><a href="#how-behaviours-can-be-implemented"
+title="How behaviours can be implemented">How behaviours can be
+implemented</a></h2>
 <p>I hope that by now I’m managed to convince you that it’s not actually
 the lightweight processes and message passing by themselves that make
 Erlang great for building reliable systems.</p>
@@ -455,7 +464,8 @@ if the supervisor is not running on the same computer as the
 and upgrades are difficult problems they seem important.</p>
 </section>
 <section id="correctness-of-behaviours" class="level2">
-<h2>Correctness of behaviours</h2>
+<h2><a href="#correctness-of-behaviours"
+title="Correctness of behaviours">Correctness of behaviours</a></h2>
 <p>Writing a post solely about stealing from Erlang doesn’t seem fair,
 even though it’s the right thing to do, so I’d like to finish off with
 how we can build upon the insights of Joe and the Erlang community.</p>
@@ -529,7 +539,7 @@ structure of the <code>gen_server</code> behaviour to make it easier to
 solve a problem that Joe used to have.</p>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>There are a bunch of related ideas that I have started working
 on:</p>
 <ul>
@@ -552,7 +562,7 @@ would like to get involved, or if you have have comments, suggestions or
 questions.</p>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <ul>
 <li>Chapter 6.1 on behaviours in Joe Armstrong’s <a
 href="http://kth.diva-portal.org/smash/record.jsf?pid=diva2%3A9492&amp;dswid=-1166">thesis</a>,
@@ -606,7 +616,7 @@ href="https://youtu.be/OqsAGFExFgQ?t=2532">quote</a> by Martin Thompson
 </ul>
 </section>
 <section id="discussion" class="level2">
-<h2>Discussion</h2>
+<h2><a href="#discussion" title="Discussion">Discussion</a></h2>
 <ul>
 <li><a href="https://news.ycombinator.com/item?id=34545061">Hacker
 News</a></li>

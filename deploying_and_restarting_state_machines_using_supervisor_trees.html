@@ -49,7 +49,7 @@ server</a></li>
 <code>gen_server</code> and <code>supervisor</code> behaviours that
 doesn’t use lightweight threads and message passing.</p>
 <section id="motivation" class="level2">
-<h2>Motivation</h2>
+<h2><a href="#motivation" title="Motivation">Motivation</a></h2>
 <p>What exactly is it that makes Erlang suitable for writing reliable
 distributed systems?</p>
 <p>I’ve previously <a
@@ -89,9 +89,10 @@ message passing, and they never even get to the point where they steal
 the structure of behaviours!</p>
 </section>
 <section id="how-it-works" class="level2">
-<h2>How it works</h2>
+<h2><a href="#how-it-works" title="How it works">How it works</a></h2>
 <section id="generic-server" class="level3">
-<h3>Generic server</h3>
+<h3><a href="#generic-server" title="Generic server">Generic
+server</a></h3>
 <p>The sequential semantics (or “business logic”) of a generic server
 (<code>gen_server</code>) should take some input and the current state
 and produce some output and a new updated state, i.e.:</p>
@@ -106,7 +107,7 @@ termination. See the <code>StateMachine</code> <a
 href="src/StateMachine.hs">module</a> for the details of the above.</p>
 </section>
 <section id="supervisor" class="level3">
-<h3>Supervisor</h3>
+<h3><a href="#supervisor" title="Supervisor">Supervisor</a></h3>
 <p>The job of a supervisor is to monitor its children for failures and
 do restarts according to some predetermined restart strategy in case a
 failure happens.</p>
@@ -119,7 +120,7 @@ servers.</p>
 href="src/Supervisor.hs">module</a> for details.</p>
 </section>
 <section id="event-loop" class="level3">
-<h3>Event loop</h3>
+<h3><a href="#event-loop" title="Event loop">Event loop</a></h3>
 <p>The concurrent part of the generic servers is implemented in the
 <code>EventLoop</code> <a href="src/EventLoop.hs">module</a>. The basic
 idea is that we concurrently write client request
@@ -132,7 +133,7 @@ and <code>catch</code> and in case of failure we do the appropriate
 restarts.</p>
 </section>
 <section id="example" class="level3">
-<h3>Example</h3>
+<h3><a href="#example" title="Example">Example</a></h3>
 <p>As an example of generic server I’ve implemented a simple key value
 store in the <code>Example.KeyValueStore</code> <a
 href="src/Example/KeyValueStore.hs">module</a>. In <a
@@ -177,7 +178,7 @@ output:</p>
 </section>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>There are many ways in which this repo can be extended, here are some
 ideas:</p>
 <ul class="task-list">
@@ -195,7 +196,7 @@ supervisor trees that are deployed on other computers.</li>
 </ul>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <ul>
 <li>There are a handful of supervisor implementations in Haskell <a
 href="https://hackage.haskell.org/packages/search?terms=supervisor">already</a>,

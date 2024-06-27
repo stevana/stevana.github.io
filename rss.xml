@@ -44,7 +44,7 @@ id="toc-discussion-and-future-work">Discussion and future work</a></li>
 </nav>
 <div class="date">Posted on Mar  7, 2024</div>
 <section id="motivation" class="level2">
-<h2>Motivation</h2>
+<h2><a href="#motivation" title="Motivation">Motivation</a></h2>
 <p>Most deployed programs need to be upgraded at some point. The reasons
 vary from adding new features to patching a bug and potentially fixing a
 broken state. Even though upgrades are an essential part of software
@@ -97,14 +97,15 @@ an earlier version.</li>
 of this.</p>
 </section>
 <section id="terminology" class="level2">
-<h2>Terminology</h2>
+<h2><a href="#terminology" title="Terminology">Terminology</a></h2>
 <p>Having defined some desirable characteristics of upgrades, let’s move
 on to defining what we mean by upgrades.</p>
 <p>There are two notions I’d like clarify: what kind of software systems
 the upgrades are targeting, and then how we represent programs and their
 upgrades.</p>
 <section id="software-systems" class="level3">
-<h3>Software systems</h3>
+<h3><a href="#software-systems" title="Software systems">Software
+systems</a></h3>
 <p>There’s different kinds of software systems one might want to
 upgrade.</p>
 <ol type="1">
@@ -176,7 +177,8 @@ of systems too, and potentially enabling other possibilities like better
 debugging experience and live coding.</p>
 </section>
 <section id="programs-and-their-upgrades" class="level3">
-<h3>Programs and their upgrades</h3>
+<h3><a href="#programs-and-their-upgrades"
+title="Programs and their upgrades">Programs and their upgrades</a></h3>
 <p>Having defined what kind of systems we’d like to upgrade, let’s turn
 our attention to how we can represent programs and their upgrades.</p>
 <p>We could choose to use the syntax of a specific programming language
@@ -295,7 +297,8 @@ role="doc-noteref"><sup>3</sup></a>.</p>
 </section>
 </section>
 <section id="implementation" class="level2">
-<h2>Implementation</h2>
+<h2><a href="#implementation"
+title="Implementation">Implementation</a></h2>
 <p>I hope that I’ve managed to convey what I’d like to do, why and where
 my inspiration is coming from.</p>
 <p>Next I’d like to make things more concrete with some code. But first
@@ -324,7 +327,8 @@ code.</li>
 <p>In the rest of this section we’ll try to fleshing out details of the
 above.</p>
 <section id="state-machines" class="level3">
-<h3>State machines</h3>
+<h3><a href="#state-machines" title="State machines">State
+machines</a></h3>
 <p>Typed state machines are represented using a datatype parametrised by
 the state, <code>s</code>, and indexed by its input type,
 <code>a</code>, and output type <code>b</code><a href="#fn4"
@@ -359,7 +363,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a 
 <span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>f <span class="op">&gt;&gt;&gt;</span> g <span class="ot">=</span> g <span class="ot">`Compose`</span> f</span></code></pre></div>
 </section>
 <section id="example" class="level3">
-<h3>Example</h3>
+<h3><a href="#example" title="Example">Example</a></h3>
 <p>To keep things concrete let’s reimplement the counter example from
 above.</p>
 <div class="sourceCode" id="cb6"><pre
@@ -382,7 +386,7 @@ with an <code>Either</code> over which the <code>Case</code>
 operates.</p>
 </section>
 <section id="semantics" class="level3">
-<h3>Semantics</h3>
+<h3><a href="#semantics" title="Semantics">Semantics</a></h3>
 <p>We can interpret our typed state machines in terms of the
 <code>State</code> monad as follows.</p>
 <div class="sourceCode" id="cb7"><pre
@@ -412,7 +416,7 @@ more interesting when state machines get streams of inputs via
 pipelines.</p>
 </section>
 <section id="pipelines" class="level3">
-<h3>Pipelines</h3>
+<h3><a href="#pipelines" title="Pipelines">Pipelines</a></h3>
 <p>Pipelines are represented by a type similar to that for typed state
 machines, it’s also indexed by the input and output types.</p>
 <p>We can picture a pipeline as a conveyor belt with state machines
@@ -428,7 +432,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a 
 quantified, meaning each state machine can have its own state.</p>
 </section>
 <section id="deployment" class="level3">
-<h3>Deployment</h3>
+<h3><a href="#deployment" title="Deployment">Deployment</a></h3>
 <p>Pipelines can be deployed. Each state machine will be spawned on its
 own thread, meaning that all state machines run in parallel, and they
 will be connected via queues.</p>
@@ -504,7 +508,7 @@ continue processing with the new state machine.</li>
 typechecked.</p>
 </section>
 <section id="upgrades" class="level3">
-<h3>Upgrades</h3>
+<h3><a href="#upgrades" title="Upgrades">Upgrades</a></h3>
 <p>Upgrades are sent over the wire in a serialised format and
 deserialised at the other end, so they need to be plain first-order
 data.</p>
@@ -607,7 +611,8 @@ instances to check if the types match up, similarly to how it was done
 above in <code>typeCheckUpgrade</code>.</p>
 </section>
 <section id="sources-and-sinks" class="level3">
-<h3>Sources and sinks</h3>
+<h3><a href="#sources-and-sinks" title="Sources and sinks">Sources and
+sinks</a></h3>
 <p>Almost there. When we deploy a pipeline <code>P a b</code> we need to
 provide a <code>Queue (Msg a)</code> and get a
 <code>Queue (Msg b)</code>, what are we supposed to do with those
@@ -627,7 +632,8 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb20-1"><a
 sources and sinks produce and consume <code>ByteString</code>s.</p>
 </section>
 <section id="remote-upgrades" class="level3">
-<h3>Remote upgrades</h3>
+<h3><a href="#remote-upgrades" title="Remote upgrades">Remote
+upgrades</a></h3>
 <p>Putting it all together we can now create a TCP server for our
 counter:</p>
 <div class="sourceCode" id="cb21"><pre
@@ -766,7 +772,8 @@ Item &quot;Right (Right (Left 1))&quot;   -- The value is 1.</code></pre>
 </section>
 </section>
 <section id="discussion-and-future-work" class="level2">
-<h2>Discussion and future work</h2>
+<h2><a href="#discussion-and-future-work"
+title="Discussion and future work">Discussion and future work</a></h2>
 <p>If we look back at the list, from the introduction, of properties
 that we wanted from our upgrades, then I hope that I’ve managed to
 provide a glimpse of a possible way of achieving zero-downtime upgrades
@@ -943,7 +950,8 @@ away from the user of the library. We’ll also have a look at how we can
 monitor and visualise such pipelines for debugging and performance
 troubleshooting purposes.</p>
 <section id="motivation-and-inspiration" class="level2">
-<h2>Motivation and inspiration</h2>
+<h2><a href="#motivation-and-inspiration"
+title="Motivation and inspiration">Motivation and inspiration</a></h2>
 <p>Before we dive into <em>how</em> we can achieve this, let’s start
 with the question of <em>why</em> I’d like to do it.</p>
 <p>I believe the way we write programs for multiprocessor networks,
@@ -1027,7 +1035,7 @@ goal of making it easier to program distributed systems by providing
 generic building blocks.</p>
 </section>
 <section id="prior-work" class="level2">
-<h2>Prior work</h2>
+<h2><a href="#prior-work" title="Prior work">Prior work</a></h2>
 <p>Working with streams of data is common. The reason for this is that
 it’s a nice abstraction when dealing with data that cannot fit in
 memory. The alternative is to manually load chunks of data one wants to
@@ -1172,7 +1180,7 @@ this post, but at least this should give you a sense of the direction
 I’d like to go.</p>
 </section>
 <section id="plan" class="level2">
-<h2>Plan</h2>
+<h2><a href="#plan" title="Plan">Plan</a></h2>
 <p>The rest of this post is organised as follows.</p>
 <p>First we’ll have a look at how to model pipelines as a transformation
 of lists. The purpose of this is to give us an easy to understand
@@ -1189,7 +1197,8 @@ Disruptor implementation of pipelines. We’ll also discuss how
 monitoring/observability can be added.</p>
 </section>
 <section id="list-transformer-model" class="level2">
-<h2>List transformer model</h2>
+<h2><a href="#list-transformer-model"
+title="List transformer model">List transformer model</a></h2>
 <p>Let’s first introduce the type for our pipelines. We index our
 pipeline datatype by two types, in order to be able to precisely specify
 its input and output types. For example, the <code>Id</code>entity
@@ -1264,7 +1273,8 @@ section.</p>
 [(1,False),(2,True),(3,False),(4,True),(5,False)]</code></pre>
 </section>
 <section id="queue-pipeline-deployment" class="level2">
-<h2>Queue pipeline deployment</h2>
+<h2><a href="#queue-pipeline-deployment"
+title="Queue pipeline deployment">Queue pipeline deployment</a></h2>
 <p>In the previous section we saw how to deploy pipelines in a purely
 sequential way in order to process lists. The purpose of this is merely
 to give ourselves an intuition of what pipelines should do as well as an
@@ -1434,7 +1444,7 @@ post</a>, as I spent some more time constructing an intuitive example
 there.</p>
 </section>
 <section id="disruptor" class="level2">
-<h2>Disruptor</h2>
+<h2><a href="#disruptor" title="Disruptor">Disruptor</a></h2>
 <p>Before we can understand how the Disruptor can help us avoid the
 problem copying between queues that we just saw, we need to first
 understand a bit about how the Disruptor is implemented.</p>
@@ -1540,7 +1550,9 @@ write side (with <code>tryClaimBatch</code>) and on the reader side
 contributes to the Disruptor’s performance.</p>
 </section>
 <section id="disruptor-pipeline-deployment" class="level2">
-<h2>Disruptor pipeline deployment</h2>
+<h2><a href="#disruptor-pipeline-deployment"
+title="Disruptor pipeline deployment">Disruptor pipeline
+deployment</a></h2>
 <p>Recall that the reason we introduced the Disruptor was to avoid
 copying elements of the queue when fanning out (using the
 <code>:&amp;&amp;&amp;</code> combinator) and sharding.</p>
@@ -1704,7 +1716,8 @@ have more copying of data to do<a href="#fn8" class="footnote-ref"
 id="fnref8" role="doc-noteref"><sup>8</sup></a>.</p>
 </section>
 <section id="observability" class="level2">
-<h2>Observability</h2>
+<h2><a href="#observability"
+title="Observability">Observability</a></h2>
 <p>Given that pipelines are directed acyclic graphs and that we have a
 concrete datatype constructor for each pipeline combinator, it’s
 relatively straight forward to add a visualisation of a deployment.</p>
@@ -1736,7 +1749,7 @@ over <a
 href="https://stevana.github.io/visualising_datastructures_over_time_using_svg.html">here</a>.</p>
 </section>
 <section id="running" class="level2">
-<h2>Running</h2>
+<h2><a href="#running" title="Running">Running</a></h2>
 <p>All of the above Haskell code is available on <a
 href="https://github.com/stevana/pipelining-with-disruptor/">GitHub</a>.
 The easiest way to install the right version of GHC and cabal is
@@ -1770,7 +1783,9 @@ class="sourceCode bash"><code class="sourceCode bash"><span id="cb44-1"><a href=
 <span id="cb44-11"><a href="#cb44-11" aria-hidden="true" tabindex="-1"></a><span class="cf">done</span></span></code></pre></div>
 </section>
 <section id="further-work-and-contributing" class="level2">
-<h2>Further work and contributing</h2>
+<h2><a href="#further-work-and-contributing"
+title="Further work and contributing">Further work and
+contributing</a></h2>
 <p>There’s still a lot to do, but I thought it would be a good place to
 stop for now. Here are a bunch of improvements, in no particular
 order:</p>
@@ -1848,7 +1863,7 @@ streaming libraries.</li>
 <p>If any of this seems interesting, feel free to get involved.</p>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <ul>
 <li>Guy Steele’s talk <a
 href="https://www.infoq.com/presentations/Thinking-Parallel-Programming/">How
@@ -1892,7 +1907,7 @@ programming</a> by Scott Wlaschin (NDC Porto, 2023).</li>
 </ul>
 </section>
 <section id="discussion" class="level2">
-<h2>Discussion</h2>
+<h2><a href="#discussion" title="Discussion">Discussion</a></h2>
 <ul>
 <li><a
 href="https://discourse.haskell.org/t/parallel-stream-processing-with-zero-copy-fan-out-and-sharding/8632">discourse.haskell.org</a>;</li>
@@ -2053,7 +2068,7 @@ href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 href="https://en.wikipedia.org/wiki/SVG">SVG</a> viewer / browser /
 “slideshow” which is itself a self-contained SVG.</p>
 <section id="motivation" class="level2">
-<h2>Motivation</h2>
+<h2><a href="#motivation" title="Motivation">Motivation</a></h2>
 <p>I’ve been working on a parallel processing pipeline. Each stage of
 the pipeline is running on a separate thread, and it takes some work
 items from a queue in front of it, processes them and then puts them in
@@ -2073,7 +2088,7 @@ the arrow keys.</p>
 the web?</p>
 </section>
 <section id="demo" class="level2">
-<h2>Demo</h2>
+<h2><a href="#demo" title="Demo">Demo</a></h2>
 <p>Before I show you how I did it, let’s have a look at the resulting
 pipeline visualisation (you need to click on the image):</p>
 <p><a
@@ -2087,7 +2102,7 @@ lines are coming in from stdin and the counts are being written to
 stdout at the end.</p>
 </section>
 <section id="the-code" class="level2">
-<h2>The code</h2>
+<h2><a href="#the-code" title="The code">The code</a></h2>
 <p>Let’s start by having a look at the SVG itself.</p>
 <div class="sourceCode" id="cb1"><pre
 class="sourceCode xml"><code class="sourceCode xml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>&lt;<span class="kw">svg</span><span class="ot"> version=</span><span class="st">&quot;1.1&quot;</span><span class="ot"> xmlns=</span><span class="st">&quot;http://www.w3.org/2000/svg&quot;</span>&gt;</span>
@@ -2213,7 +2228,7 @@ takes a bunch of SVGs and outputs a single SVG which can be used to view
 the original images.</p>
 </section>
 <section id="usage" class="level2">
-<h2>Usage</h2>
+<h2><a href="#usage" title="Usage">Usage</a></h2>
 <p>The easiest way to get started is probably to clone the
 repository.</p>
 <div class="sourceCode" id="cb3"><pre
@@ -2239,14 +2254,14 @@ class="footnote-ref" id="fnref1"
 role="doc-noteref"><sup>1</sup></a>.</p>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>I hope I’ve managed to inspire you to think about how to visualise
 the execution of your own programs! Feel free to copy and adapt the code
 as you see fit. If you come up with some interesting modifications or
 better ways of doing things, then please do share!</p>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <p>Brendan Gregg’s <a
 href="https://www.brendangregg.com/flamegraphs.html">flamegraphs</a>
 also generates a clickable SVG. I got the idea of adding keyboard
@@ -2300,7 +2315,7 @@ controller</a></li>
 <p>An experiment in controlling the size of a thread pool using a PID
 controller.</p>
 <section id="motivation" class="level2">
-<h2>Motivation</h2>
+<h2><a href="#motivation" title="Motivation">Motivation</a></h2>
 <p>A tried and tested way to achieve parallelism is to use pipelining.
 It’s used extensively in manufacturing and in computer hardware.</p>
 <p>For example, Airbus <a
@@ -2337,7 +2352,7 @@ can we dynamically spin up and spin down threads at a stage in response
 to the input queue length for that stage?</p>
 </section>
 <section id="plan" class="level2">
-<h2>Plan</h2>
+<h2><a href="#plan" title="Plan">Plan</a></h2>
 <p>Let’s focus on a single stage of the pipeline to make things easier
 for ourselves.</p>
 <p><img
@@ -2384,11 +2399,11 @@ class="math inline"><em>u</em>(<em>t</em>)</span> which is used to grow
 or shrink the processor pool.</p>
 </section>
 <section id="pseudo-code" class="level2">
-<h2>Pseudo-code</h2>
+<h2><a href="#pseudo-code" title="Pseudo-code">Pseudo-code</a></h2>
 <p>Let’s start top-down with the <code>main</code> function which drives
 our whole experiment.</p>
 <section id="main" class="level3">
-<h3>Main</h3>
+<h3><a href="#main" title="Main">Main</a></h3>
 <pre><code>main =
 
   // Create the in- and out-queues.
@@ -2419,7 +2434,7 @@ our whole experiment.</p>
   sineLoadGenerator(inQueue, 40, 0.1s, 60s)</code></pre>
 </section>
 <section id="worker-pool" class="level3">
-<h3>Worker pool</h3>
+<h3><a href="#worker-pool" title="Worker pool">Worker pool</a></h3>
 <p>The worker pool itself is merely a struct which packs up the
 necessary data we need to be able to scale it up and down.</p>
 <pre><code>struct Pool =
@@ -2445,7 +2460,8 @@ of process ids.</p>
 removes the last process id from <code>pool.pids</code>.</p>
 </section>
 <section id="load-generator" class="level3">
-<h3>Load generator</h3>
+<h3><a href="#load-generator" title="Load generator">Load
+generator</a></h3>
 <p>In order to create work load that varies over time we use the sine
 function. The sine function oscillates between <span
 class="math inline"> − 1</span> and <span
@@ -2473,7 +2489,8 @@ we reach some <code>endTime</code>.</p>
       sleep(timeStep / n)</code></pre>
 </section>
 <section id="pid-controller" class="level3">
-<h3>PID controller</h3>
+<h3><a href="#pid-controller" title="PID controller">PID
+controller</a></h3>
 <p>The PID controller implementation follows the pseudo-code given at <a
 href="https://en.wikipedia.org/wiki/PID_controller#Pseudocode">Wikipedia</a>:</p>
 <pre><code>previous_error := 0
@@ -2503,7 +2520,7 @@ worker pool.</p>
 </section>
 </section>
 <section id="how-it-works" class="level2">
-<h2>How it works</h2>
+<h2><a href="#how-it-works" title="How it works">How it works</a></h2>
 <p>We start off by only setting the proportional part and keeping the
 integral and derivative part zero, this is called a P-controller. We see
 below that it will scale the worker count up and down proportionally to
@@ -2530,7 +2547,7 @@ down once the queue length was less than <span
 class="math inline">20</span>.</p>
 </section>
 <section id="usage" class="level2">
-<h2>Usage</h2>
+<h2><a href="#usage" title="Usage">Usage</a></h2>
 <p>The above graphs were generated by running:
 <code>cabal run app -- kp ki kd</code>, where the <span
 class="math inline"><em>K</em><sub><em>p</em></sub></span>, <span
@@ -2544,7 +2561,7 @@ Alternatively if you got <code>nix</code> then <code>nix-shell</code>
 should give give you access to all the dependencies you need.</p>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>There are many ways we can build upon this experiment, here are a few
 ideas:</p>
 <ul class="task-list">
@@ -2592,7 +2609,7 @@ implementing it?</li>
 <p>If any of this sounds interesting, feel free to get in touch!</p>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <ul>
 <li><p><a
 href="https://www.researchgate.net/publication/265611546_A_Review_of_Auto-scaling_Techniques_for_Elastic_Applications_in_Cloud_Environments"><em>A
@@ -2663,7 +2680,7 @@ machines</em></a>.</p></li>
 </ul>
 </section>
 <section id="discussion" class="level2">
-<h2>Discussion</h2>
+<h2><a href="#discussion" title="Discussion">Discussion</a></h2>
 <ul>
 <li><a href="https://news.ycombinator.com/item?id=35148068">Hacker
 News</a>;</li>
@@ -2710,7 +2727,7 @@ id="toc-presentations">Presentations</a></li>
 <p>An experiment in declaratively programming parallel pipelines of
 state machines.</p>
 <section id="motivation" class="level2">
-<h2>Motivation</h2>
+<h2><a href="#motivation" title="Motivation">Motivation</a></h2>
 <p>Imagine a flat complex in Sweden. Being the socialist utopia Sweden
 is there’s a shared laundry room which the people in the flat complex
 can book. In the laundry room there’s everything one needs to wash, dry
@@ -2759,7 +2776,7 @@ instructions</a>.</p>
 such pipelining in software in a declarative way.</p>
 </section>
 <section id="usage" class="level2">
-<h2>Usage</h2>
+<h2><a href="#usage" title="Usage">Usage</a></h2>
 <p>The workers or stages in our pipeline will be state machines of the
 following type.</p>
 <div class="sourceCode" id="cb3"><pre
@@ -2965,7 +2982,7 @@ concurrent queue data structure than <code>TQueue</code>, so that’s what
 we’ll have a look at next.</p>
 </section>
 <section id="disruptor" class="level2">
-<h2>Disruptor</h2>
+<h2><a href="#disruptor" title="Disruptor">Disruptor</a></h2>
 <p>The <code>Disruptor*</code> modules are a Haskell port of the <a
 href="https://github.com/LMAX-Exchange/disruptor">LMAX Disruptor</a>,
 which is a high performance inter-thread messaging library. The
@@ -2988,7 +3005,7 @@ event);</li>
 <p>It’s also performs better than most queues, as we shall see further
 down.</p>
 <section id="example" class="level3">
-<h3>Example</h3>
+<h3><a href="#example" title="Example">Example</a></h3>
 <div class="sourceCode" id="cb17"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Control.Concurrent</span></span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Control.Concurrent.Async</span></span>
@@ -3068,7 +3085,7 @@ second).</p></li>
 </ol>
 </section>
 <section id="how-it-works" class="level3">
-<h3>How it works</h3>
+<h3><a href="#how-it-works" title="How it works">How it works</a></h3>
 <p>The ring buffer is implemented using a bounded array, it keeps track
 of a monotonically increasing sequence number and it knows its the
 capacity of the array, so to find out where to write the next value by
@@ -3106,7 +3123,7 @@ be have the end of batch flag set, so that the consumer can effectively
 batch the processing.</p>
 </section>
 <section id="performance" class="level3">
-<h3>Performance</h3>
+<h3><a href="#performance" title="Performance">Performance</a></h3>
 <p>Our Disruptor implementation, which hasn’t been optimised much yet,
 is about 2x slower than LMAX’s Java version on their single-producer
 single-consumer <a
@@ -3164,7 +3181,7 @@ please file an issue.</p>
 </section>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>There’s a lot of possible paths to explore from here, including:</p>
 <ul class="task-list">
 <li><input type="checkbox" />Can we swap out our use of
@@ -3241,9 +3258,10 @@ deploying multiple pipelines over multiple machines?</li>
 </ul>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <section id="presentations" class="level3">
-<h3>Presentations</h3>
+<h3><a href="#presentations"
+title="Presentations">Presentations</a></h3>
 <ul>
 <li><p><a href="https://www.infoq.com/presentations/LMAX/">LMAX - How to
 Do 100K TPS at Less than 1ms Latency</a> by Martin Thompson (QCon
@@ -3284,7 +3302,7 @@ Montgomery (2022).</p></li>
 </ul>
 </section>
 <section id="writings" class="level3">
-<h3>Writings</h3>
+<h3><a href="#writings" title="Writings">Writings</a></h3>
 <ul>
 <li>Martin Thompson’s <a
 href="https://mechanical-sympathy.blogspot.com/">blog</a>;</li>
@@ -3332,7 +3350,7 @@ id="toc-acknowledgments">Acknowledgments</a></li>
 <p>An experiment in implementing remote hot code swapping, or dynamic
 code upgrade, for state machines.</p>
 <section id="background" class="level2">
-<h2>Background</h2>
+<h2><a href="#background" title="Background">Background</a></h2>
 <p>In Erlang it’s possible to seamlessly hot swap the code on a running
 process.</p>
 <p>Consider the following <code>gen_server</code> implementation of a
@@ -3442,7 +3460,7 @@ in Haskell for state machines of type
 <code>input -&gt; state -&gt; (state, output)</code>.</p>
 </section>
 <section id="usage" class="level2">
-<h2>Usage</h2>
+<h2><a href="#usage" title="Usage">Usage</a></h2>
 <p>Before we go into the details of how this is implemented in Haskell,
 lets have a look at how it looks from the user’s perspective.</p>
 <p>In one terminal run <code>cabal run exe</code> and in another
@@ -3480,7 +3498,7 @@ New state: Pair (Int 1) (Int 2)</code></pre>
 <pre><code>The version running isn&#39;t the one the upgrade expects. Aborting upgrade.</code></pre>
 </section>
 <section id="how-it-works" class="level2">
-<h2>How it works</h2>
+<h2><a href="#how-it-works" title="How it works">How it works</a></h2>
 <p>The basic idea is that we want our state machines to be seralisable
 so that we can send them over the network in order to perform remote
 upgrades.</p>
@@ -3598,7 +3616,7 @@ good thing, since upgrading the abstract machine on a node can probably
 not be done as easily without any downtime.</p>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>I believe this is a good starting point for further experiments, here
 are a few ideas:</p>
 <ul class="task-list">
@@ -3664,7 +3682,7 @@ featureful languages?</li>
 </ul>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <ul>
 <li><a
 href="https://github.com/turion/essence-of-live-coding"><code>essence-of-live-coding</code></a>:
@@ -3688,7 +3706,8 @@ href="http://kth.diva-portal.org/smash/record.jsf?pid=diva2%3A9492&amp;dswid=225
 </ul>
 </section>
 <section id="acknowledgments" class="level2">
-<h2>Acknowledgments</h2>
+<h2><a href="#acknowledgments"
+title="Acknowledgments">Acknowledgments</a></h2>
 <p>Thanks to Daniel Gustafsson for helping me understand
 <code>Port</code> from the <em>Overloading the lambda abstraction in
 Haskell</em> blog post!</p>
@@ -3735,7 +3754,7 @@ server</a></li>
 <code>gen_server</code> and <code>supervisor</code> behaviours that
 doesn’t use lightweight threads and message passing.</p>
 <section id="motivation" class="level2">
-<h2>Motivation</h2>
+<h2><a href="#motivation" title="Motivation">Motivation</a></h2>
 <p>What exactly is it that makes Erlang suitable for writing reliable
 distributed systems?</p>
 <p>I’ve previously <a
@@ -3775,9 +3794,10 @@ message passing, and they never even get to the point where they steal
 the structure of behaviours!</p>
 </section>
 <section id="how-it-works" class="level2">
-<h2>How it works</h2>
+<h2><a href="#how-it-works" title="How it works">How it works</a></h2>
 <section id="generic-server" class="level3">
-<h3>Generic server</h3>
+<h3><a href="#generic-server" title="Generic server">Generic
+server</a></h3>
 <p>The sequential semantics (or “business logic”) of a generic server
 (<code>gen_server</code>) should take some input and the current state
 and produce some output and a new updated state, i.e.:</p>
@@ -3792,7 +3812,7 @@ termination. See the <code>StateMachine</code> <a
 href="src/StateMachine.hs">module</a> for the details of the above.</p>
 </section>
 <section id="supervisor" class="level3">
-<h3>Supervisor</h3>
+<h3><a href="#supervisor" title="Supervisor">Supervisor</a></h3>
 <p>The job of a supervisor is to monitor its children for failures and
 do restarts according to some predetermined restart strategy in case a
 failure happens.</p>
@@ -3805,7 +3825,7 @@ servers.</p>
 href="src/Supervisor.hs">module</a> for details.</p>
 </section>
 <section id="event-loop" class="level3">
-<h3>Event loop</h3>
+<h3><a href="#event-loop" title="Event loop">Event loop</a></h3>
 <p>The concurrent part of the generic servers is implemented in the
 <code>EventLoop</code> <a href="src/EventLoop.hs">module</a>. The basic
 idea is that we concurrently write client request
@@ -3818,7 +3838,7 @@ and <code>catch</code> and in case of failure we do the appropriate
 restarts.</p>
 </section>
 <section id="example" class="level3">
-<h3>Example</h3>
+<h3><a href="#example" title="Example">Example</a></h3>
 <p>As an example of generic server I’ve implemented a simple key value
 store in the <code>Example.KeyValueStore</code> <a
 href="src/Example/KeyValueStore.hs">module</a>. In <a
@@ -3863,7 +3883,7 @@ output:</p>
 </section>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>There are many ways in which this repo can be extended, here are some
 ideas:</p>
 <ul class="task-list">
@@ -3881,7 +3901,7 @@ supervisor trees that are deployed on other computers.</li>
 </ul>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <ul>
 <li>There are a handful of supervisor implementations in Haskell <a
 href="https://hackage.haskell.org/packages/search?terms=supervisor">already</a>,
@@ -3972,7 +3992,7 @@ href="https://en.wikipedia.org/wiki/Finite-state_transducer">transducers</a>).</
 <p>Other than that this tutorial is striving to be as self-contained as
 possibly as well as accessible to non-Haskell programmers.</p>
 <section id="structure" class="level2">
-<h2>Structure</h2>
+<h2><a href="#structure" title="Structure">Structure</a></h2>
 <p>The tutorial is split up into five parts (so far), and each part has
 the following structure:</p>
 <ul>
@@ -4003,7 +4023,8 @@ simulation testing, to test a distributed system that uses replicated
 state machines.</p>
 </section>
 <section id="table-of-contents" class="level2">
-<h2>Table of contents</h2>
+<h2><a href="#table-of-contents" title="Table of contents">Table of
+contents</a></h2>
 <ol type="1">
 <li><a href="./docs/Part01SMTesting.md#readme">State machine
 testing</a></li>
@@ -4018,7 +4039,7 @@ href="./docs/Part04FaultInjection.md#readme">Fault-injection</a></li>
 </ol>
 </section>
 <section id="usage" class="level2">
-<h2>Usage</h2>
+<h2><a href="#usage" title="Usage">Usage</a></h2>
 <p>This repository contains literate Haskell code in <code>src</code>.
 If you want to interact with it, install <a
 href="https://www.haskell.org/ghcup/install/"><code>ghcup</code></a> and
@@ -4039,7 +4060,7 @@ can use the table of contents above or the <code>docs</code> directory
 to jump to desired part straight away.</p>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>Any feedback, suggestions for improvement or questions are most
 welcome via the issue tracker!</p>
 <p>See the <a
@@ -4047,7 +4068,7 @@ href="./.github/CONTRIBUTING.md"><code>CONTRIBUTING.md</code></a> file
 for more detailed guidelines regarding contributing.</p>
 </section>
 <section id="license" class="level2">
-<h2>License</h2>
+<h2><a href="#license" title="License">License</a></h2>
 <p>See the <a href="./LICENSE"><code>LICENSE</code></a> file.</p>
 </section>
 ]]></description>
@@ -4059,7 +4080,7 @@ for more detailed guidelines regarding contributing.</p>
       <link>https://stevana.github.io/erlangs_not_about_lightweight_processes_and_message_passing.html</link>
       <guid>https://stevana.github.io/erlangs_not_about_lightweight_processes_and_message_passing.html</guid>
       <pubDate>Wed, 18 Jan 2023 00:00:00 GMT</pubDate>
-      <description><![CDATA[<h1>Erlang's not about lightweight processes and message passing...</h1>
+      <description><![CDATA[<h1>Erlang’s not about lightweight processes and message passing…</h1>
 <nav id="TOC" class="sidenote" role="doc-toc">
 <h2 id="toc-title">Table of contents</h2>
 <ul>
@@ -4094,7 +4115,7 @@ processes and message passing. Over the last couple of years I’ve
 realised that there’s a bigger insight to be had, and in this post I’d
 like to share it with you.</p>
 <section id="background" class="level2">
-<h2>Background</h2>
+<h2><a href="#background" title="Background">Background</a></h2>
 <p>Erlang has an interesting history. If I understand things correctly,
 it started off as a Prolog library for building reliable distributed
 systems, morphed into a Prolog dialect, before finally becoming a
@@ -4137,7 +4158,7 @@ rather the generic components which in Erlang are called
 <em>behaviours</em>.</p>
 </section>
 <section id="behaviours" class="level2">
-<h2>Behaviours</h2>
+<h2><a href="#behaviours" title="Behaviours">Behaviours</a></h2>
 <p>I’ll first explain in more detail what behaviours are, and then I’ll
 come back to the point that they are more important than the idea of
 lightweight processes.</p>
@@ -4182,7 +4203,8 @@ Hello Joe!</code></pre>
 <p>This hopefully illustrates how <code>Greet</code> is generic in, or
 parametrised by, the interface <code>HasName</code>.</p>
 <section id="generic-server-behaviour" class="level3">
-<h3>Generic server behaviour</h3>
+<h3><a href="#generic-server-behaviour"
+title="Generic server behaviour">Generic server behaviour</a></h3>
 <p>Next lets have a look at a more complicated example in Erlang taken
 from Joe’s thesis (p. 136). It’s a key-value store where we can
 <code>store</code> a key value pair or <code>lookup</code> the value of
@@ -4269,7 +4291,8 @@ turn makes testing and formal verification much easier.</p></li>
 <p>We’ll come back to this last point about testing later.</p>
 </section>
 <section id="event-manager-behaviour" class="level3">
-<h3>Event manager behaviour</h3>
+<h3><a href="#event-manager-behaviour"
+title="Event manager behaviour">Event manager behaviour</a></h3>
 <p>Lets come back to the behaviours we listed above first. We looked at
 <code>gen_server</code>, but what are the others for? There’s
 <code>gen_event</code> which is a generic event manager, which lets you
@@ -4321,7 +4344,8 @@ and <code>report</code>. Together they let the user log, keep track and
 display the last five error messages.</p>
 </section>
 <section id="state-machine-behaviour" class="level3">
-<h3>State machine behaviour</h3>
+<h3><a href="#state-machine-behaviour"
+title="State machine behaviour">State machine behaviour</a></h3>
 <p>The <code>gen_fsm</code> behavior has been renamed to
 <code>gen_statem</code> (for state machine) since thesis was written.
 It’s very similar to <code>gen_server</code>, but more geared towards
@@ -4331,7 +4355,8 @@ believe any <code>gen_server</code> can be implemented as a
 of <code>gen_statem</code>.</p>
 </section>
 <section id="supervisor-behaviour" class="level3">
-<h3>Supervisor behaviour</h3>
+<h3><a href="#supervisor-behaviour"
+title="Supervisor behaviour">Supervisor behaviour</a></h3>
 <p>The next interesting behavior is <code>supervisor</code>. Supervisors
 are processes which sole job is to make sure that other processes are
 healthy and doing their job. If a supervised process fails then the
@@ -4416,7 +4441,9 @@ still a big difference, but not 31.56 milliseconds (nine nines) of
 downtime per year vs 1.6 hours of downtime per week.</p>
 </section>
 <section id="application-and-release-behaviours" class="level3">
-<h3>Application and release behaviours</h3>
+<h3><a href="#application-and-release-behaviours"
+title="Application and release behaviours">Application and release
+behaviours</a></h3>
 <p>I’m not sure if <code>application</code> and <code>release</code>
 technically are behaviours, i.e. interfaces. They are part of the same
 chapter as the other behaviours in the thesis and they do provide a
@@ -4439,7 +4466,9 @@ state.</p>
 </section>
 </section>
 <section id="how-behaviours-can-be-implemented" class="level2">
-<h2>How behaviours can be implemented</h2>
+<h2><a href="#how-behaviours-can-be-implemented"
+title="How behaviours can be implemented">How behaviours can be
+implemented</a></h2>
 <p>I hope that by now I’m managed to convince you that it’s not actually
 the lightweight processes and message passing by themselves that make
 Erlang great for building reliable systems.</p>
@@ -4487,7 +4516,8 @@ if the supervisor is not running on the same computer as the
 and upgrades are difficult problems they seem important.</p>
 </section>
 <section id="correctness-of-behaviours" class="level2">
-<h2>Correctness of behaviours</h2>
+<h2><a href="#correctness-of-behaviours"
+title="Correctness of behaviours">Correctness of behaviours</a></h2>
 <p>Writing a post solely about stealing from Erlang doesn’t seem fair,
 even though it’s the right thing to do, so I’d like to finish off with
 how we can build upon the insights of Joe and the Erlang community.</p>
@@ -4561,7 +4591,7 @@ structure of the <code>gen_server</code> behaviour to make it easier to
 solve a problem that Joe used to have.</p>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>There are a bunch of related ideas that I have started working
 on:</p>
 <ul>
@@ -4584,7 +4614,7 @@ would like to get involved, or if you have have comments, suggestions or
 questions.</p>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <ul>
 <li>Chapter 6.1 on behaviours in Joe Armstrong’s <a
 href="http://kth.diva-portal.org/smash/record.jsf?pid=diva2%3A9492&amp;dswid=-1166">thesis</a>,
@@ -4638,7 +4668,7 @@ href="https://youtu.be/OqsAGFExFgQ?t=2532">quote</a> by Martin Thompson
 </ul>
 </section>
 <section id="discussion" class="level2">
-<h2>Discussion</h2>
+<h2><a href="#discussion" title="Discussion">Discussion</a></h2>
 <ul>
 <li><a href="https://news.ycombinator.com/item?id=34545061">Hacker
 News</a></li>
@@ -4767,7 +4797,7 @@ encodings</a></li>
 this question by means of implementing a library inspired by Erlang’s
 bit syntax.</p>
 <section id="motivation" class="level2">
-<h2>Motivation</h2>
+<h2><a href="#motivation" title="Motivation">Motivation</a></h2>
 <p>JSON is probably the most commonly used format for serialising data
 today. A frequent argument for using it is that JSON is
 human-readable.</p>
@@ -4828,7 +4858,8 @@ bit syntax works, then we’ll turn to its shortcomings and try to start
 addressing them by means of implementing a library.</p>
 </section>
 <section id="erlangs-bit-syntax" class="level2">
-<h2>Erlang’s bit syntax</h2>
+<h2><a href="#erlangs-bit-syntax" title="Erlang’s bit syntax">Erlang’s
+bit syntax</a></h2>
 <p>Erlang has a feature called bit syntax which allows the user to
 encode and decode data at the bit-level. Here’s an example, where we
 encode three integers into two bytes:</p>
@@ -4888,7 +4919,7 @@ later use the value of that match as the size when pattern matching on
 later values.</p>
 </section>
 <section id="usage" class="level2">
-<h2>Usage</h2>
+<h2><a href="#usage" title="Usage">Usage</a></h2>
 <p>We can implement a library that lets us do similar things to Erlang’s
 bit syntax, but in a more clunky way (it’s difficult to beat native
 syntax support).</p>
@@ -4912,7 +4943,7 @@ in Haskell, but should be straightforward to port to most languages
 using the following recipe.</p>
 </section>
 <section id="how-it-works" class="level2">
-<h2>How it works</h2>
+<h2><a href="#how-it-works" title="How it works">How it works</a></h2>
 <p>The high-level idea when encoding a bunch of, possibly sized, values
 into a <code>ByteString</code> is as follows:</p>
 <ol type="1">
@@ -4946,7 +4977,9 @@ encoding<a href="#fn2" class="footnote-ref" id="fnref2"
 role="doc-noteref"><sup>2</sup></a>.</p>
 </section>
 <section id="extending-erlangs-bit-syntax" class="level2">
-<h2>Extending Erlang’s bit syntax</h2>
+<h2><a href="#extending-erlangs-bit-syntax"
+title="Extending Erlang’s bit syntax">Extending Erlang’s bit
+syntax</a></h2>
 <p>Erlang’s bit syntax makes it possible to decode binary data into the
 host languague’s types, which can then be manipulated, and finally
 encoded back to binary.</p>
@@ -4954,7 +4987,8 @@ encoded back to binary.</p>
 Let me try to explain the use cases and at the same time sketch possible
 ways we can extend Erlang’s bit syntax to cover those.</p>
 <section id="in-place-updates" class="level3">
-<h3>In-place updates</h3>
+<h3><a href="#in-place-updates" title="In-place updates">In-place
+updates</a></h3>
 <p>What if we merely want to update some binary in-place without reading
 it all in and writing it all back out?</p>
 <p>For example, the de facto standard for metadata format for mp3 files
@@ -5016,7 +5050,8 @@ href="https://youtu.be/MUb8rD5mPvE?list=PLTj8twuHdQz-JcX7k6eOwyVPDB8CyfZc8&amp;t
 and patches for cheap.</p>
 </section>
 <section id="on-disk-data-structures" class="level3">
-<h3>On-disk data structures</h3>
+<h3><a href="#on-disk-data-structures"
+title="On-disk data structures">On-disk data structures</a></h3>
 <p>Now that we can edit files in-place on the disk it would be nice to
 use this in order to implement on-disk data structures. For example
 imagine we’d like to do some kind of logging. If our schemas could
@@ -5035,7 +5070,7 @@ we probably want something like <code>cat</code> and <code>grep</code>
 but generic in <code>Schema</code>.</p>
 </section>
 <section id="zero-copy" class="level3">
-<h3>Zero-copy</h3>
+<h3><a href="#zero-copy" title="Zero-copy">Zero-copy</a></h3>
 <p>When we <code>read</code> a <code>ByteString</code> field in the mp3
 metadata example above, we copied the bytes from the underlying file.
 Sometimes we might want to avoid doing that.</p>
@@ -5057,13 +5092,15 @@ avoiding copying aka “zero-copy”).</p>
 </section>
 <section id="backward--and-forward-compatiability-and-migrations"
 class="level3">
-<h3>Backward- and forward-compatiability and migrations</h3>
+<h3><a href="#backward--and-forward-compatiability-and-migrations"
+title="Backward- and forward-compatiability and migrations">Backward-
+and forward-compatiability and migrations</a></h3>
 <p>Another big topic is schema evolution. How can we maintain backward-
 and forward-compatibility as our software evolves? We probably want to
 be able to migrate old formats into newer ones somehow also.</p>
 </section>
 <section id="compression" class="level3">
-<h3>Compression</h3>
+<h3><a href="#compression" title="Compression">Compression</a></h3>
 <p>Currently our schemas cannot express how to compress fields on disk,
 or how to avoid sending unnecessary data in consecutive network
 messages.</p>
@@ -5104,14 +5141,14 @@ the schema-based tools could do such data transformations in order to
 optimise for reads or archiving?</p>
 </section>
 <section id="checksums" class="level3">
-<h3>Checksums</h3>
+<h3><a href="#checksums" title="Checksums">Checksums</a></h3>
 <p>If we can do encoding and decoding fields modulo compression, why not
 also handle checksums transparently? When we update a field which is
 part of a checksum, we’d probably want to check the checksum beforehand
 and recompute it afterwards.</p>
 </section>
 <section id="validation" class="level3">
-<h3>Validation</h3>
+<h3><a href="#validation" title="Validation">Validation</a></h3>
 <p>What if some input bytes don’t match the schema? Currently all magic
 tags in a schema get verified, but sometimes we might want to be able to
 edit incomplete or malformed inputs.</p>
@@ -5120,7 +5157,7 @@ like, integer between 18 and 150 or bytestring containing only
 alphanumeric characters, etc?</p>
 </section>
 <section id="protocols" class="level3">
-<h3>Protocols</h3>
+<h3><a href="#protocols" title="Protocols">Protocols</a></h3>
 <p>So far we’ve looked at how to specify what data our programs use and
 how it’s transformed to and from bytes on disk or over the network.
 Another important aspect is what protocol is followed when said data is
@@ -5147,7 +5184,8 @@ implementation can be found <a
 href="https://ubf.github.io/ubf/ubf-user-guide.en.html">here</a>.</p>
 </section>
 <section id="pandoc-for-binary-encodings" class="level3">
-<h3>Pandoc for binary encodings</h3>
+<h3><a href="#pandoc-for-binary-encodings"
+title="Pandoc for binary encodings">Pandoc for binary encodings</a></h3>
 <p>There’s this neat tool called <a
 href="https://github.com/jgm/pandoc"><code>pandoc</code></a> that makes
 possible to convert between different text formats, e.g. from Markdown
@@ -5176,7 +5214,7 @@ trying to solve the <code>pandoc</code> problem for binary.</p>
 </section>
 </section>
 <section id="discussion" class="level2">
-<h2>Discussion</h2>
+<h2><a href="#discussion" title="Discussion">Discussion</a></h2>
 <ul>
 <li><p>Q: Why not just use <a
 href="https://en.wikipedia.org/wiki/Protocol_Buffers">Protobuf</a>?</p>
@@ -5206,7 +5244,7 @@ Intelligent Crash Explorer</em></a>.</li>
 </ul>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>The current implementation is in Haskell, but I’d really like to
 encourage a discussion beyond specific languages. In order to make
 binary “human-readable” we need solutions that are universal, i.e. work
@@ -5225,7 +5263,7 @@ language?</li>
 <p>If so, feel free to get in touch!</p>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <ul>
 <li>The Erlang reference manual on <a
 href="https://www.erlang.org/doc/reference_manual/expressions.html#bit_syntax">bit
@@ -5312,7 +5350,7 @@ if the I/O is blocking, but actually it’s non-blocking and inputs can
 continue to be processes while we wait for the I/O action to
 complete.</p>
 <section id="usage" class="level2">
-<h2>Usage</h2>
+<h2><a href="#usage" title="Usage">Usage</a></h2>
 <p>To make things more concrete we will be implementing a key-value
 store as a state machine.</p>
 <p>To start the key-value store in a terminal issue:</p>
@@ -5338,7 +5376,7 @@ class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="
 <span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="ex">Result</span> 1</span></code></pre></div>
 </section>
 <section id="how-it-works" class="level2">
-<h2>How it works</h2>
+<h2><a href="#how-it-works" title="How it works">How it works</a></h2>
 <p>The state machine for the key-value store example looks like
 this:</p>
 <div class="sourceCode" id="cb3"><pre
@@ -5370,7 +5408,7 @@ completes the write to disk, at which point the state machine will be
 resumed with the latest state.</p>
 </section>
 <section id="contributing" class="level2">
-<h2>Contributing</h2>
+<h2><a href="#contributing" title="Contributing">Contributing</a></h2>
 <p>Any feedback, comments or suggestions are most welcome!</p>
 <p>In particular if you know how to solve this problem in a different or
 better way.</p>
@@ -5392,7 +5430,7 @@ resumption happen, which could help against the confusion regarding that
 the state might change.</p>
 </section>
 <section id="see-also" class="level2">
-<h2>See also</h2>
+<h2><a href="#see-also" title="See also">See also</a></h2>
 <ul>
 <li><em>Development and Deployment of Multiplayer Online Games, Vol.
 II</em> by Sergey Ignatchenko (2020), especially chapter 5;</li>
