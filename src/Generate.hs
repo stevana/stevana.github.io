@@ -2,9 +2,9 @@
 
 module Generate where
 
+import Control.Monad (forM_)
 import Data.Function (on)
 import Data.List (sortBy)
-import Data.List.NonEmpty (NonEmpty((:|)))
 import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -14,6 +14,7 @@ import System.Directory
 import System.FilePath
 import Text.DocTemplates
 import Text.Pandoc hiding (getDataFileName)
+import Text.Pandoc.Walk (walk, query)
 
 import Download (titleToFileName)
 import Paths_stevana_github_io
@@ -64,14 +65,10 @@ writeAbout site outputDir =
 
 installDataFiles :: FilePath -> IO ()
 installDataFiles outputDir = do
-  cssFile <- getDataFileName ("data" </> cSS_FILE)
-  copyFile cssFile (outputDir </> cSS_FILE)
-  svgFeedFile <- getDataFileName ("data" </> rSS_SVG_FILE)
-  copyFile svgFeedFile (outputDir </> rSS_SVG_FILE)
-  linkFeedFile <- getDataFileName ("data" </> lINK_SVG_FILE)
-  copyFile linkFeedFile (outputDir </> lINK_SVG_FILE)
-  jsFile <- getDataFileName ("data" </> jAVASCRIPT_FILE)
-  copyFile jsFile (outputDir </> jAVASCRIPT_FILE)
+  let files = [cSS_FILE, rSS_SVG_FILE, lINK_SVG_FILE, jAVASCRIPT_FILE]
+  forM_ files $ \file -> do
+    fp <- getDataFileName ("data" </> file)
+    copyFile fp (outputDir </> file)
 
 context :: [(Text, Text)] -> Context Text
 context = toContext . Map.fromList
@@ -85,16 +82,18 @@ prepareTemplate = do
     Left err       -> error $ "prepareTemplate: " ++ show err
     Right template -> return template
 
--- XXX: Maybe it's easier to do this on the pandoc AST instead?
-extractTitle :: Text -> NonEmpty Text
-extractTitle md
-  | T.head md == '#' || T.head md == '-' = splitFirstLineApply True (T.dropWhile (/= '#') md)
-  | otherwise = splitFirstLineApply False md
+extractTitle :: Pandoc -> (Text, Pandoc)
+extractTitle (Pandoc meta (Header 1 _attr inlines : blocks))
+  = (extractText inlines, Pandoc meta blocks)
+extractTitle _ = error "extractTitle: no title"
+
+extractText :: [Inline] -> Text
+extractText = T.concat . query aux
   where
-    splitFirstLineApply b t = case T.lines t of
-      l : l' : ls | b         -> T.drop 2 l :| l' : ls
-                  | otherwise -> l :| ls
-      _otherwise -> error "extractTitle: no title"
+    aux :: Inline -> [Text]
+    aux (Str txt) = [txt]
+    aux Space     = [" "]
+    aux _         = []
 
 lookupDate :: FilePath -> Site -> Maybe UTCTime
 lookupDate markdownFile
@@ -107,17 +106,31 @@ lookupDate markdownFile
       | T.unpack (titleToFileName (_title post)) <.> "md" == takeFileName markdownFile = _date post
       | otherwise = go posts
 
+-- Adds an anchor to all headings of level 2 or below, for more see:
+-- https://danilafe.com/blog/blog_microfeatures/#easily-linkable-headings
+addAnchorsToHeaders :: Pandoc -> Pandoc
+addAnchorsToHeaders = walk aux
+  where
+    aux :: Block -> Block
+    aux (Header lvl attr@(ident, _classes, _kvs) inlines)
+      | lvl > 1 = Header lvl attr [Link nullAttr [Str title] ("#" <> ident, title)]
+      where
+        title :: Text
+        title = extractText inlines
+    aux b = b
+
 markdownToHtml :: Site -> FilePath -> IO ()
 markdownToHtml site markdownFile = do
   let mDate = lookupDate markdownFile site
   print (markdownFile, mDate)
-  markdown <- T.readFile markdownFile
-  let (title :| rest) = extractTitle markdown
-      markdown' = T.unlines rest
   template <- prepareTemplate
   let readerOpts = def { readerExtensions = githubMarkdownExtensions <>
                                             pandocExtensions }
-  pandoc <- runIOorExplode $ readMarkdown readerOpts markdown'
+  -- anchorFilter <- getDataFileName ("data" </> aNCHOR_HEADINGS_LUA_FILE)
+  markdown <- T.readFile markdownFile
+  pandoc <- runIOorExplode $ readMarkdown readerOpts markdown
+  let (title, pandoc') = extractTitle (addAnchorsToHeaders pandoc)
+    -- applyFilter def anchorFilter pandoc
   let htmlFile = replaceExtensions markdownFile "html"
   html <- runIOorExplode $ do
     let writerOpts = def
@@ -137,7 +150,7 @@ markdownToHtml site markdownFile = do
                    (\date -> [("date", T.pack (formatTime defaultTimeLocale dATE_FORMAT date))]) mDate)
 
           }
-    writeHtml5String writerOpts pandoc
+    writeHtml5String writerOpts pandoc'
   T.writeFile htmlFile html
 
 ------------------------------------------------------------------------

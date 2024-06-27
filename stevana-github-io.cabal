@@ -58,6 +58,7 @@ library
     , http-client-tls
     , http-types
     , pandoc
+    , pandoc-types
     , yaml
 
   hs-source-dirs:   src
