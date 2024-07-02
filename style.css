@@ -1,7 +1,6 @@
 @charset "UTF-8";
 
 html {
-    margin: 10px;
     scroll-behavior: smooth;
 }
 
@@ -45,7 +44,6 @@ header > nav a:hover {
     top: 2rem;
     align-self: start;
 }
-
 
 main > nav li.active > a {
     color: black;
@@ -283,3 +281,10 @@ code span.st { color: #4070a0; } /* String */
 code span.va { color: #19177c; } /* Variable */
 code span.vs { color: #4070a0; } /* VerbatimString */
 code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+
+@media (max-width: 1024px) {
+    #TOC {
+        display: none;
+    }
+}
