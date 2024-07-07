@@ -258,7 +258,7 @@ libraries to see how well supported these two testing features are. Let
 me be clear up front that I’ve not used all of these libraries. My
 understanding comes from reading the documentation, issue tracker and
 sometimes source code.</p>
-<p>To my best knowledge, as of June 2024, the following table summarises
+<p>To my best knowledge, as of July 2024, the following table summarises
 the situation. Please open an <a
 href="https://github.com/stevana/stateful-pbt-with-fakes/issues">issue</a>,
 PR, or get in <a href="https://stevana.github.io/about.html">touch</a>
@@ -282,13 +282,20 @@ if you see a mistake or an important omission.</p>
 </thead>
 <tbody>
 <tr class="odd">
+<td style="text-align: left;">CsCheck</td>
+<td style="text-align: left;">C#</td>
+<td style="text-align: center;">☒</td>
+<td style="text-align: center;">☒</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
 <td style="text-align: left;">Eris</td>
 <td style="text-align: left;">PHP</td>
 <td style="text-align: center;">☐</td>
 <td style="text-align: center;">☐</td>
 <td style="text-align: left;"></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">FsCheck</td>
 <td style="text-align: left;">F#</td>
 <td style="text-align: center;">☒</td>
@@ -299,7 +306,7 @@ testing</a>. An <a
 href="https://github.com/fscheck/FsCheck/issues/214">issue</a> to add
 parallel support has been open since 2016.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Gopter</td>
 <td style="text-align: left;">Go</td>
 <td style="text-align: center;">☒</td>
@@ -309,7 +316,7 @@ yet?” and there’s an open <a
 href="https://github.com/leanovate/gopter/issues/20">issue</a> from
 2017.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Hedgehog</td>
 <td style="text-align: left;">Haskell</td>
 <td style="text-align: center;">☒</td>
@@ -318,14 +325,14 @@ href="https://github.com/leanovate/gopter/issues/20">issue</a> from
 implementation has <a
 href="https://github.com/hedgehogqa/haskell-hedgehog/issues/104">issues</a>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Hypothesis</td>
 <td style="text-align: left;">Python</td>
 <td style="text-align: center;">☒</td>
 <td style="text-align: center;">☐</td>
 <td style="text-align: left;"></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">PropEr</td>
 <td style="text-align: left;">Erlang</td>
 <td style="text-align: center;">☒</td>
@@ -333,7 +340,7 @@ href="https://github.com/hedgehogqa/haskell-hedgehog/issues/104">issues</a>.</td
 <td style="text-align: left;">First open source library to support
 both?</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">QuickCheck</td>
 <td style="text-align: left;">Haskell</td>
 <td style="text-align: center;">☐</td>
@@ -342,7 +349,7 @@ both?</td>
 href="https://github.com/nick8325/quickcheck/issues/139">issue</a> to
 add stateful testing since 2016.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">QuickTheories</td>
 <td style="text-align: left;">Java</td>
 <td style="text-align: center;">☒</td>
@@ -360,14 +367,14 @@ this. As the number of possible end states increases rapidly with the
 number of commands, command lists should usually be constrained to 10 or
 less.”</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Rapid</td>
 <td style="text-align: left;">Go</td>
 <td style="text-align: center;">☒</td>
 <td style="text-align: center;">☐</td>
 <td style="text-align: left;"></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">RapidCheck</td>
 <td style="text-align: left;">C++</td>
 <td style="text-align: center;">☒</td>
@@ -376,7 +383,7 @@ less.”</td>
 href="https://github.com/emil-e/rapidcheck/issues/47">issue</a> to add
 parallel support from 2015.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">ScalaCheck</td>
 <td style="text-align: left;">Scala</td>
 <td style="text-align: center;">☒</td>
@@ -387,7 +394,7 @@ href="https://github.com/typelevel/scalacheck/tree/19af6eb656ba759980664e29ec6ae
 of testing LevelDB and Redis both are sequential
 (<code>threadCount = 1</code>).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">SwiftCheck</td>
 <td style="text-align: left;">Swift</td>
 <td style="text-align: center;">☐</td>
@@ -396,7 +403,7 @@ of testing LevelDB and Redis both are sequential
 href="https://github.com/typelift/SwiftCheck/issues/149">issue</a> to
 add stateful testing from 2016.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">fast-check</td>
 <td style="text-align: left;">TypeScript</td>
 <td style="text-align: center;">☒</td>
@@ -407,7 +414,7 @@ support</a> for race condition checking, but it seems different from
 Quviq QuickCheck’s parallel testing. In particular it doesn’t seem to
 reuse the sequential state machine model nor use linearisability.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">jetCheck</td>
 <td style="text-align: left;">Java</td>
 <td style="text-align: center;">☒</td>
@@ -416,14 +423,14 @@ reuse the sequential state machine model nor use linearisability.</td>
 with potential side effects, for single-threaded property-based testing
 of stateful systems.”.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">jqwik</td>
 <td style="text-align: left;">Java</td>
 <td style="text-align: center;">☒</td>
 <td style="text-align: center;">☐</td>
 <td style="text-align: left;"></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">jsverify</td>
 <td style="text-align: left;">JavaScript</td>
 <td style="text-align: center;">☐</td>
@@ -432,14 +439,14 @@ of stateful systems.”.</td>
 href="https://github.com/jsverify/jsverify/issues/148">issue</a> to add
 stateful testing from 2015.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">lua-quickcheck</td>
 <td style="text-align: left;">Lua</td>
 <td style="text-align: center;">☒</td>
 <td style="text-align: center;">☐</td>
 <td style="text-align: left;"></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">propcheck</td>
 <td style="text-align: left;">Elixir</td>
 <td style="text-align: center;">☒</td>
@@ -448,14 +455,14 @@ stateful testing from 2015.</td>
 href="https://github.com/alfert/propcheck/issues/148">issue</a> to add
 parallel testing from 2020.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">proptest</td>
 <td style="text-align: left;">Rust</td>
 <td style="text-align: center;">☐</td>
 <td style="text-align: center;">☐</td>
 <td style="text-align: left;">See proptest-state-machine.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">proptest-state-machine</td>
 <td style="text-align: left;">Rust</td>
 <td style="text-align: center;">☒</td>
@@ -464,21 +471,21 @@ parallel testing from 2020.</td>
 sequential strategy is supported, but a concurrent strategy is planned
 to be added at later point.”.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">qcheck-stm</td>
 <td style="text-align: left;">OCaml</td>
 <td style="text-align: center;">☒</td>
 <td style="text-align: center;">☒</td>
 <td style="text-align: left;"></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">quickcheck</td>
 <td style="text-align: left;">Prolog</td>
 <td style="text-align: center;">☐</td>
 <td style="text-align: center;">☐</td>
 <td style="text-align: left;"></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">quickcheck</td>
 <td style="text-align: left;">Rust</td>
 <td style="text-align: center;">☐</td>
@@ -486,7 +493,7 @@ to be added at later point.”.</td>
 <td style="text-align: left;">Issue to add stateful testing has been <a
 href="https://github.com/BurntSushi/quickcheck/issues/134">closed</a>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">quickcheck-state-machine</td>
 <td style="text-align: left;">Haskell</td>
 <td style="text-align: center;">☒</td>
@@ -496,18 +503,25 @@ testing support? (I was <a
 href="https://github.com/nick8325/quickcheck/issues/139#issuecomment-272439099">involved</a>
 in the development.)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">rackcheck</td>
 <td style="text-align: left;">Racket</td>
 <td style="text-align: center;">☐</td>
 <td style="text-align: center;">☐</td>
 <td style="text-align: left;"></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">rantly</td>
 <td style="text-align: left;">Ruby</td>
 <td style="text-align: center;">☐</td>
 <td style="text-align: center;">☐</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">stateful-check</td>
+<td style="text-align: left;">Clojure</td>
+<td style="text-align: center;">☒</td>
+<td style="text-align: center;">☒</td>
 <td style="text-align: left;"></td>
 </tr>
 <tr class="odd">
@@ -521,6 +535,13 @@ href="http://blog.guillermowinkler.com/blog/2015/04/12/verifying-state-machine-b
 though.</td>
 </tr>
 <tr class="even">
+<td style="text-align: left;">test.contract</td>
+<td style="text-align: left;">Clojure</td>
+<td style="text-align: center;">☒</td>
+<td style="text-align: center;">☐</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
 <td style="text-align: left;">theft</td>
 <td style="text-align: left;">C</td>
 <td style="text-align: center;">☐</td>
