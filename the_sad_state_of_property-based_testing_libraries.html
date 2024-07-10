@@ -2416,10 +2416,12 @@ case (because the smaller test case, that the shrinker picked,
 passes).</p>
 <p>The proper solution to this problem is to use a deterministic thread
 scheduler, this is what they do the parallel testing <a
-href="https://www.cse.chalmers.se/~nicsma/papers/finding-race-conditions.pdf">paper</a>.
-A simpler workaround is to introduce a small sleep after each read or
-write to shared memory, this will make it more likely that the same
-interleaving happens when we shrink the test:</p>
+href="https://www.cse.chalmers.se/~nicsma/papers/finding-race-conditions.pdf">paper</a><a
+href="#fn6" class="footnote-ref" id="fnref6"
+role="doc-noteref"><sup>6</sup></a>. A simpler workaround is to
+introduce a small sleep after each read or write to shared memory, this
+will make it more likely that the same interleaving happens when we
+shrink the test:</p>
 <div class="sourceCode" id="cb69"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a><span class="ot">incrRaceCondition ::</span> <span class="dt">IO</span> ()</span>
 <span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a>incrRaceCondition <span class="ot">=</span> <span class="kw">do</span></span>
@@ -2459,8 +2461,8 @@ smaller.</p>
 title="Example: process registry">Example: process registry</a></h4>
 <p>For a slightly more complicated example containing race conditions,
 let’s have a look at an implementation of the Erlang process registry<a
-href="#fn6" class="footnote-ref" id="fnref6"
-role="doc-noteref"><sup>6</sup></a>.</p>
+href="#fn7" class="footnote-ref" id="fnref7"
+role="doc-noteref"><sup>7</sup></a>.</p>
 <section id="software-under-test-2" class="level5">
 <h5><a href="#software-under-test-2"
 title="Software under test">Software under test</a></h5>
@@ -2834,8 +2836,8 @@ href="https://www.well-typed.com/blog/2019/01/qsm-in-depth/">post</a>
 (2019) was the first to propose the use of fakes instead of state
 machine specifications with post-conditions. Edsko also showed how one
 can implement fake-based specifications on top of a library that uses
-state machine specifications<a href="#fn7" class="footnote-ref"
-id="fnref7" role="doc-noteref"><sup>7</sup></a>.</p>
+state machine specifications<a href="#fn8" class="footnote-ref"
+id="fnref8" role="doc-noteref"><sup>8</sup></a>.</p>
 <p>Using fakes instead of state machine specifications with
 post-conditions is easier for programmers unfamiliar with formal
 specifications, because most programmers are already familiar with mocks
@@ -3132,8 +3134,8 @@ is the file system:</p>
 title="Example: bigger system of components">Example: bigger system of
 components</a></h4>
 <p>The examples given above, a queue and a file system, might not seems
-necessary to fake<a href="#fn8" class="footnote-ref" id="fnref8"
-role="doc-noteref"><sup>8</sup></a> so to finish of let’s sketch how the
+necessary to fake<a href="#fn9" class="footnote-ref" id="fnref9"
+role="doc-noteref"><sup>9</sup></a> so to finish of let’s sketch how the
 same technique scales to a bigger system of components or services.</p>
 <p>Imagine we have three components or services, where component
 <em>A</em> depends on component <em>B</em> which depends on component
@@ -3163,8 +3165,8 @@ contract tested;</li>
 <li>Use B fake (which uses the C fake) when testing A.</li>
 </ol>
 <p>Hopefully it should be clear that this strategy scales to more
-components or services<a href="#fn9" class="footnote-ref" id="fnref9"
-role="doc-noteref"><sup>9</sup></a>.</p>
+components or services<a href="#fn10" class="footnote-ref" id="fnref10"
+role="doc-noteref"><sup>10</sup></a>.</p>
 </section>
 </section>
 </section>
@@ -3178,8 +3180,8 @@ shrinking). We’ve also had a look at several examples of how we can use
 fakes as models and how to test bigger systems in a compositional manner
 by reusing the fakes.</p>
 <p>I hope that this is enough material to get people curious and
-experimenting in their favorite programming languages<a href="#fn10"
-class="footnote-ref" id="fnref10" role="doc-noteref"><sup>10</sup></a>.
+experimenting in their favorite programming languages<a href="#fn11"
+class="footnote-ref" id="fnref11" role="doc-noteref"><sup>11</sup></a>.
 Feel free to get <a href="https://stevana.github.io/about.html">in
 touch</a> or open an <a
 href="https://github.com/stevana/stateful-pbt-with-fakes">issue</a> in
@@ -3287,7 +3289,13 @@ dispenser</a> example that appears in John’s paper <a
 href="https://publications.lib.chalmers.se/records/fulltext/232550/local_232550.pdf"><em>Testing
 the hard stuff and staying sane</em></a> (2014).<a href="#fnref5"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn6"><p>The sequential variant of the process registry example
+<li id="fn6"><p>For how to implement a deterministic scheduler, see
+matklad’s <a
+href="https://matklad.github.io/2024/07/05/properly-testing-concurrent-data-structures.html">post</a>.
+I’ve also started porting his ideas to Haskell over <a
+href="https://github.com/stevana/deterministic-scheduler/blob/main/src/ManagedThread2.hs">here</a>.<a
+href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7"><p>The sequential variant of the process registry example
 first appeared in the paper <a
 href="https://citeseerx.ist.psu.edu/document?repid=rep1&amp;type=pdf&amp;doi=5ae25681ff881430797268c5787d7d9ee6cf542c"><em>QuickCheck
 testing for fun and profit</em></a> (2007) and is also part of John’s
@@ -3295,14 +3303,14 @@ Midlands Graduate School course (2019). The parallel tests were
 introduced in <a
 href="https://www.cse.chalmers.se/~nicsma/papers/finding-race-conditions.pdf"><em>Finding
 Race Conditions in Erlang with QuickCheck and PULSE</em></a> (2009).<a
-href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn7"><p>I believe the post-condition formulation is more
+href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn8"><p>I believe the post-condition formulation is more
 general, as it allows a relational rather than a functional
 specification. So I don’t think we can show the converse of what Edsko
 did, i.e. implement a post-condition style specification on top of our
-fake-based one.<a href="#fnref7" class="footnote-back"
+fake-based one.<a href="#fnref8" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn8"><p>Unless we want to test what happens when failures, such
+<li id="fn9"><p>Unless we want to test what happens when failures, such
 as the disk being full etc. <a
 href="http://www.eecg.toronto.edu/~yuan/papers/failure_analysis_osdi14.pdf">Research</a>
 shows that “almost all (92%) of the catastrophic system failures are the
@@ -3310,17 +3318,17 @@ result of incorrect handling of non-fatal errors explicitly signaled in
 software. […] in 58% of the catastrophic failures, the underlying faults
 could easily have been detected through simple testing of error handling
 code.”. Fakes make it easier to inject faults, but that’s a story for
-another day.<a href="#fnref8" class="footnote-back"
+another day.<a href="#fnref9" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn9"><p>See the talk <a
+<li id="fn10"><p>See the talk <a
 href="https://www.youtube.com/watch?v=fhFa4tkFUFw">Integrated Tests Are
 A Scam</a> by J.B. Rainsberger for a longer presentation of this idea.<a
-href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn10"><p>In the unlikely case that there’s someone out there who
+href="#fnref10" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn11"><p>In the unlikely case that there’s someone out there who
 wants to dig even deeper into this topic, then I’ve compiled a list of
 <a
 href="https://github.com/stevana/stateful-pbt-with-fakes/blob/main/TODO.md">ideas</a>
-for improvements and further exploration.<a href="#fnref10"
+for improvements and further exploration.<a href="#fnref11"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
