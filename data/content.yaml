@@ -81,6 +81,11 @@ topics:
       content: https://raw.githubusercontent.com/stevana/stateful-pbt-with-fakes/main/README.md
       status: Done
 
+    - title: Parallel property-based testing with a deterministic thread scheduler
+      date: 2024-07-19T00:00:00Z
+      content: https://raw.githubusercontent.com/stevana/deterministic-scheduler/main/README.md
+      status: FirstDraft
+
 # ----------------------------------------------------------------------
 - topic: Deployment
   posts:
