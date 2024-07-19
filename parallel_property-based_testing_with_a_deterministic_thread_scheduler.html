@@ -445,8 +445,8 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb14-1"><a
 <span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a><span class="ot">get ::</span> <span class="dt">SharedMemory</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">AtomicCounter</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Int</span></span>
 <span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>get mem (<span class="dt">AtomicCounter</span> ref) <span class="ot">=</span> memReadIORef mem ref</span></code></pre></div>
 <div class="sourceCode" id="cb15"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="ot">test1 ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">Int</span>, <span class="dt">Bool</span>, <span class="dt">Int</span>)</span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>test1 seed <span class="ot">=</span> <span class="kw">do</span></span>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="ot">test ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">Int</span>, <span class="dt">Bool</span>, <span class="dt">Int</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>test seed <span class="ot">=</span> <span class="kw">do</span></span>
 <span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  counter <span class="ot">&lt;-</span> newCounter</span>
 <span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  mtid1 <span class="ot">&lt;-</span> spawn <span class="st">&quot;0&quot;</span> (\signal <span class="ot">-&gt;</span> incr (fakeMem signal) counter)</span>
 <span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  mtid2 <span class="ot">&lt;-</span> spawn <span class="st">&quot;1&quot;</span> (\signal <span class="ot">-&gt;</span> incr (fakeMem signal) counter)</span>
@@ -455,10 +455,10 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a
 <span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>  two <span class="ot">&lt;-</span> get realMem counter</span>
 <span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> (seed, two <span class="op">==</span> <span class="dv">2</span>, two)</span>
 <span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a><span class="ot">test ::</span> <span class="dt">IO</span> ()</span>
-<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>test <span class="ot">=</span> <span class="fu">mapM_</span> (\seed <span class="ot">-&gt;</span> <span class="fu">print</span> <span class="op">=&lt;&lt;</span> test1 seed) [<span class="dv">0</span><span class="op">..</span><span class="dv">10</span>]</span>
-<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="ot">test&#39; ::</span> <span class="dt">IO</span> ()</span>
-<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>test&#39; <span class="ot">=</span> <span class="kw">let</span> seed <span class="ot">=</span> <span class="dv">2</span> <span class="kw">in</span> replicateM_ <span class="dv">10</span> (<span class="fu">print</span> <span class="op">=&lt;&lt;</span> test1 seed)</span></code></pre></div>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a><span class="ot">test1 ::</span> <span class="dt">IO</span> ()</span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>test1 <span class="ot">=</span> <span class="fu">mapM_</span> (\seed <span class="ot">-&gt;</span> <span class="fu">print</span> <span class="op">=&lt;&lt;</span> test seed) [<span class="dv">0</span><span class="op">..</span><span class="dv">10</span>]</span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="ot">test2 ::</span> <span class="dt">IO</span> ()</span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>test2 <span class="ot">=</span> <span class="kw">let</span> seed <span class="ot">=</span> <span class="dv">2</span> <span class="kw">in</span> replicateM_ <span class="dv">10</span> (<span class="fu">print</span> <span class="op">=&lt;&lt;</span> test seed)</span></code></pre></div>
 <pre><code>&gt;&gt;&gt; test
 (0,True,2)
 (1,True,2)
@@ -471,7 +471,9 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a
 (8,True,2)
 (9,True,2)
 (10,False,1)</code></pre>
-<p><code>{.haskell</code></p>
+<div class="sourceCode" id="cb17"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="ot">test2 ::</span> <span class="dt">IO</span> ()</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>test2 <span class="ot">=</span> <span class="kw">let</span> seed <span class="ot">=</span> <span class="dv">2</span> <span class="kw">in</span> replicateM_ <span class="dv">10</span> (<span class="fu">print</span> <span class="op">=&lt;&lt;</span> test seed)</span></code></pre></div>
 <pre><code>&gt;&gt;&gt; test&#39;
 (2,False,1)
 (2,False,1)
@@ -522,177 +524,177 @@ the deterministic scheduler isn’t too much work.</p>
 <h3><a href="#changes-to-sequential-module"
 title="Changes to sequential module">Changes to sequential
 module</a></h3>
-<div class="sourceCode" id="cb18"><pre
-class="sourceCode diff"><code class="sourceCode diff"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="kw">--- ../stateful-pbt-with-fakes/src/Stateful.hs  2024-06-20 09:02:07.618238490 +0200</span></span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="dt">+++ src/Stateful.hs 2024-07-11 06:59:12.547433661 +0200</span></span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -2,9 +2,10 @@</span></span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE DerivingStrategies #-}</span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE FlexibleContexts #-}</span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE InstanceSigs #-}</span>
-<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a><span class="va">+{-# LANGUAGE Rank2Types #-}</span></span>
-<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE ScopedTypeVariables #-}</span>
-<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a><span class="st">-{-# LANGUAGE StrictData #-}</span></span>
-<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE StandaloneDeriving #-}</span>
-<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a><span class="va">+{-# LANGUAGE StrictData #-}</span></span>
-<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE TypeFamilies #-}</span>
-<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE UndecidableInstances #-}</span>
-<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -13,17 +14,21 @@</span></span>
-<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a> import Control.Monad</span>
-<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a> import Control.Monad.Catch</span>
-<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a> import Control.Monad.IO.Class</span>
-<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a><span class="va">+import Data.Coerce</span></span>
-<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a><span class="va">+import Data.Foldable</span></span>
-<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a> import Data.IntMap (IntMap)</span>
-<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a> import qualified Data.IntMap as IntMap</span>
-<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a><span class="st">-import Data.Foldable</span></span>
-<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a> import Data.Kind</span>
-<span id="cb18-25"><a href="#cb18-25" aria-hidden="true" tabindex="-1"></a><span class="st">-import Data.Coerce</span></span>
-<span id="cb18-26"><a href="#cb18-26" aria-hidden="true" tabindex="-1"></a><span class="va">+import Data.Proxy</span></span>
-<span id="cb18-27"><a href="#cb18-27" aria-hidden="true" tabindex="-1"></a> import Data.Set (Set)</span>
-<span id="cb18-28"><a href="#cb18-28" aria-hidden="true" tabindex="-1"></a> import qualified Data.Set as Set</span>
-<span id="cb18-29"><a href="#cb18-29" aria-hidden="true" tabindex="-1"></a> import Data.Void</span>
-<span id="cb18-30"><a href="#cb18-30" aria-hidden="true" tabindex="-1"></a> import Test.QuickCheck hiding (Failure, Success)</span>
-<span id="cb18-31"><a href="#cb18-31" aria-hidden="true" tabindex="-1"></a><span class="va">+import Test.QuickCheck.Gen</span></span>
-<span id="cb18-32"><a href="#cb18-32" aria-hidden="true" tabindex="-1"></a> import Test.QuickCheck.Monadic</span>
-<span id="cb18-33"><a href="#cb18-33" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb18-34"><a href="#cb18-34" aria-hidden="true" tabindex="-1"></a><span class="va">+import qualified ManagedThread2 as Scheduler</span></span>
-<span id="cb18-35"><a href="#cb18-35" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
-<span id="cb18-36"><a href="#cb18-36" aria-hidden="true" tabindex="-1"></a> ------------------------------------------------------------------------</span>
-<span id="cb18-37"><a href="#cb18-37" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb18-38"><a href="#cb18-38" aria-hidden="true" tabindex="-1"></a> class ( Monad (CommandMonad state)</span>
-<span id="cb18-39"><a href="#cb18-39" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -96,6 +101,13 @@</span></span>
-<span id="cb18-40"><a href="#cb18-40" aria-hidden="true" tabindex="-1"></a>   type CommandMonad state = IO</span>
-<span id="cb18-41"><a href="#cb18-41" aria-hidden="true" tabindex="-1"></a> -- end snippet StateModel</span>
-<span id="cb18-42"><a href="#cb18-42" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb18-43"><a href="#cb18-43" aria-hidden="true" tabindex="-1"></a><span class="va">+-- start snippet runCommandMonad</span></span>
-<span id="cb18-44"><a href="#cb18-44" aria-hidden="true" tabindex="-1"></a><span class="va">+  -- If another command monad is used we need to provide a way run it inside the</span></span>
-<span id="cb18-45"><a href="#cb18-45" aria-hidden="true" tabindex="-1"></a><span class="va">+  -- IO monad. This is only needed for parallel testing, because IO is the only</span></span>
-<span id="cb18-46"><a href="#cb18-46" aria-hidden="true" tabindex="-1"></a><span class="va">+  -- monad we can execute on different threads.</span></span>
-<span id="cb18-47"><a href="#cb18-47" aria-hidden="true" tabindex="-1"></a><span class="va">+  runCommandMonad :: proxy state -&gt; CommandMonad state a -&gt; Scheduler.Signal -&gt; IO a</span></span>
-<span id="cb18-48"><a href="#cb18-48" aria-hidden="true" tabindex="-1"></a><span class="va">+-- end snippet runCommandMonad</span></span>
-<span id="cb18-49"><a href="#cb18-49" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
-<span id="cb18-50"><a href="#cb18-50" aria-hidden="true" tabindex="-1"></a> ------------------------------------------------------------------------</span>
-<span id="cb18-51"><a href="#cb18-51" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb18-52"><a href="#cb18-52" aria-hidden="true" tabindex="-1"></a> -- start snippet Var</span>
-<span id="cb18-53"><a href="#cb18-53" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -219,10 +231,19 @@</span></span>
-<span id="cb18-54"><a href="#cb18-54" aria-hidden="true" tabindex="-1"></a> -- Another option would be to introduce a new type class `ReturnsReferences` and</span>
-<span id="cb18-55"><a href="#cb18-55" aria-hidden="true" tabindex="-1"></a> -- ask the user to manually implement it.</span>
-<span id="cb18-56"><a href="#cb18-56" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb18-57"><a href="#cb18-57" aria-hidden="true" tabindex="-1"></a><span class="va">+hoist :: Monad m =&gt; (forall x. m x -&gt; IO x) -&gt; PropertyM m a -&gt; PropertyM IO a</span></span>
-<span id="cb18-58"><a href="#cb18-58" aria-hidden="true" tabindex="-1"></a><span class="va">+hoist nat (MkPropertyM f) = MkPropertyM $ \g -&gt;</span></span>
-<span id="cb18-59"><a href="#cb18-59" aria-hidden="true" tabindex="-1"></a><span class="va">+  let</span></span>
-<span id="cb18-60"><a href="#cb18-60" aria-hidden="true" tabindex="-1"></a><span class="va">+    MkGen h = f (fmap (fmap (return . ioProperty)) g)</span></span>
-<span id="cb18-61"><a href="#cb18-61" aria-hidden="true" tabindex="-1"></a><span class="va">+  in</span></span>
-<span id="cb18-62"><a href="#cb18-62" aria-hidden="true" tabindex="-1"></a><span class="va">+    MkGen (\r n -&gt; nat (h r n))</span></span>
-<span id="cb18-63"><a href="#cb18-63" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
-<span id="cb18-64"><a href="#cb18-64" aria-hidden="true" tabindex="-1"></a> -- start snippet runCommands</span>
-<span id="cb18-65"><a href="#cb18-65" aria-hidden="true" tabindex="-1"></a> runCommands :: forall state. StateModel state</span>
-<span id="cb18-66"><a href="#cb18-66" aria-hidden="true" tabindex="-1"></a><span class="st">-            =&gt; Commands state -&gt; PropertyM (CommandMonad state) ()</span></span>
-<span id="cb18-67"><a href="#cb18-67" aria-hidden="true" tabindex="-1"></a><span class="st">-runCommands (Commands cmds0) = go initialState emptyEnv cmds0</span></span>
-<span id="cb18-68"><a href="#cb18-68" aria-hidden="true" tabindex="-1"></a><span class="va">+            =&gt; Commands state -&gt; PropertyM IO ()</span></span>
-<span id="cb18-69"><a href="#cb18-69" aria-hidden="true" tabindex="-1"></a><span class="va">+runCommands (Commands cmds0) =</span></span>
-<span id="cb18-70"><a href="#cb18-70" aria-hidden="true" tabindex="-1"></a><span class="va">+  hoist (flip (runCommandMonad (Proxy :: Proxy state)) Scheduler.newSingleThreadedSignal) $</span></span>
-<span id="cb18-71"><a href="#cb18-71" aria-hidden="true" tabindex="-1"></a><span class="va">+    go initialState emptyEnv cmds0</span></span>
-<span id="cb18-72"><a href="#cb18-72" aria-hidden="true" tabindex="-1"></a>   where</span>
-<span id="cb18-73"><a href="#cb18-73" aria-hidden="true" tabindex="-1"></a>     go :: state -&gt; Env state -&gt; [Command state (Var (Reference state))]</span>
-<span id="cb18-74"><a href="#cb18-74" aria-hidden="true" tabindex="-1"></a>        -&gt; PropertyM (CommandMonad state) ()</span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre
+class="sourceCode diff"><code class="sourceCode diff"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="kw">--- ../stateful-pbt-with-fakes/src/Stateful.hs  2024-06-20 09:02:07.618238490 +0200</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="dt">+++ src/Stateful.hs 2024-07-11 06:59:12.547433661 +0200</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -2,9 +2,10 @@</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE DerivingStrategies #-}</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE FlexibleContexts #-}</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE InstanceSigs #-}</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a><span class="va">+{-# LANGUAGE Rank2Types #-}</span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE ScopedTypeVariables #-}</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a><span class="st">-{-# LANGUAGE StrictData #-}</span></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE StandaloneDeriving #-}</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a><span class="va">+{-# LANGUAGE StrictData #-}</span></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE TypeFamilies #-}</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE UndecidableInstances #-}</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -13,17 +14,21 @@</span></span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a> import Control.Monad</span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a> import Control.Monad.Catch</span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a> import Control.Monad.IO.Class</span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a><span class="va">+import Data.Coerce</span></span>
+<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a><span class="va">+import Data.Foldable</span></span>
+<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a> import Data.IntMap (IntMap)</span>
+<span id="cb19-22"><a href="#cb19-22" aria-hidden="true" tabindex="-1"></a> import qualified Data.IntMap as IntMap</span>
+<span id="cb19-23"><a href="#cb19-23" aria-hidden="true" tabindex="-1"></a><span class="st">-import Data.Foldable</span></span>
+<span id="cb19-24"><a href="#cb19-24" aria-hidden="true" tabindex="-1"></a> import Data.Kind</span>
+<span id="cb19-25"><a href="#cb19-25" aria-hidden="true" tabindex="-1"></a><span class="st">-import Data.Coerce</span></span>
+<span id="cb19-26"><a href="#cb19-26" aria-hidden="true" tabindex="-1"></a><span class="va">+import Data.Proxy</span></span>
+<span id="cb19-27"><a href="#cb19-27" aria-hidden="true" tabindex="-1"></a> import Data.Set (Set)</span>
+<span id="cb19-28"><a href="#cb19-28" aria-hidden="true" tabindex="-1"></a> import qualified Data.Set as Set</span>
+<span id="cb19-29"><a href="#cb19-29" aria-hidden="true" tabindex="-1"></a> import Data.Void</span>
+<span id="cb19-30"><a href="#cb19-30" aria-hidden="true" tabindex="-1"></a> import Test.QuickCheck hiding (Failure, Success)</span>
+<span id="cb19-31"><a href="#cb19-31" aria-hidden="true" tabindex="-1"></a><span class="va">+import Test.QuickCheck.Gen</span></span>
+<span id="cb19-32"><a href="#cb19-32" aria-hidden="true" tabindex="-1"></a> import Test.QuickCheck.Monadic</span>
+<span id="cb19-33"><a href="#cb19-33" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb19-34"><a href="#cb19-34" aria-hidden="true" tabindex="-1"></a><span class="va">+import qualified ManagedThread2 as Scheduler</span></span>
+<span id="cb19-35"><a href="#cb19-35" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
+<span id="cb19-36"><a href="#cb19-36" aria-hidden="true" tabindex="-1"></a> ------------------------------------------------------------------------</span>
+<span id="cb19-37"><a href="#cb19-37" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb19-38"><a href="#cb19-38" aria-hidden="true" tabindex="-1"></a> class ( Monad (CommandMonad state)</span>
+<span id="cb19-39"><a href="#cb19-39" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -96,6 +101,13 @@</span></span>
+<span id="cb19-40"><a href="#cb19-40" aria-hidden="true" tabindex="-1"></a>   type CommandMonad state = IO</span>
+<span id="cb19-41"><a href="#cb19-41" aria-hidden="true" tabindex="-1"></a> -- end snippet StateModel</span>
+<span id="cb19-42"><a href="#cb19-42" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb19-43"><a href="#cb19-43" aria-hidden="true" tabindex="-1"></a><span class="va">+-- start snippet runCommandMonad</span></span>
+<span id="cb19-44"><a href="#cb19-44" aria-hidden="true" tabindex="-1"></a><span class="va">+  -- If another command monad is used we need to provide a way run it inside the</span></span>
+<span id="cb19-45"><a href="#cb19-45" aria-hidden="true" tabindex="-1"></a><span class="va">+  -- IO monad. This is only needed for parallel testing, because IO is the only</span></span>
+<span id="cb19-46"><a href="#cb19-46" aria-hidden="true" tabindex="-1"></a><span class="va">+  -- monad we can execute on different threads.</span></span>
+<span id="cb19-47"><a href="#cb19-47" aria-hidden="true" tabindex="-1"></a><span class="va">+  runCommandMonad :: proxy state -&gt; CommandMonad state a -&gt; Scheduler.Signal -&gt; IO a</span></span>
+<span id="cb19-48"><a href="#cb19-48" aria-hidden="true" tabindex="-1"></a><span class="va">+-- end snippet runCommandMonad</span></span>
+<span id="cb19-49"><a href="#cb19-49" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
+<span id="cb19-50"><a href="#cb19-50" aria-hidden="true" tabindex="-1"></a> ------------------------------------------------------------------------</span>
+<span id="cb19-51"><a href="#cb19-51" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb19-52"><a href="#cb19-52" aria-hidden="true" tabindex="-1"></a> -- start snippet Var</span>
+<span id="cb19-53"><a href="#cb19-53" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -219,10 +231,19 @@</span></span>
+<span id="cb19-54"><a href="#cb19-54" aria-hidden="true" tabindex="-1"></a> -- Another option would be to introduce a new type class `ReturnsReferences` and</span>
+<span id="cb19-55"><a href="#cb19-55" aria-hidden="true" tabindex="-1"></a> -- ask the user to manually implement it.</span>
+<span id="cb19-56"><a href="#cb19-56" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb19-57"><a href="#cb19-57" aria-hidden="true" tabindex="-1"></a><span class="va">+hoist :: Monad m =&gt; (forall x. m x -&gt; IO x) -&gt; PropertyM m a -&gt; PropertyM IO a</span></span>
+<span id="cb19-58"><a href="#cb19-58" aria-hidden="true" tabindex="-1"></a><span class="va">+hoist nat (MkPropertyM f) = MkPropertyM $ \g -&gt;</span></span>
+<span id="cb19-59"><a href="#cb19-59" aria-hidden="true" tabindex="-1"></a><span class="va">+  let</span></span>
+<span id="cb19-60"><a href="#cb19-60" aria-hidden="true" tabindex="-1"></a><span class="va">+    MkGen h = f (fmap (fmap (return . ioProperty)) g)</span></span>
+<span id="cb19-61"><a href="#cb19-61" aria-hidden="true" tabindex="-1"></a><span class="va">+  in</span></span>
+<span id="cb19-62"><a href="#cb19-62" aria-hidden="true" tabindex="-1"></a><span class="va">+    MkGen (\r n -&gt; nat (h r n))</span></span>
+<span id="cb19-63"><a href="#cb19-63" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
+<span id="cb19-64"><a href="#cb19-64" aria-hidden="true" tabindex="-1"></a> -- start snippet runCommands</span>
+<span id="cb19-65"><a href="#cb19-65" aria-hidden="true" tabindex="-1"></a> runCommands :: forall state. StateModel state</span>
+<span id="cb19-66"><a href="#cb19-66" aria-hidden="true" tabindex="-1"></a><span class="st">-            =&gt; Commands state -&gt; PropertyM (CommandMonad state) ()</span></span>
+<span id="cb19-67"><a href="#cb19-67" aria-hidden="true" tabindex="-1"></a><span class="st">-runCommands (Commands cmds0) = go initialState emptyEnv cmds0</span></span>
+<span id="cb19-68"><a href="#cb19-68" aria-hidden="true" tabindex="-1"></a><span class="va">+            =&gt; Commands state -&gt; PropertyM IO ()</span></span>
+<span id="cb19-69"><a href="#cb19-69" aria-hidden="true" tabindex="-1"></a><span class="va">+runCommands (Commands cmds0) =</span></span>
+<span id="cb19-70"><a href="#cb19-70" aria-hidden="true" tabindex="-1"></a><span class="va">+  hoist (flip (runCommandMonad (Proxy :: Proxy state)) Scheduler.newSingleThreadedSignal) $</span></span>
+<span id="cb19-71"><a href="#cb19-71" aria-hidden="true" tabindex="-1"></a><span class="va">+    go initialState emptyEnv cmds0</span></span>
+<span id="cb19-72"><a href="#cb19-72" aria-hidden="true" tabindex="-1"></a>   where</span>
+<span id="cb19-73"><a href="#cb19-73" aria-hidden="true" tabindex="-1"></a>     go :: state -&gt; Env state -&gt; [Command state (Var (Reference state))]</span>
+<span id="cb19-74"><a href="#cb19-74" aria-hidden="true" tabindex="-1"></a>        -&gt; PropertyM (CommandMonad state) ()</span></code></pre></div>
 </section>
 <section id="changes-to-parallel-module" class="level3">
 <h3><a href="#changes-to-parallel-module"
 title="Changes to parallel module">Changes to parallel module</a></h3>
-<div class="sourceCode" id="cb19"><pre
-class="sourceCode diff"><code class="sourceCode diff"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="kw">--- ../stateful-pbt-with-fakes/src/Parallel.hs  2024-06-26 12:29:51.889932357 +0200</span></span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="dt">+++ src/Parallel.hs 2024-07-11 06:59:32.502563455 +0200</span></span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -11,7 +11,6 @@</span></span>
-<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a> module Parallel where</span>
-<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a><span class="st">-import Control.Concurrent.Async</span></span>
-<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a> import Control.Concurrent.STM</span>
-<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a> import Control.Exception (SomeException, displayException, try)</span>
-<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a> import Control.Monad</span>
-<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -26,9 +25,13 @@</span></span>
-<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a> import Data.Set (Set)</span>
-<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a> import qualified Data.Set as Set</span>
-<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a> import Data.Tree</span>
-<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a><span class="va">+import System.Random</span></span>
-<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a> import Test.QuickCheck</span>
-<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a><span class="va">+import Test.QuickCheck.Gen</span></span>
-<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a> import Test.QuickCheck.Monadic</span>
-<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a><span class="va">+import Test.QuickCheck.Random</span></span>
-<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a><span class="va">+import qualified ManagedThread2 as Scheduler</span></span>
-<span id="cb19-22"><a href="#cb19-22" aria-hidden="true" tabindex="-1"></a> import Stateful</span>
-<span id="cb19-23"><a href="#cb19-23" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb19-24"><a href="#cb19-24" aria-hidden="true" tabindex="-1"></a> ------------------------------------------------------------------------</span>
-<span id="cb19-25"><a href="#cb19-25" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -46,13 +49,6 @@</span></span>
-<span id="cb19-26"><a href="#cb19-26" aria-hidden="true" tabindex="-1"></a>   shrinkCommandParallel ss cmd = shrinkCommand (maximum ss) cmd</span>
-<span id="cb19-27"><a href="#cb19-27" aria-hidden="true" tabindex="-1"></a> -- end snippet ParallelModel</span>
-<span id="cb19-28"><a href="#cb19-28" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb19-29"><a href="#cb19-29" aria-hidden="true" tabindex="-1"></a><span class="kw">--- start snippet runCommandMonad</span></span>
-<span id="cb19-30"><a href="#cb19-30" aria-hidden="true" tabindex="-1"></a><span class="st">-  -- If another command monad is used we need to provide a way run it inside the</span></span>
-<span id="cb19-31"><a href="#cb19-31" aria-hidden="true" tabindex="-1"></a><span class="st">-  -- IO monad. This is only needed for parallel testing, because IO is the only</span></span>
-<span id="cb19-32"><a href="#cb19-32" aria-hidden="true" tabindex="-1"></a><span class="st">-  -- monad we can execute on different threads.</span></span>
-<span id="cb19-33"><a href="#cb19-33" aria-hidden="true" tabindex="-1"></a><span class="st">-  runCommandMonad :: proxy state -&gt; CommandMonad state a -&gt; IO a</span></span>
-<span id="cb19-34"><a href="#cb19-34" aria-hidden="true" tabindex="-1"></a><span class="kw">--- end snippet runCommandMonad</span></span>
-<span id="cb19-35"><a href="#cb19-35" aria-hidden="true" tabindex="-1"></a><span class="st">-</span></span>
-<span id="cb19-36"><a href="#cb19-36" aria-hidden="true" tabindex="-1"></a> -- start snippet ParallelCommands</span>
-<span id="cb19-37"><a href="#cb19-37" aria-hidden="true" tabindex="-1"></a> newtype ParallelCommands state = ParallelCommands [Fork state]</span>
-<span id="cb19-38"><a href="#cb19-38" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb19-39"><a href="#cb19-39" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -274,36 +270,41 @@</span></span>
-<span id="cb19-40"><a href="#cb19-40" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb19-41"><a href="#cb19-41" aria-hidden="true" tabindex="-1"></a> ------------------------------------------------------------------------</span>
-<span id="cb19-42"><a href="#cb19-42" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb19-43"><a href="#cb19-43" aria-hidden="true" tabindex="-1"></a><span class="va">+getSeed :: PropertyM m QCGen</span></span>
-<span id="cb19-44"><a href="#cb19-44" aria-hidden="true" tabindex="-1"></a><span class="va">+getSeed = MkPropertyM (\f -&gt; MkGen (\r n -&gt; unGen (f r) r n))</span></span>
-<span id="cb19-45"><a href="#cb19-45" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
-<span id="cb19-46"><a href="#cb19-46" aria-hidden="true" tabindex="-1"></a> -- start snippet runParallelCommands</span>
-<span id="cb19-47"><a href="#cb19-47" aria-hidden="true" tabindex="-1"></a> runParallelCommands :: forall state. ParallelModel state</span>
-<span id="cb19-48"><a href="#cb19-48" aria-hidden="true" tabindex="-1"></a>                     =&gt; ParallelCommands state -&gt; PropertyM IO ()</span>
-<span id="cb19-49"><a href="#cb19-49" aria-hidden="true" tabindex="-1"></a> runParallelCommands cmds0@(ParallelCommands forks0) = do</span>
-<span id="cb19-50"><a href="#cb19-50" aria-hidden="true" tabindex="-1"></a><span class="va">+  gen &lt;- getSeed</span></span>
-<span id="cb19-51"><a href="#cb19-51" aria-hidden="true" tabindex="-1"></a><span class="va">+  liftIO (putStrLn (&quot;Seed: &quot; ++ show gen))</span></span>
-<span id="cb19-52"><a href="#cb19-52" aria-hidden="true" tabindex="-1"></a>   forM_ (parallelCommands cmds0) $ \cmd -&gt; do</span>
-<span id="cb19-53"><a href="#cb19-53" aria-hidden="true" tabindex="-1"></a>     let name = commandName cmd</span>
-<span id="cb19-54"><a href="#cb19-54" aria-hidden="true" tabindex="-1"></a>     monitor (tabulate &quot;Commands&quot; [name] . classify True name)</span>
-<span id="cb19-55"><a href="#cb19-55" aria-hidden="true" tabindex="-1"></a>   monitor (tabulate &quot;Concurrency&quot; (map (show . length . unFork) forks0))</span>
-<span id="cb19-56"><a href="#cb19-56" aria-hidden="true" tabindex="-1"></a>   q   &lt;- liftIO newTQueueIO</span>
-<span id="cb19-57"><a href="#cb19-57" aria-hidden="true" tabindex="-1"></a>   c   &lt;- liftIO newAtomicCounter</span>
-<span id="cb19-58"><a href="#cb19-58" aria-hidden="true" tabindex="-1"></a><span class="st">-  env &lt;- liftIO (runForks q c emptyEnv forks0)</span></span>
-<span id="cb19-59"><a href="#cb19-59" aria-hidden="true" tabindex="-1"></a><span class="va">+  (env, _gen&#39;) &lt;- liftIO (runForks q c emptyEnv gen forks0)</span></span>
-<span id="cb19-60"><a href="#cb19-60" aria-hidden="true" tabindex="-1"></a>   hist &lt;- History &lt;$&gt; liftIO (atomically (flushTQueue q))</span>
-<span id="cb19-61"><a href="#cb19-61" aria-hidden="true" tabindex="-1"></a>   let ok = linearisable env (interleavings hist)</span>
-<span id="cb19-62"><a href="#cb19-62" aria-hidden="true" tabindex="-1"></a>   unless ok (monitor (counterexample (show hist)))</span>
-<span id="cb19-63"><a href="#cb19-63" aria-hidden="true" tabindex="-1"></a>   assert ok</span>
-<span id="cb19-64"><a href="#cb19-64" aria-hidden="true" tabindex="-1"></a>   where</span>
-<span id="cb19-65"><a href="#cb19-65" aria-hidden="true" tabindex="-1"></a><span class="st">-    runForks :: TQueue (Event state) -&gt; AtomicCounter -&gt; Env state -&gt; [Fork state]</span></span>
-<span id="cb19-66"><a href="#cb19-66" aria-hidden="true" tabindex="-1"></a><span class="st">-             -&gt; IO (Env state)</span></span>
-<span id="cb19-67"><a href="#cb19-67" aria-hidden="true" tabindex="-1"></a><span class="st">-    runForks _q _c env [] = return env</span></span>
-<span id="cb19-68"><a href="#cb19-68" aria-hidden="true" tabindex="-1"></a><span class="st">-    runForks  q  c env (Fork cmds : forks) = do</span></span>
-<span id="cb19-69"><a href="#cb19-69" aria-hidden="true" tabindex="-1"></a><span class="st">-      envs &lt;- liftIO $</span></span>
-<span id="cb19-70"><a href="#cb19-70" aria-hidden="true" tabindex="-1"></a><span class="st">-        mapConcurrently (runParallelReal q c env) (zip [Pid 0..] cmds)</span></span>
-<span id="cb19-71"><a href="#cb19-71" aria-hidden="true" tabindex="-1"></a><span class="va">+    runForks :: RandomGen g =&gt; TQueue (Event state) -&gt; AtomicCounter -&gt; Env state -&gt; g</span></span>
-<span id="cb19-72"><a href="#cb19-72" aria-hidden="true" tabindex="-1"></a><span class="va">+             -&gt; [Fork state] -&gt; IO (Env state, g)</span></span>
-<span id="cb19-73"><a href="#cb19-73" aria-hidden="true" tabindex="-1"></a><span class="va">+    runForks _q _c env gen [] = return (env, gen)</span></span>
-<span id="cb19-74"><a href="#cb19-74" aria-hidden="true" tabindex="-1"></a><span class="va">+    runForks  q  c env gen (Fork cmds : forks) = do</span></span>
-<span id="cb19-75"><a href="#cb19-75" aria-hidden="true" tabindex="-1"></a><span class="va">+      (envs, gen&#39;) &lt;- liftIO $</span></span>
-<span id="cb19-76"><a href="#cb19-76" aria-hidden="true" tabindex="-1"></a><span class="va">+        Scheduler.mapConcurrently (runParallelReal q c env) (zip [Pid 0..] cmds) gen</span></span>
-<span id="cb19-77"><a href="#cb19-77" aria-hidden="true" tabindex="-1"></a>       let env&#39; = combineEnvs (env : envs)</span>
-<span id="cb19-78"><a href="#cb19-78" aria-hidden="true" tabindex="-1"></a><span class="st">-      runForks q c env&#39; forks</span></span>
-<span id="cb19-79"><a href="#cb19-79" aria-hidden="true" tabindex="-1"></a><span class="va">+      runForks q c env&#39; gen&#39; forks</span></span>
-<span id="cb19-80"><a href="#cb19-80" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb19-81"><a href="#cb19-81" aria-hidden="true" tabindex="-1"></a>     runParallelReal :: TQueue (Event state) -&gt; AtomicCounter -&gt; Env state</span>
-<span id="cb19-82"><a href="#cb19-82" aria-hidden="true" tabindex="-1"></a><span class="st">-                    -&gt; (Pid, Command state (Var (Reference state))) -&gt; IO (Env state)</span></span>
-<span id="cb19-83"><a href="#cb19-83" aria-hidden="true" tabindex="-1"></a><span class="st">-    runParallelReal q c env (pid, cmd) = do</span></span>
-<span id="cb19-84"><a href="#cb19-84" aria-hidden="true" tabindex="-1"></a><span class="va">+                    -&gt; Scheduler.Signal -&gt; (Pid, Command state (Var (Reference state))) -&gt; IO (Env state)</span></span>
-<span id="cb19-85"><a href="#cb19-85" aria-hidden="true" tabindex="-1"></a><span class="va">+    runParallelReal q c env signal (pid, cmd) = do</span></span>
-<span id="cb19-86"><a href="#cb19-86" aria-hidden="true" tabindex="-1"></a>       atomically (writeTQueue q (Invoke pid cmd))</span>
-<span id="cb19-87"><a href="#cb19-87" aria-hidden="true" tabindex="-1"></a><span class="st">-      eResp &lt;- try (runCommandMonad (Proxy :: Proxy state) (runReal (fmap (lookupEnv env) cmd)))</span></span>
-<span id="cb19-88"><a href="#cb19-88" aria-hidden="true" tabindex="-1"></a><span class="va">+      eResp &lt;- try (runCommandMonad (Proxy :: Proxy state) (runReal (fmap (lookupEnv env) cmd)) signal)</span></span>
-<span id="cb19-89"><a href="#cb19-89" aria-hidden="true" tabindex="-1"></a>       case eResp of</span>
-<span id="cb19-90"><a href="#cb19-90" aria-hidden="true" tabindex="-1"></a>         Left (err :: SomeException) -&gt;</span>
-<span id="cb19-91"><a href="#cb19-91" aria-hidden="true" tabindex="-1"></a>           error (&quot;runParallelReal: &quot; ++ displayException err)</span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre
+class="sourceCode diff"><code class="sourceCode diff"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="kw">--- ../stateful-pbt-with-fakes/src/Parallel.hs  2024-06-26 12:29:51.889932357 +0200</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="dt">+++ src/Parallel.hs 2024-07-11 06:59:32.502563455 +0200</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -11,7 +11,6 @@</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a> module Parallel where</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a><span class="st">-import Control.Concurrent.Async</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a> import Control.Concurrent.STM</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a> import Control.Exception (SomeException, displayException, try)</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a> import Control.Monad</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -26,9 +25,13 @@</span></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a> import Data.Set (Set)</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a> import qualified Data.Set as Set</span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a> import Data.Tree</span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a><span class="va">+import System.Random</span></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a> import Test.QuickCheck</span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a><span class="va">+import Test.QuickCheck.Gen</span></span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a> import Test.QuickCheck.Monadic</span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a><span class="va">+import Test.QuickCheck.Random</span></span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a><span class="va">+import qualified ManagedThread2 as Scheduler</span></span>
+<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a> import Stateful</span>
+<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a> ------------------------------------------------------------------------</span>
+<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -46,13 +49,6 @@</span></span>
+<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a>   shrinkCommandParallel ss cmd = shrinkCommand (maximum ss) cmd</span>
+<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a> -- end snippet ParallelModel</span>
+<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb20-29"><a href="#cb20-29" aria-hidden="true" tabindex="-1"></a><span class="kw">--- start snippet runCommandMonad</span></span>
+<span id="cb20-30"><a href="#cb20-30" aria-hidden="true" tabindex="-1"></a><span class="st">-  -- If another command monad is used we need to provide a way run it inside the</span></span>
+<span id="cb20-31"><a href="#cb20-31" aria-hidden="true" tabindex="-1"></a><span class="st">-  -- IO monad. This is only needed for parallel testing, because IO is the only</span></span>
+<span id="cb20-32"><a href="#cb20-32" aria-hidden="true" tabindex="-1"></a><span class="st">-  -- monad we can execute on different threads.</span></span>
+<span id="cb20-33"><a href="#cb20-33" aria-hidden="true" tabindex="-1"></a><span class="st">-  runCommandMonad :: proxy state -&gt; CommandMonad state a -&gt; IO a</span></span>
+<span id="cb20-34"><a href="#cb20-34" aria-hidden="true" tabindex="-1"></a><span class="kw">--- end snippet runCommandMonad</span></span>
+<span id="cb20-35"><a href="#cb20-35" aria-hidden="true" tabindex="-1"></a><span class="st">-</span></span>
+<span id="cb20-36"><a href="#cb20-36" aria-hidden="true" tabindex="-1"></a> -- start snippet ParallelCommands</span>
+<span id="cb20-37"><a href="#cb20-37" aria-hidden="true" tabindex="-1"></a> newtype ParallelCommands state = ParallelCommands [Fork state]</span>
+<span id="cb20-38"><a href="#cb20-38" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb20-39"><a href="#cb20-39" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -274,36 +270,41 @@</span></span>
+<span id="cb20-40"><a href="#cb20-40" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb20-41"><a href="#cb20-41" aria-hidden="true" tabindex="-1"></a> ------------------------------------------------------------------------</span>
+<span id="cb20-42"><a href="#cb20-42" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb20-43"><a href="#cb20-43" aria-hidden="true" tabindex="-1"></a><span class="va">+getSeed :: PropertyM m QCGen</span></span>
+<span id="cb20-44"><a href="#cb20-44" aria-hidden="true" tabindex="-1"></a><span class="va">+getSeed = MkPropertyM (\f -&gt; MkGen (\r n -&gt; unGen (f r) r n))</span></span>
+<span id="cb20-45"><a href="#cb20-45" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
+<span id="cb20-46"><a href="#cb20-46" aria-hidden="true" tabindex="-1"></a> -- start snippet runParallelCommands</span>
+<span id="cb20-47"><a href="#cb20-47" aria-hidden="true" tabindex="-1"></a> runParallelCommands :: forall state. ParallelModel state</span>
+<span id="cb20-48"><a href="#cb20-48" aria-hidden="true" tabindex="-1"></a>                     =&gt; ParallelCommands state -&gt; PropertyM IO ()</span>
+<span id="cb20-49"><a href="#cb20-49" aria-hidden="true" tabindex="-1"></a> runParallelCommands cmds0@(ParallelCommands forks0) = do</span>
+<span id="cb20-50"><a href="#cb20-50" aria-hidden="true" tabindex="-1"></a><span class="va">+  gen &lt;- getSeed</span></span>
+<span id="cb20-51"><a href="#cb20-51" aria-hidden="true" tabindex="-1"></a><span class="va">+  liftIO (putStrLn (&quot;Seed: &quot; ++ show gen))</span></span>
+<span id="cb20-52"><a href="#cb20-52" aria-hidden="true" tabindex="-1"></a>   forM_ (parallelCommands cmds0) $ \cmd -&gt; do</span>
+<span id="cb20-53"><a href="#cb20-53" aria-hidden="true" tabindex="-1"></a>     let name = commandName cmd</span>
+<span id="cb20-54"><a href="#cb20-54" aria-hidden="true" tabindex="-1"></a>     monitor (tabulate &quot;Commands&quot; [name] . classify True name)</span>
+<span id="cb20-55"><a href="#cb20-55" aria-hidden="true" tabindex="-1"></a>   monitor (tabulate &quot;Concurrency&quot; (map (show . length . unFork) forks0))</span>
+<span id="cb20-56"><a href="#cb20-56" aria-hidden="true" tabindex="-1"></a>   q   &lt;- liftIO newTQueueIO</span>
+<span id="cb20-57"><a href="#cb20-57" aria-hidden="true" tabindex="-1"></a>   c   &lt;- liftIO newAtomicCounter</span>
+<span id="cb20-58"><a href="#cb20-58" aria-hidden="true" tabindex="-1"></a><span class="st">-  env &lt;- liftIO (runForks q c emptyEnv forks0)</span></span>
+<span id="cb20-59"><a href="#cb20-59" aria-hidden="true" tabindex="-1"></a><span class="va">+  (env, _gen&#39;) &lt;- liftIO (runForks q c emptyEnv gen forks0)</span></span>
+<span id="cb20-60"><a href="#cb20-60" aria-hidden="true" tabindex="-1"></a>   hist &lt;- History &lt;$&gt; liftIO (atomically (flushTQueue q))</span>
+<span id="cb20-61"><a href="#cb20-61" aria-hidden="true" tabindex="-1"></a>   let ok = linearisable env (interleavings hist)</span>
+<span id="cb20-62"><a href="#cb20-62" aria-hidden="true" tabindex="-1"></a>   unless ok (monitor (counterexample (show hist)))</span>
+<span id="cb20-63"><a href="#cb20-63" aria-hidden="true" tabindex="-1"></a>   assert ok</span>
+<span id="cb20-64"><a href="#cb20-64" aria-hidden="true" tabindex="-1"></a>   where</span>
+<span id="cb20-65"><a href="#cb20-65" aria-hidden="true" tabindex="-1"></a><span class="st">-    runForks :: TQueue (Event state) -&gt; AtomicCounter -&gt; Env state -&gt; [Fork state]</span></span>
+<span id="cb20-66"><a href="#cb20-66" aria-hidden="true" tabindex="-1"></a><span class="st">-             -&gt; IO (Env state)</span></span>
+<span id="cb20-67"><a href="#cb20-67" aria-hidden="true" tabindex="-1"></a><span class="st">-    runForks _q _c env [] = return env</span></span>
+<span id="cb20-68"><a href="#cb20-68" aria-hidden="true" tabindex="-1"></a><span class="st">-    runForks  q  c env (Fork cmds : forks) = do</span></span>
+<span id="cb20-69"><a href="#cb20-69" aria-hidden="true" tabindex="-1"></a><span class="st">-      envs &lt;- liftIO $</span></span>
+<span id="cb20-70"><a href="#cb20-70" aria-hidden="true" tabindex="-1"></a><span class="st">-        mapConcurrently (runParallelReal q c env) (zip [Pid 0..] cmds)</span></span>
+<span id="cb20-71"><a href="#cb20-71" aria-hidden="true" tabindex="-1"></a><span class="va">+    runForks :: RandomGen g =&gt; TQueue (Event state) -&gt; AtomicCounter -&gt; Env state -&gt; g</span></span>
+<span id="cb20-72"><a href="#cb20-72" aria-hidden="true" tabindex="-1"></a><span class="va">+             -&gt; [Fork state] -&gt; IO (Env state, g)</span></span>
+<span id="cb20-73"><a href="#cb20-73" aria-hidden="true" tabindex="-1"></a><span class="va">+    runForks _q _c env gen [] = return (env, gen)</span></span>
+<span id="cb20-74"><a href="#cb20-74" aria-hidden="true" tabindex="-1"></a><span class="va">+    runForks  q  c env gen (Fork cmds : forks) = do</span></span>
+<span id="cb20-75"><a href="#cb20-75" aria-hidden="true" tabindex="-1"></a><span class="va">+      (envs, gen&#39;) &lt;- liftIO $</span></span>
+<span id="cb20-76"><a href="#cb20-76" aria-hidden="true" tabindex="-1"></a><span class="va">+        Scheduler.mapConcurrently (runParallelReal q c env) (zip [Pid 0..] cmds) gen</span></span>
+<span id="cb20-77"><a href="#cb20-77" aria-hidden="true" tabindex="-1"></a>       let env&#39; = combineEnvs (env : envs)</span>
+<span id="cb20-78"><a href="#cb20-78" aria-hidden="true" tabindex="-1"></a><span class="st">-      runForks q c env&#39; forks</span></span>
+<span id="cb20-79"><a href="#cb20-79" aria-hidden="true" tabindex="-1"></a><span class="va">+      runForks q c env&#39; gen&#39; forks</span></span>
+<span id="cb20-80"><a href="#cb20-80" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb20-81"><a href="#cb20-81" aria-hidden="true" tabindex="-1"></a>     runParallelReal :: TQueue (Event state) -&gt; AtomicCounter -&gt; Env state</span>
+<span id="cb20-82"><a href="#cb20-82" aria-hidden="true" tabindex="-1"></a><span class="st">-                    -&gt; (Pid, Command state (Var (Reference state))) -&gt; IO (Env state)</span></span>
+<span id="cb20-83"><a href="#cb20-83" aria-hidden="true" tabindex="-1"></a><span class="st">-    runParallelReal q c env (pid, cmd) = do</span></span>
+<span id="cb20-84"><a href="#cb20-84" aria-hidden="true" tabindex="-1"></a><span class="va">+                    -&gt; Scheduler.Signal -&gt; (Pid, Command state (Var (Reference state))) -&gt; IO (Env state)</span></span>
+<span id="cb20-85"><a href="#cb20-85" aria-hidden="true" tabindex="-1"></a><span class="va">+    runParallelReal q c env signal (pid, cmd) = do</span></span>
+<span id="cb20-86"><a href="#cb20-86" aria-hidden="true" tabindex="-1"></a>       atomically (writeTQueue q (Invoke pid cmd))</span>
+<span id="cb20-87"><a href="#cb20-87" aria-hidden="true" tabindex="-1"></a><span class="st">-      eResp &lt;- try (runCommandMonad (Proxy :: Proxy state) (runReal (fmap (lookupEnv env) cmd)))</span></span>
+<span id="cb20-88"><a href="#cb20-88" aria-hidden="true" tabindex="-1"></a><span class="va">+      eResp &lt;- try (runCommandMonad (Proxy :: Proxy state) (runReal (fmap (lookupEnv env) cmd)) signal)</span></span>
+<span id="cb20-89"><a href="#cb20-89" aria-hidden="true" tabindex="-1"></a>       case eResp of</span>
+<span id="cb20-90"><a href="#cb20-90" aria-hidden="true" tabindex="-1"></a>         Left (err :: SomeException) -&gt;</span>
+<span id="cb20-91"><a href="#cb20-91" aria-hidden="true" tabindex="-1"></a>           error (&quot;runParallelReal: &quot; ++ displayException err)</span></code></pre></div>
 </section>
 </section>
 <section id="conclusion-and-further-work" class="level2">
