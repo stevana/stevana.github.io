@@ -47,6 +47,7 @@ header > nav a:hover {
 
 main > nav li.active > a {
     color: black;
+    font-weight: bold; 
 }
 
 main > nav li {
@@ -57,12 +58,11 @@ main > nav a {
     text-decoration: none;
     display: block;
     padding: .125rem 0;
-    color: gray;
     transition: all 50ms ease-in-out;
 }
 
 main > nav li a:hover, main > nav li a:focus {
-    color: black;
+    text-decoration: underline;
 }
 
 
