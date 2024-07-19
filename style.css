@@ -47,7 +47,13 @@ header > nav a:hover {
 
 main > nav li.active > a {
     color: black;
-    font-weight: bold; 
+    font-style: italic; 
+    font-weight: 400;
+}
+
+main > nav ul {
+    padding-inline-start: 2ch;
+    list-style-type: none;
 }
 
 main > nav li {
