@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Stevan A" />
+  <title>Parallel property-based testing with a deterministic thread scheduler</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="alternate" type="application/rss+xml"
+        title="RSS feed"
+        href="rss.xml" />
+  <script src="script.js"></script>
+  <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+  <noscript>
+    <img src="https://stevana-github-io.goatcounter.com/count?p=/parallel_property-based_testing_with_a_deterministic_thread_scheduler.html&t=Parallel property-based testing with a deterministic thread scheduler">
+  </noscript>
+</head>
+<body>
+<header id="title-block-header">
+  <nav id="nav">
+    <span class="title"><a href="/">Stevan's notes...</a></span>
+    <a href="about.html">About</a>
+    <a href="rss.xml">Feed <img height="10px" src="rss.svg" /></a>
+  </nav>
+</header>
+<hr />
+<main>
+<h1>Parallel property-based testing with a deterministic thread scheduler</h1>
+<nav id="TOC" class="sidenote" role="doc-toc">
+<h2 id="toc-title">Table of contents</h2>
+<ul>
+<li><a href="#background" id="toc-background">Background</a></li>
+<li><a href="#motivation-and-overview"
+id="toc-motivation-and-overview">Motivation and overview</a></li>
+<li><a href="#deterministic-scheduler"
+id="toc-deterministic-scheduler">Deterministic scheduler</a></li>
+<li><a href="#parallel-property-based-testing-recap"
+id="toc-parallel-property-based-testing-recap">Parallel property-based
+testing recap</a></li>
+<li><a href="#integrating-the-scheduler-into-the-testing"
+id="toc-integrating-the-scheduler-into-the-testing">Integrating the
+scheduler into the testing</a>
+<ul>
+<li><a href="#changes-to-sequential-module"
+id="toc-changes-to-sequential-module">Changes to sequential
+module</a></li>
+<li><a href="#changes-to-parallel-module"
+id="toc-changes-to-parallel-module">Changes to parallel module</a></li>
+</ul></li>
+<li><a href="#conclusion-and-further-work"
+id="toc-conclusion-and-further-work">Conclusion and further
+work</a></li>
+</ul>
+</nav>
+<div class="date">Posted on Jul 19, 2024</div>
+<p><em>Work in progress, please don’t share, but do feel free to get
+involved!</em></p>
+<p>This post is about how to write tests that can catch race conditions
+in a reproducible way. The approach is programming language agnostic,
+and should work in most languages that have a decent multi-threaded
+story. It’s a white-box testing approach, meaning you will have to
+modify the software under test.</p>
+<section id="background" class="level2">
+<h2><a href="#background" title="Background">Background</a></h2>
+<p>In my previous <a
+href="https://stevana.github.io/the_sad_state_of_property-based_testing_libraries.html">post</a>,
+we had a look at how to mechanically derive parallel tests that can
+uncover race conditions from a sequential fake<a href="#fn1"
+class="footnote-ref" id="fnref1"
+role="doc-noteref"><sup>1</sup></a>.</p>
+<p>One of the nice things about the approach is that it’s a black-box
+testing technique, i.e. it doesn’t require the user to change the
+software under test.</p>
+<p>One big downside is that because threads will interleave differently
+when we rerun the tests, there by potentially causing different
+outcomes. This in turn creates problems for the shrinking of failing
+test cases<a href="#fn2" class="footnote-ref" id="fnref2"
+role="doc-noteref"><sup>2</sup></a>.</p>
+<p>As a workaround, I suggested that when a race condition is found in
+the unmodified code, one could swap the shared memory module for one
+that introduces sleeps around the operations. This creates less
+non-determinism, because the jitter of each operation will have less of
+an impact, and therefore helps shrinking.</p>
+<p>This isn’t a satisfactory solution, of course, and I left a to do
+item to implement a determinstic scheduler, like the authors do in the
+<a
+href="https://www.cse.chalmers.se/~nicsma/papers/finding-race-conditions.pdf">paper</a>
+that first introduced parallel property-based testing.</p>
+<p>The idea of the deterministic scheduler is that it should be possible
+to rerun a multi-threaded program and get exactly the same interleaving
+of threads each time.</p>
+<p>The deterministic scheduler from the above mentioned paper is called
+PULSE. It was <a
+href="http://quviq.com/documentation/pulse/index.html">supposedly</a>
+released under the BSD license, however I’ve not been able to find
+it.</p>
+<p>PULSE is written in Erlang and the paper uses it to test Erlang code.
+In Erlang everything is triggered by message passing, so I think that
+the correct way of thinking about what PULSE does is that it acts as a
+person-in-the-middle proxy. With other words, an Erlang process doesn’t
+send a messaged directly to another process, but instead asks the
+scheduler to send it to the process. That way all messages go via the
+scheduler and it can choose the message order. Note that a seed can be
+used to introduce randomness, without introducing non-determinism.</p>
+<p>I implemented a proxy scheduler like this in Haskell (using
+<code>distributed-process</code>, think Haskell trying to be like
+Erlang) about 6 years <a
+href="https://github.com/advancedtelematic/quickcheck-state-machine-distributed#readme">ago</a>,
+but I didn’t know how to do it in a non-message-passing setting.</p>
+<p>I was therefore happy to see that my post inspired matklad to write a
+<a
+href="https://matklad.github.io/2023/07/05/properly-testing-concurrent-data-structures.html">post</a>
+where he shows how he’d do it in a multi-threaded shared memory
+setting.</p>
+<p>In this post I’ll port matklad’s approach from Rust to Haskell and
+hook it up to the parallel property-based testing machinary from my
+previous post.</p>
+<p>Another difference between matklad and the approach in this post is
+that matklad uses an ad-hoc correctness criteria, whereas I follow the
+parallel property-based testing paper and use <a
+href="https://cs.brown.edu/~mph/HerlihyW90/p463-herlihy.pdf">linearisability</a>.</p>
+<p>An ad-hoc criteria can be faster than linearisability checking, but
+depending on how complicated your system is, it might be harder to find
+one. Linearisability checking on the other hand follows mechanically
+(for free) from a sequential (single-threaded) model/fake.</p>
+<p>If you know what you are doing, then by all means figure out an
+ad-hoc correctness criteria like matklad does. If on the otherhand you
+haven’t tested much concurrent code before, then I’d recommend starting
+with the linearisability checking approach that we are about to
+describe<a href="#fn3" class="footnote-ref" id="fnref3"
+role="doc-noteref"><sup>3</sup></a>.</p>
+</section>
+<section id="motivation-and-overview" class="level2">
+<h2><a href="#motivation-and-overview"
+title="Motivation and overview">Motivation and overview</a></h2>
+<p>In order to explain what we’d like to do, it’s helpful to consider an
+example of a race condition.</p>
+<p>The text book <a
+href="https://en.wikipedia.org/wiki/Race_condition#Example">example</a>
+of a race condition is a counter which is incremented by two threads at
+the same time.</p>
+<p>One possible interleaving of the two threads that yields the correct
+result is the following:</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Time</th>
+<th style="text-align: left;">Thread 1</th>
+<th style="text-align: left;">Thread 2</th>
+<th style="text-align: center;"></th>
+<th style="text-align: left;">Integer value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">0</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">read value</td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">←</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">increase value</td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">write back</td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">→</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">4</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">read value</td>
+<td style="text-align: center;">←</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">5</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">increase value</td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">6</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">write back</td>
+<td style="text-align: center;">→</td>
+<td style="text-align: left;">2</td>
+</tr>
+</tbody>
+</table>
+<p>However there are other interleavings where one of the threads
+overwrites the other thread’s increment, yielding an incorrect
+result:</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Time</th>
+<th style="text-align: left;">Thread 1</th>
+<th style="text-align: left;">Thread 2</th>
+<th style="text-align: center;"></th>
+<th style="text-align: left;">Integer value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">0</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">read value</td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">←</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">read value</td>
+<td style="text-align: center;">←</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">increase value</td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">4</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">increase value</td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">5</td>
+<td style="text-align: left;">write back</td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">→</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">6</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">write back</td>
+<td style="text-align: center;">→</td>
+<td style="text-align: left;">1</td>
+</tr>
+</tbody>
+</table>
+<p>In most programming languages the thread interleaving is
+non-deterministic, and so we get irreproducible failures also sometimes
+known as “Heisenbugs”.</p>
+<p>What we’d like to do is to be able to start a program with some token
+and if the same token is used then we get the same thread interleaving
+and therefore a reproducible result.</p>
+<p>The idea, due to matklad, is to insert pauses between each shared
+memory operation (the reads and writes), have a scheduler unpause one
+thread at the time. The scheduler is parametrised by a seed which is
+used together with a pseudorandom number generator which allows it to
+deterministically choose which thread to unpause.</p>
+<p>In the rest of this post we will port matklad’s deterministic
+scheduler from Rust to Haskell, hopefully in a way that shows that this
+can be done in any other language with decent multi-threaded programming
+primitives. Then we’ll do a short recap of how parallel property-based
+testing works, and finally we’ll hook up the deterministic schduler to
+the parallel property-based testing machinary.</p>
+</section>
+<section id="deterministic-scheduler" class="level2">
+<h2><a href="#deterministic-scheduler"
+title="Deterministic scheduler">Deterministic scheduler</a></h2>
+<p>The scheduler needs to be able to communicate with the running
+threads, in order to be able to determinstically unpause, or “step”, one
+thread at a time.</p>
+<p>We’ll use Haskell’s <code>TMVar</code>s for this, but any kind of
+shared memory will do.</p>
+<p>Haskell’s <code>MVar</code>s can be thought of boxes that contain a
+value, where taking something out of a box that is empty blocks and
+putting something into a box that is full blocks as well. Where “blocks”
+means that the run-time will suspend the thread that tries the blocking
+action and only wake it up when the <code>MVar</code> changes, i.e. it’s
+an efficient way of waiting compared to <a
+href="https://en.wikipedia.org/wiki/Busy_waiting">busy-waiting</a> or
+spinning.</p>
+<p>The <code>T</code> in <code>TMVar</code>s merely adds <a
+href="https://en.wikipedia.org/wiki/Software_transactional_memory">STM</a>
+transactions around <code>MVar</code>s, we’ll see an example of what
+these are useful for shortly.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Signal</span> <span class="ot">=</span> <span class="dt">SingleThreaded</span> <span class="op">|</span> <span class="dt">MultiThreaded</span> (<span class="dt">TMVar</span> ())</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> <span class="dt">Eq</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ot">newSingleThreadedSignal ::</span> <span class="dt">Signal</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>newSingleThreadedSignal <span class="ot">=</span> <span class="dt">SingleThreaded</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="ot">newMultiThreadedSignal ::</span> <span class="dt">IO</span> <span class="dt">Signal</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>newMultiThreadedSignal <span class="ot">=</span> <span class="dt">MultiThreaded</span> <span class="op">&lt;$&gt;</span> newEmptyTMVarIO</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ot">waitUntilAllPaused ::</span> [<span class="dt">Signal</span>] <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>waitUntilAllPaused signals <span class="ot">=</span> atomically <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  bs <span class="ot">&lt;-</span> <span class="fu">mapM</span> isPaused signals</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  guard (<span class="fu">and</span> bs)</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">ManagedThreadId</span> a <span class="ot">=</span> <span class="dt">ManagedThreadId</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> _mtidName   ::</span> <span class="dt">String</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> _mtidSignal ::</span> <span class="dt">Signal</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> _mtidAsync  ::</span> <span class="dt">Async</span> a</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> <span class="dt">Eq</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">ManagedThreadId</span> a <span class="ot">=</span> <span class="dt">ManagedThreadId</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> _mtidName   ::</span> <span class="dt">String</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> _mtidSignal ::</span> <span class="dt">Signal</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> _mtidAsync  ::</span> <span class="dt">Async</span> a</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> <span class="dt">Eq</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ot">spawn ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> (<span class="dt">Signal</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> a) <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">ManagedThreadId</span> a)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>spawn name io <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  s <span class="ot">&lt;-</span> newMultiThreadedSignal</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  a <span class="ot">&lt;-</span> async (io s)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> (<span class="dt">ManagedThreadId</span> name s a)</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">ThreadStatus</span> a <span class="ot">=</span> <span class="dt">Paused</span> <span class="op">|</span> <span class="dt">Finished</span> a <span class="op">|</span> <span class="dt">Threw</span> <span class="dt">SomeException</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="ot">getThreadStatus ::</span> <span class="dt">ManagedThreadId</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">ThreadStatus</span> a)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>getThreadStatus mtid <span class="ot">=</span> atomically go</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    go <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>      res <span class="ot">&lt;-</span> pollSTM (_mtidAsync mtid)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>      <span class="kw">case</span> res <span class="kw">of</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Nothing</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>          b <span class="ot">&lt;-</span> isPaused (_mtidSignal mtid)</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>          <span class="kw">if</span> b</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>          <span class="kw">then</span> <span class="fu">return</span> <span class="dt">Paused</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>          <span class="kw">else</span> go</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Just</span> (<span class="dt">Left</span> err) <span class="ot">-&gt;</span> <span class="fu">return</span> (<span class="dt">Threw</span> err)</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Just</span> (<span class="dt">Right</span> x)  <span class="ot">-&gt;</span> <span class="fu">return</span> (<span class="dt">Finished</span> x)</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Wait until all threads are paused, then step one of them and wait until it</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- either pauses again or finishes. If it pauses again, then repeat the</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- stepping. If it finishes, remove it from the list of stepped threads and</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- continue stepping.</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="ot">schedule ::</span> <span class="dt">RandomGen</span> g <span class="ot">=&gt;</span> [<span class="dt">ManagedThreadId</span> a] <span class="ot">-&gt;</span> g <span class="ot">-&gt;</span> <span class="dt">IO</span> ([a], g)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>schedule mtids0 gen0 <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  res <span class="ot">&lt;-</span> timeout <span class="dv">1000000</span> (waitUntilAllPaused (<span class="fu">map</span> _mtidSignal mtids0))</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> res <span class="kw">of</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Nothing</span> <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="st">&quot;schedule: all threads didn&#39;t pause within a second&quot;</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Just</span> () <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>      <span class="co">-- putStrLn &quot;all paused&quot;</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>      go mtids0 gen0 []</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="ot">    go ::</span> <span class="dt">RandomGen</span> g <span class="ot">=&gt;</span> [<span class="dt">ManagedThreadId</span> a] <span class="ot">-&gt;</span> g <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">IO</span> ([a], g)</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>    go []    gen acc <span class="ot">=</span> <span class="fu">return</span> (<span class="fu">reverse</span> acc, gen)</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>    go mtids gen acc <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>      <span class="kw">let</span> (ix, gen&#39;) <span class="ot">=</span> randomR (<span class="dv">0</span>, <span class="fu">length</span> mtids <span class="op">-</span> <span class="dv">1</span>) gen</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>          mtid <span class="ot">=</span> mtids <span class="op">!!</span> ix</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>      <span class="co">-- putStrLn (&quot;schedule, picked: &quot; ++ _mtidName mtid)</span></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>      unpause (_mtidSignal mtid)</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>      status <span class="ot">&lt;-</span> getThreadStatus mtid</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>      <span class="kw">case</span> status <span class="kw">of</span></span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Finished</span> x <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>          <span class="co">-- putStrLn (&quot;schedule, finished: &quot; ++ _mtidName mtid)</span></span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>          go (mtids \\ [mtid]) gen&#39; (x <span class="op">:</span> acc)</span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Paused</span>     <span class="ot">-&gt;</span> go mtids gen&#39; acc</span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Threw</span> err  <span class="ot">-&gt;</span> <span class="fu">error</span> (<span class="st">&quot;schedule: &quot;</span> <span class="op">++</span> <span class="fu">show</span> err)</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ot">mapConcurrently ::</span> <span class="dt">RandomGen</span> g <span class="ot">=&gt;</span> (<span class="dt">Signal</span> <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> b) <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> g <span class="ot">-&gt;</span> <span class="dt">IO</span> ([b], g)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>mapConcurrently f xs gen <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  mtids <span class="ot">&lt;-</span> forM (<span class="fu">zip</span> [<span class="dv">0</span><span class="op">..</span>] xs) <span class="op">$</span> \(i, x) <span class="ot">-&gt;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    spawn (<span class="st">&quot;Thread &quot;</span> <span class="op">++</span> <span class="fu">show</span> i) (\sig <span class="ot">-&gt;</span> f sig x)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  schedule mtids gen</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">SharedMemory</span> a <span class="ot">=</span> <span class="dt">SharedMemory</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> memReadIORef  ::</span> <span class="dt">IORef</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> a</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> memWriteIORef ::</span> <span class="dt">IORef</span> a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="ot">realMem ::</span> <span class="dt">SharedMemory</span> a</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>realMem <span class="ot">=</span> <span class="dt">SharedMemory</span> readIORef writeIORef</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="ot">fakeMem ::</span> <span class="dt">Signal</span> <span class="ot">-&gt;</span> <span class="dt">SharedMemory</span> a</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>fakeMem signal <span class="ot">=</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">SharedMemory</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    { memReadIORef <span class="ot">=</span> \ref <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>        pause signal</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>        <span class="co">-- putStrLn &quot;reading ref&quot;</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>        x <span class="ot">&lt;-</span> readIORef ref</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>        <span class="co">-- pause signal</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>        <span class="fu">return</span> x</span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>    , memWriteIORef <span class="ot">=</span> \ref x <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>        pause signal</span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>        <span class="co">-- putStrLn &quot;writing ref&quot;</span></span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>        writeIORef ref x</span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>        <span class="co">-- pause signal</span></span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>    }</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">AtomicCounter</span> <span class="ot">=</span> <span class="dt">AtomicCounter</span> (<span class="dt">IORef</span> <span class="dt">Int</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="ot">newCounter ::</span> <span class="dt">IO</span> <span class="dt">AtomicCounter</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>newCounter <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  ref <span class="ot">&lt;-</span> newIORef <span class="dv">0</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> (<span class="dt">AtomicCounter</span> ref)</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="ot">incr ::</span> <span class="dt">SharedMemory</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">AtomicCounter</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>incr mem (<span class="dt">AtomicCounter</span> ref) <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  i <span class="ot">&lt;-</span> memReadIORef mem ref</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  memWriteIORef mem ref (i <span class="op">+</span> <span class="dv">1</span>)</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a><span class="ot">get ::</span> <span class="dt">SharedMemory</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">AtomicCounter</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Int</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>get mem (<span class="dt">AtomicCounter</span> ref) <span class="ot">=</span> memReadIORef mem ref</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ot">test&#39; ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">Int</span>, <span class="dt">Bool</span>, <span class="dt">Int</span>)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>test&#39; seed <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  counter <span class="ot">&lt;-</span> newCounter</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  mtid1 <span class="ot">&lt;-</span> spawn <span class="st">&quot;0&quot;</span> (\signal <span class="ot">-&gt;</span> incr (fakeMem signal) counter)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  mtid2 <span class="ot">&lt;-</span> spawn <span class="st">&quot;1&quot;</span> (\signal <span class="ot">-&gt;</span> incr (fakeMem signal) counter)</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> gen  <span class="ot">=</span> mkStdGen seed</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">putStrLn</span> <span class="st">&quot;starting scheduler&quot;</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>  _ <span class="ot">&lt;-</span> schedule [mtid1, mtid2] gen</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>  two <span class="ot">&lt;-</span> get realMem counter</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> (seed, two <span class="op">==</span> <span class="dv">2</span>, two)</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a><span class="ot">test2 ::</span> <span class="dt">IO</span> ()</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>test2 <span class="ot">=</span> <span class="fu">mapM_</span> (\seed <span class="ot">-&gt;</span> <span class="fu">print</span> <span class="op">=&lt;&lt;</span> test&#39; seed) [<span class="dv">0</span><span class="op">..</span><span class="dv">0</span>]</span></code></pre></div>
+</section>
+<section id="parallel-property-based-testing-recap" class="level2">
+<h2><a href="#parallel-property-based-testing-recap"
+title="Parallel property-based testing recap">Parallel property-based
+testing recap</a></h2>
+<p>In our counter example above, we had two concurrent increments, in
+this case it’s easy to see what the answer must be (the counter must
+have the value of two, if we start counting from zero and increment by
+one).</p>
+<p>However for more complicated scenarios it gets less clear,
+consider:</p>
+<ul>
+<li>two concurrent incrs + get</li>
+<li>crashing threads</li>
+</ul>
+<p>Luckily there’s a correctness criteria for concurrent programs like
+these which is based on a sequential model:</p>
+<p>Linearizability: a correctness condition for concurrent objects by
+Herlihy and Wing (1990) <a
+href="https://cs.brown.edu/~mph/HerlihyW90/p463-herlihy.pdf"
+class="uri">https://cs.brown.edu/~mph/HerlihyW90/p463-herlihy.pdf</a></p>
+<p>this is what we use in parallel property-based testing (and also what
+Jepsen’s Knossos checker uses)</p>
+<p>The idea in a nutshell: execute commands in parallel, collect a
+concurrent history of when each command started and stopped executing,
+try to find an interleaving of commands which satisfies the sequential
+model.</p>
+</section>
+<section id="integrating-the-scheduler-into-the-testing" class="level2">
+<h2><a href="#integrating-the-scheduler-into-the-testing"
+title="Integrating the scheduler into the testing">Integrating the
+scheduler into the testing</a></h2>
+<p>I don’t want to reimplement the parallel property-based testing
+machinary from my previous post here, but merely show that integrating
+the deterministic scheduler isn’t too much work.</p>
+<section id="changes-to-sequential-module" class="level3">
+<h3><a href="#changes-to-sequential-module"
+title="Changes to sequential module">Changes to sequential
+module</a></h3>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode diff"><code class="sourceCode diff"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">--- ../stateful-pbt-with-fakes/src/Stateful.hs  2024-06-20 09:02:07.618238490 +0200</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="dt">+++ src/Stateful.hs 2024-07-11 06:59:12.547433661 +0200</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -2,9 +2,10 @@</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE DerivingStrategies #-}</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE FlexibleContexts #-}</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE InstanceSigs #-}</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="va">+{-# LANGUAGE Rank2Types #-}</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE ScopedTypeVariables #-}</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="st">-{-# LANGUAGE StrictData #-}</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE StandaloneDeriving #-}</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a><span class="va">+{-# LANGUAGE StrictData #-}</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE TypeFamilies #-}</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a> {-# LANGUAGE UndecidableInstances #-}</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -13,17 +14,21 @@</span></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a> import Control.Monad</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a> import Control.Monad.Catch</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a> import Control.Monad.IO.Class</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a><span class="va">+import Data.Coerce</span></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a><span class="va">+import Data.Foldable</span></span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a> import Data.IntMap (IntMap)</span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a> import qualified Data.IntMap as IntMap</span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a><span class="st">-import Data.Foldable</span></span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a> import Data.Kind</span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a><span class="st">-import Data.Coerce</span></span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a><span class="va">+import Data.Proxy</span></span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a> import Data.Set (Set)</span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a> import qualified Data.Set as Set</span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a> import Data.Void</span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a> import Test.QuickCheck hiding (Failure, Success)</span>
+<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a><span class="va">+import Test.QuickCheck.Gen</span></span>
+<span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a> import Test.QuickCheck.Monadic</span>
+<span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a><span class="va">+import qualified ManagedThread2 as Scheduler</span></span>
+<span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
+<span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a> ------------------------------------------------------------------------</span>
+<span id="cb13-37"><a href="#cb13-37" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb13-38"><a href="#cb13-38" aria-hidden="true" tabindex="-1"></a> class ( Monad (CommandMonad state)</span>
+<span id="cb13-39"><a href="#cb13-39" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -96,6 +101,13 @@</span></span>
+<span id="cb13-40"><a href="#cb13-40" aria-hidden="true" tabindex="-1"></a>   type CommandMonad state = IO</span>
+<span id="cb13-41"><a href="#cb13-41" aria-hidden="true" tabindex="-1"></a> -- end snippet StateModel</span>
+<span id="cb13-42"><a href="#cb13-42" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb13-43"><a href="#cb13-43" aria-hidden="true" tabindex="-1"></a><span class="va">+-- start snippet runCommandMonad</span></span>
+<span id="cb13-44"><a href="#cb13-44" aria-hidden="true" tabindex="-1"></a><span class="va">+  -- If another command monad is used we need to provide a way run it inside the</span></span>
+<span id="cb13-45"><a href="#cb13-45" aria-hidden="true" tabindex="-1"></a><span class="va">+  -- IO monad. This is only needed for parallel testing, because IO is the only</span></span>
+<span id="cb13-46"><a href="#cb13-46" aria-hidden="true" tabindex="-1"></a><span class="va">+  -- monad we can execute on different threads.</span></span>
+<span id="cb13-47"><a href="#cb13-47" aria-hidden="true" tabindex="-1"></a><span class="va">+  runCommandMonad :: proxy state -&gt; CommandMonad state a -&gt; Scheduler.Signal -&gt; IO a</span></span>
+<span id="cb13-48"><a href="#cb13-48" aria-hidden="true" tabindex="-1"></a><span class="va">+-- end snippet runCommandMonad</span></span>
+<span id="cb13-49"><a href="#cb13-49" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
+<span id="cb13-50"><a href="#cb13-50" aria-hidden="true" tabindex="-1"></a> ------------------------------------------------------------------------</span>
+<span id="cb13-51"><a href="#cb13-51" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb13-52"><a href="#cb13-52" aria-hidden="true" tabindex="-1"></a> -- start snippet Var</span>
+<span id="cb13-53"><a href="#cb13-53" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -219,10 +231,19 @@</span></span>
+<span id="cb13-54"><a href="#cb13-54" aria-hidden="true" tabindex="-1"></a> -- Another option would be to introduce a new type class `ReturnsReferences` and</span>
+<span id="cb13-55"><a href="#cb13-55" aria-hidden="true" tabindex="-1"></a> -- ask the user to manually implement it.</span>
+<span id="cb13-56"><a href="#cb13-56" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb13-57"><a href="#cb13-57" aria-hidden="true" tabindex="-1"></a><span class="va">+hoist :: Monad m =&gt; (forall x. m x -&gt; IO x) -&gt; PropertyM m a -&gt; PropertyM IO a</span></span>
+<span id="cb13-58"><a href="#cb13-58" aria-hidden="true" tabindex="-1"></a><span class="va">+hoist nat (MkPropertyM f) = MkPropertyM $ \g -&gt;</span></span>
+<span id="cb13-59"><a href="#cb13-59" aria-hidden="true" tabindex="-1"></a><span class="va">+  let</span></span>
+<span id="cb13-60"><a href="#cb13-60" aria-hidden="true" tabindex="-1"></a><span class="va">+    MkGen h = f (fmap (fmap (return . ioProperty)) g)</span></span>
+<span id="cb13-61"><a href="#cb13-61" aria-hidden="true" tabindex="-1"></a><span class="va">+  in</span></span>
+<span id="cb13-62"><a href="#cb13-62" aria-hidden="true" tabindex="-1"></a><span class="va">+    MkGen (\r n -&gt; nat (h r n))</span></span>
+<span id="cb13-63"><a href="#cb13-63" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
+<span id="cb13-64"><a href="#cb13-64" aria-hidden="true" tabindex="-1"></a> -- start snippet runCommands</span>
+<span id="cb13-65"><a href="#cb13-65" aria-hidden="true" tabindex="-1"></a> runCommands :: forall state. StateModel state</span>
+<span id="cb13-66"><a href="#cb13-66" aria-hidden="true" tabindex="-1"></a><span class="st">-            =&gt; Commands state -&gt; PropertyM (CommandMonad state) ()</span></span>
+<span id="cb13-67"><a href="#cb13-67" aria-hidden="true" tabindex="-1"></a><span class="st">-runCommands (Commands cmds0) = go initialState emptyEnv cmds0</span></span>
+<span id="cb13-68"><a href="#cb13-68" aria-hidden="true" tabindex="-1"></a><span class="va">+            =&gt; Commands state -&gt; PropertyM IO ()</span></span>
+<span id="cb13-69"><a href="#cb13-69" aria-hidden="true" tabindex="-1"></a><span class="va">+runCommands (Commands cmds0) =</span></span>
+<span id="cb13-70"><a href="#cb13-70" aria-hidden="true" tabindex="-1"></a><span class="va">+  hoist (flip (runCommandMonad (Proxy :: Proxy state)) Scheduler.newSingleThreadedSignal) $</span></span>
+<span id="cb13-71"><a href="#cb13-71" aria-hidden="true" tabindex="-1"></a><span class="va">+    go initialState emptyEnv cmds0</span></span>
+<span id="cb13-72"><a href="#cb13-72" aria-hidden="true" tabindex="-1"></a>   where</span>
+<span id="cb13-73"><a href="#cb13-73" aria-hidden="true" tabindex="-1"></a>     go :: state -&gt; Env state -&gt; [Command state (Var (Reference state))]</span>
+<span id="cb13-74"><a href="#cb13-74" aria-hidden="true" tabindex="-1"></a>        -&gt; PropertyM (CommandMonad state) ()</span></code></pre></div>
+</section>
+<section id="changes-to-parallel-module" class="level3">
+<h3><a href="#changes-to-parallel-module"
+title="Changes to parallel module">Changes to parallel module</a></h3>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode diff"><code class="sourceCode diff"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">--- ../stateful-pbt-with-fakes/src/Parallel.hs  2024-06-26 12:29:51.889932357 +0200</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="dt">+++ src/Parallel.hs 2024-07-11 06:59:32.502563455 +0200</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -11,7 +11,6 @@</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a> module Parallel where</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="st">-import Control.Concurrent.Async</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a> import Control.Concurrent.STM</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a> import Control.Exception (SomeException, displayException, try)</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a> import Control.Monad</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -26,9 +25,13 @@</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a> import Data.Set (Set)</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a> import qualified Data.Set as Set</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a> import Data.Tree</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a><span class="va">+import System.Random</span></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a> import Test.QuickCheck</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a><span class="va">+import Test.QuickCheck.Gen</span></span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a> import Test.QuickCheck.Monadic</span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a><span class="va">+import Test.QuickCheck.Random</span></span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a><span class="va">+import qualified ManagedThread2 as Scheduler</span></span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a> import Stateful</span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a> ------------------------------------------------------------------------</span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -46,13 +49,6 @@</span></span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>   shrinkCommandParallel ss cmd = shrinkCommand (maximum ss) cmd</span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a> -- end snippet ParallelModel</span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a><span class="kw">--- start snippet runCommandMonad</span></span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a><span class="st">-  -- If another command monad is used we need to provide a way run it inside the</span></span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a><span class="st">-  -- IO monad. This is only needed for parallel testing, because IO is the only</span></span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a><span class="st">-  -- monad we can execute on different threads.</span></span>
+<span id="cb14-33"><a href="#cb14-33" aria-hidden="true" tabindex="-1"></a><span class="st">-  runCommandMonad :: proxy state -&gt; CommandMonad state a -&gt; IO a</span></span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a><span class="kw">--- end snippet runCommandMonad</span></span>
+<span id="cb14-35"><a href="#cb14-35" aria-hidden="true" tabindex="-1"></a><span class="st">-</span></span>
+<span id="cb14-36"><a href="#cb14-36" aria-hidden="true" tabindex="-1"></a> -- start snippet ParallelCommands</span>
+<span id="cb14-37"><a href="#cb14-37" aria-hidden="true" tabindex="-1"></a> newtype ParallelCommands state = ParallelCommands [Fork state]</span>
+<span id="cb14-38"><a href="#cb14-38" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb14-39"><a href="#cb14-39" aria-hidden="true" tabindex="-1"></a><span class="dt">@@ -274,36 +270,41 @@</span></span>
+<span id="cb14-40"><a href="#cb14-40" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb14-41"><a href="#cb14-41" aria-hidden="true" tabindex="-1"></a> ------------------------------------------------------------------------</span>
+<span id="cb14-42"><a href="#cb14-42" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb14-43"><a href="#cb14-43" aria-hidden="true" tabindex="-1"></a><span class="va">+getSeed :: PropertyM m QCGen</span></span>
+<span id="cb14-44"><a href="#cb14-44" aria-hidden="true" tabindex="-1"></a><span class="va">+getSeed = MkPropertyM (\f -&gt; MkGen (\r n -&gt; unGen (f r) r n))</span></span>
+<span id="cb14-45"><a href="#cb14-45" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
+<span id="cb14-46"><a href="#cb14-46" aria-hidden="true" tabindex="-1"></a> -- start snippet runParallelCommands</span>
+<span id="cb14-47"><a href="#cb14-47" aria-hidden="true" tabindex="-1"></a> runParallelCommands :: forall state. ParallelModel state</span>
+<span id="cb14-48"><a href="#cb14-48" aria-hidden="true" tabindex="-1"></a>                     =&gt; ParallelCommands state -&gt; PropertyM IO ()</span>
+<span id="cb14-49"><a href="#cb14-49" aria-hidden="true" tabindex="-1"></a> runParallelCommands cmds0@(ParallelCommands forks0) = do</span>
+<span id="cb14-50"><a href="#cb14-50" aria-hidden="true" tabindex="-1"></a><span class="va">+  gen &lt;- getSeed</span></span>
+<span id="cb14-51"><a href="#cb14-51" aria-hidden="true" tabindex="-1"></a><span class="va">+  liftIO (putStrLn (&quot;Seed: &quot; ++ show gen))</span></span>
+<span id="cb14-52"><a href="#cb14-52" aria-hidden="true" tabindex="-1"></a>   forM_ (parallelCommands cmds0) $ \cmd -&gt; do</span>
+<span id="cb14-53"><a href="#cb14-53" aria-hidden="true" tabindex="-1"></a>     let name = commandName cmd</span>
+<span id="cb14-54"><a href="#cb14-54" aria-hidden="true" tabindex="-1"></a>     monitor (tabulate &quot;Commands&quot; [name] . classify True name)</span>
+<span id="cb14-55"><a href="#cb14-55" aria-hidden="true" tabindex="-1"></a>   monitor (tabulate &quot;Concurrency&quot; (map (show . length . unFork) forks0))</span>
+<span id="cb14-56"><a href="#cb14-56" aria-hidden="true" tabindex="-1"></a>   q   &lt;- liftIO newTQueueIO</span>
+<span id="cb14-57"><a href="#cb14-57" aria-hidden="true" tabindex="-1"></a>   c   &lt;- liftIO newAtomicCounter</span>
+<span id="cb14-58"><a href="#cb14-58" aria-hidden="true" tabindex="-1"></a><span class="st">-  env &lt;- liftIO (runForks q c emptyEnv forks0)</span></span>
+<span id="cb14-59"><a href="#cb14-59" aria-hidden="true" tabindex="-1"></a><span class="va">+  (env, _gen&#39;) &lt;- liftIO (runForks q c emptyEnv gen forks0)</span></span>
+<span id="cb14-60"><a href="#cb14-60" aria-hidden="true" tabindex="-1"></a>   hist &lt;- History &lt;$&gt; liftIO (atomically (flushTQueue q))</span>
+<span id="cb14-61"><a href="#cb14-61" aria-hidden="true" tabindex="-1"></a>   let ok = linearisable env (interleavings hist)</span>
+<span id="cb14-62"><a href="#cb14-62" aria-hidden="true" tabindex="-1"></a>   unless ok (monitor (counterexample (show hist)))</span>
+<span id="cb14-63"><a href="#cb14-63" aria-hidden="true" tabindex="-1"></a>   assert ok</span>
+<span id="cb14-64"><a href="#cb14-64" aria-hidden="true" tabindex="-1"></a>   where</span>
+<span id="cb14-65"><a href="#cb14-65" aria-hidden="true" tabindex="-1"></a><span class="st">-    runForks :: TQueue (Event state) -&gt; AtomicCounter -&gt; Env state -&gt; [Fork state]</span></span>
+<span id="cb14-66"><a href="#cb14-66" aria-hidden="true" tabindex="-1"></a><span class="st">-             -&gt; IO (Env state)</span></span>
+<span id="cb14-67"><a href="#cb14-67" aria-hidden="true" tabindex="-1"></a><span class="st">-    runForks _q _c env [] = return env</span></span>
+<span id="cb14-68"><a href="#cb14-68" aria-hidden="true" tabindex="-1"></a><span class="st">-    runForks  q  c env (Fork cmds : forks) = do</span></span>
+<span id="cb14-69"><a href="#cb14-69" aria-hidden="true" tabindex="-1"></a><span class="st">-      envs &lt;- liftIO $</span></span>
+<span id="cb14-70"><a href="#cb14-70" aria-hidden="true" tabindex="-1"></a><span class="st">-        mapConcurrently (runParallelReal q c env) (zip [Pid 0..] cmds)</span></span>
+<span id="cb14-71"><a href="#cb14-71" aria-hidden="true" tabindex="-1"></a><span class="va">+    runForks :: RandomGen g =&gt; TQueue (Event state) -&gt; AtomicCounter -&gt; Env state -&gt; g</span></span>
+<span id="cb14-72"><a href="#cb14-72" aria-hidden="true" tabindex="-1"></a><span class="va">+             -&gt; [Fork state] -&gt; IO (Env state, g)</span></span>
+<span id="cb14-73"><a href="#cb14-73" aria-hidden="true" tabindex="-1"></a><span class="va">+    runForks _q _c env gen [] = return (env, gen)</span></span>
+<span id="cb14-74"><a href="#cb14-74" aria-hidden="true" tabindex="-1"></a><span class="va">+    runForks  q  c env gen (Fork cmds : forks) = do</span></span>
+<span id="cb14-75"><a href="#cb14-75" aria-hidden="true" tabindex="-1"></a><span class="va">+      (envs, gen&#39;) &lt;- liftIO $</span></span>
+<span id="cb14-76"><a href="#cb14-76" aria-hidden="true" tabindex="-1"></a><span class="va">+        Scheduler.mapConcurrently (runParallelReal q c env) (zip [Pid 0..] cmds) gen</span></span>
+<span id="cb14-77"><a href="#cb14-77" aria-hidden="true" tabindex="-1"></a>       let env&#39; = combineEnvs (env : envs)</span>
+<span id="cb14-78"><a href="#cb14-78" aria-hidden="true" tabindex="-1"></a><span class="st">-      runForks q c env&#39; forks</span></span>
+<span id="cb14-79"><a href="#cb14-79" aria-hidden="true" tabindex="-1"></a><span class="va">+      runForks q c env&#39; gen&#39; forks</span></span>
+<span id="cb14-80"><a href="#cb14-80" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb14-81"><a href="#cb14-81" aria-hidden="true" tabindex="-1"></a>     runParallelReal :: TQueue (Event state) -&gt; AtomicCounter -&gt; Env state</span>
+<span id="cb14-82"><a href="#cb14-82" aria-hidden="true" tabindex="-1"></a><span class="st">-                    -&gt; (Pid, Command state (Var (Reference state))) -&gt; IO (Env state)</span></span>
+<span id="cb14-83"><a href="#cb14-83" aria-hidden="true" tabindex="-1"></a><span class="st">-    runParallelReal q c env (pid, cmd) = do</span></span>
+<span id="cb14-84"><a href="#cb14-84" aria-hidden="true" tabindex="-1"></a><span class="va">+                    -&gt; Scheduler.Signal -&gt; (Pid, Command state (Var (Reference state))) -&gt; IO (Env state)</span></span>
+<span id="cb14-85"><a href="#cb14-85" aria-hidden="true" tabindex="-1"></a><span class="va">+    runParallelReal q c env signal (pid, cmd) = do</span></span>
+<span id="cb14-86"><a href="#cb14-86" aria-hidden="true" tabindex="-1"></a>       atomically (writeTQueue q (Invoke pid cmd))</span>
+<span id="cb14-87"><a href="#cb14-87" aria-hidden="true" tabindex="-1"></a><span class="st">-      eResp &lt;- try (runCommandMonad (Proxy :: Proxy state) (runReal (fmap (lookupEnv env) cmd)))</span></span>
+<span id="cb14-88"><a href="#cb14-88" aria-hidden="true" tabindex="-1"></a><span class="va">+      eResp &lt;- try (runCommandMonad (Proxy :: Proxy state) (runReal (fmap (lookupEnv env) cmd)) signal)</span></span>
+<span id="cb14-89"><a href="#cb14-89" aria-hidden="true" tabindex="-1"></a>       case eResp of</span>
+<span id="cb14-90"><a href="#cb14-90" aria-hidden="true" tabindex="-1"></a>         Left (err :: SomeException) -&gt;</span>
+<span id="cb14-91"><a href="#cb14-91" aria-hidden="true" tabindex="-1"></a>           error (&quot;runParallelReal: &quot; ++ displayException err)</span></code></pre></div>
+</section>
+</section>
+<section id="conclusion-and-further-work" class="level2">
+<h2><a href="#conclusion-and-further-work"
+title="Conclusion and further work">Conclusion and further work</a></h2>
+<ul>
+<li><p>some seeds don’t give the minimal counterexample, shrinking can
+be improved as already pointed out in my previous post</p></li>
+<li><p>enumarate all interleavings upto some depth, model checking
+style, perhaps using smallcheck? Compare to dejafu library</p></li>
+<li><p>while this approach works in all languages due to its white-box
+nature, what would it take to have a black-box approach that’s
+deterministic?</p>
+<ul>
+<li>intercept syscalls rr (and hermit?)</li>
+<li>hypervisor (Antithesis)</li>
+<li>language support for user schedulers</li>
+</ul></li>
+</ul>
+</section>
+<section id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>If you haven’t heard of <a
+href="https://martinfowler.com/bliki/TestDouble.html">fakes</a> before,
+think of them as a more elaborate test double than a mock. A mock of a
+component expects to be called in some particular way (i.e. exposes only
+some limited subset of the components API), and typically throw an
+expeception when called in any other way. While a fake exposes the full
+API and can be called just like the real component, but unlike the real
+component it takes some shortcuts. For example a fake might lose all
+data when restarted (i.e. keeps all data in memory, while the real
+component persists the data to some stable storage).<a href="#fnref1"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>The reason for shrinking not working so well with
+non-determinism is because shrinking stops when the property passes. So
+if some input causes the property to fail and then we rerun the property
+on a smaller input it might be the case that the smaller input still
+contains the race condition, but because the interleaving of threads is
+non-deterministic we are unlucky and the race condition isn’t triggered
+and the property passes, which stops the shrinking process.<a
+href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>Jepsen’s <a
+href="https://aphyr.com/posts/314-computational-techniques-in-knossos">Knossos
+checker</a> also uses linearisability checking and has found many <a
+href="https://jepsen.io/analyses">bugs</a>, so we are in good
+company.</p>
+<p>Note that the most recent Jepsen analyses use the <a
+href="https://github.com/jepsen-io/elle">Elle checker</a>, rather than
+the Knossos checker. The Elle checker doesn’t do linearisability
+checking, but rather looks for cycles in the dependencies of database
+transactions. Checking for cycles is less general than linearisability
+checking, but also more efficient. See the Elle <a
+href="https://github.com/jepsen-io/elle/raw/master/paper/elle.pdf">paper</a>
+for details.<a href="#fnref3" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+</main>
+</body>
+</html>
