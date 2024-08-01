@@ -578,26 +578,33 @@ one).</p>
 <p>However for more complicated scenarios it gets less clear,
 consider:</p>
 <ul>
-<li>two concurrent incrs + get</li>
-<li>timeouts / crashing threads</li>
-<li>more complicated datastructures than a counter, e.g. key-value store
-with deletes</li>
+<li>Two increments and a get operation all happening concurrently,
+what’s the right return value of the get? It depends, it can be 0, 1 or
+2;</li>
+<li>Consider the counter being on a remote server and clients doing the
+increments and gets via some network. Imagine a client first does an
+increment and this request times out or the client crashes, then another
+client does a get operation, what’s the return value of the get? It
+depends, it can be 0 or 1 depending on if the timeout or crash happened
+before or after the server receieved the increment;</li>
+<li>The above gets a lot more complicated with more operations involved
+or more complicated datastructures than a counter, e.g. key-value store
+with deletes.</li>
 </ul>
 <p>Luckily there’s a correctness criteria for concurrent programs like
-these which is based on a sequential model:</p>
-<p>Linearizability: a correctness condition for concurrent objects by
-Herlihy and Wing (1990) <a
-href="https://cs.brown.edu/~mph/HerlihyW90/p463-herlihy.pdf"
-class="uri">https://cs.brown.edu/~mph/HerlihyW90/p463-herlihy.pdf</a></p>
-<p>this is what we use in parallel property-based testing (and also what
-Jepsen’s Knossos checker uses)</p>
+these which is based on a sequential model, <a
+href="https://cs.brown.edu/~mph/HerlihyW90/p463-herlihy.pdf">Linearizability:
+a correctness condition for concurrent objects</a> by Herlihy and Wing
+(1990), which hides the complexity of non-determinism and crashing
+threads and works on arbitrary datastrucures. This is what we use in
+parallel property-based testing (and is also what Jepsen’s Knossos
+checker uses).</p>
 <p>The idea in a nutshell: execute commands in parallel, collect a
 concurrent history of when each command started and stopped executing,
 try to find an interleaving of commands which satisfies the sequential
-model.</p>
-<ul>
-<li>eventual consistency?</li>
-</ul>
+model. For a more detailed explaination see my <a
+href="https://stevana.github.io/the_sad_state_of_property-based_testing_libraries.html#parallel-property-based-testing">previous
+post</a>.</p>
 </section>
 <section id="integrating-the-scheduler-into-the-testing" class="level2">
 <h2><a href="#integrating-the-scheduler-into-the-testing"
@@ -717,63 +724,98 @@ class="sourceCode diff"><code class="sourceCode diff"><span id="cb25-1"><a href=
 <h3><a href="#changes-to-the-counter-example"
 title="Changes to the counter example">Changes to the counter
 example</a></h3>
+<p>We start by replacing our sleeps (<code>threadDelay</code>s) with
+operations from the shared memory interface:</p>
 <div class="sourceCode" id="cb26"><pre
-class="sourceCode diff"><code class="sourceCode diff"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="va">+import qualified ManagedThread2 as Scheduler</span></span></code></pre></div>
+class="sourceCode diff"><code class="sourceCode diff"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="va">+import qualified ManagedThread2 as Scheduler</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="st">-incrRaceCondition :: IO ()</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="st">-incrRaceCondition = do</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="st">-  n &lt;- readIORef gLOBAL_COUNTER</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a><span class="st">-  threadDelay 100</span></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a><span class="st">-  writeIORef gLOBAL_COUNTER (n + 1)</span></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a><span class="st">-  threadDelay 100</span></span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a><span class="va">+incrRaceCondition :: Scheduler.SharedMemory Int -&gt; IO ()</span></span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a><span class="va">+incrRaceCondition mem = do</span></span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a><span class="va">+  n &lt;- liftIO (Scheduler.memReadIORef mem gLOBAL_COUNTER)</span></span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a><span class="va">+  Scheduler.memWriteIORef mem gLOBAL_COUNTER (n + 1)</span></span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a><span class="st">-get :: IO Int</span></span>
+<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a><span class="st">-get = readIORef gLOBAL_COUNTER</span></span>
+<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a><span class="va">+get :: Scheduler.SharedMemory Int -&gt; IO Int</span></span>
+<span id="cb26-17"><a href="#cb26-17" aria-hidden="true" tabindex="-1"></a><span class="va">+get mem = Scheduler.memReadIORef mem gLOBAL_COUNTER</span></span></code></pre></div>
+<p>We need to pass in the <code>Signal</code> communication channel when
+constructing the shared memory interface. With our change to
+<code>runCommandMonad</code> we have access to the <code>sig</code>nal
+when translating the <code>CommandMonad</code> into <code>IO</code>, so
+we can simply pass the <code>sig</code>nal through using the reader
+monad (recall that <code>ReaderT Scheduler.Signal IO a</code> is
+isomorphic to <code>Scheduler.Signal -&gt; IO a</code>).</p>
 <div class="sourceCode" id="cb27"><pre
-class="sourceCode diff"><code class="sourceCode diff"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="st">-incrRaceCondition :: IO ()</span></span>
-<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="st">-incrRaceCondition = do</span></span>
-<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="st">-  n &lt;- readIORef gLOBAL_COUNTER</span></span>
-<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="st">-  threadDelay 100</span></span>
-<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="st">-  writeIORef gLOBAL_COUNTER (n + 1)</span></span>
-<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a><span class="st">-  threadDelay 100</span></span>
-<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a><span class="va">+incrRaceCondition :: Scheduler.SharedMemory Int -&gt; IO ()</span></span>
-<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a><span class="va">+incrRaceCondition mem = do</span></span>
-<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a><span class="va">+  n &lt;- liftIO (Scheduler.memReadIORef mem gLOBAL_COUNTER)</span></span>
-<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a><span class="va">+  Scheduler.memWriteIORef mem gLOBAL_COUNTER (n + 1)</span></span>
-<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a><span class="st">-get :: IO Int</span></span>
-<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a><span class="st">-get = readIORef gLOBAL_COUNTER</span></span>
-<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a><span class="va">+get :: Scheduler.SharedMemory Int -&gt; IO Int</span></span>
-<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a><span class="va">+get mem = Scheduler.memReadIORef mem gLOBAL_COUNTER</span></span></code></pre></div>
+class="sourceCode diff"><code class="sourceCode diff"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="va">+  type CommandMonad Counter = ReaderT Scheduler.Signal IO</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="va">+  runCommandMonad _ m sig = runReaderT m sig</span></span></code></pre></div>
+<p>The construction of the fake shared memory interface happens in the
+<code>runReal</code> function, where <code>ask</code> retrives the
+<code>sig</code>nal via the reader monad:</p>
 <div class="sourceCode" id="cb28"><pre
-class="sourceCode diff"><code class="sourceCode diff"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="va">+  type CommandMonad Counter = ReaderT Scheduler.Signal IO</span></span>
-<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
-<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>   -- We also need to explain which part of the counter API each command</span>
-<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>   -- corresponds to.</span>
-<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a><span class="st">-  runReal :: Command Counter r -&gt; IO (Response Counter r)</span></span>
-<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a><span class="st">-  runReal Get  = Get_  &lt;$&gt; get</span></span>
-<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a><span class="st">-  runReal Incr = Incr_ &lt;$&gt; incrRaceCondition</span></span>
-<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a><span class="va">+  runReal :: Command Counter r -&gt; ReaderT Scheduler.Signal IO (Response Counter r)</span></span>
-<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a><span class="va">+  runReal cmd = do</span></span>
-<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a><span class="va">+    sig &lt;- ask</span></span>
-<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a><span class="va">+    let mem = Scheduler.fakeMem sig</span></span>
-<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a><span class="va">+    case cmd of</span></span>
-<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a><span class="va">+      Get  -&gt; liftIO (Get_  &lt;$&gt; get mem)</span></span>
-<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a><span class="va">+      Incr -&gt; liftIO (Incr_ &lt;$&gt; incrRaceCondition mem)</span></span></code></pre></div>
+class="sourceCode diff"><code class="sourceCode diff"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>   -- We also need to explain which part of the counter API each command</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>   -- corresponds to.</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a><span class="st">-  runReal :: Command Counter r -&gt; IO (Response Counter r)</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a><span class="st">-  runReal Get  = Get_  &lt;$&gt; get</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a><span class="st">-  runReal Incr = Incr_ &lt;$&gt; incrRaceCondition</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a><span class="va">+  runReal :: Command Counter r -&gt; CommandMonad Counter (Response Counter r)</span></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a><span class="va">+  runReal cmd = do</span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a><span class="va">+    sig &lt;- ask</span></span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a><span class="va">+    let mem = Scheduler.fakeMem sig</span></span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a><span class="va">+    case cmd of</span></span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a><span class="va">+      Get  -&gt; liftIO (Get_  &lt;$&gt; get mem)</span></span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a><span class="va">+      Incr -&gt; liftIO (Incr_ &lt;$&gt; incrRaceCondition mem)</span></span></code></pre></div>
+<p>The final changes are in the in the parallel property itself. Where
+we can now remove the <code>replicateM_ 10</code>, which repeats the
+test 10 times, because the thread scheduling is now deterministic and we
+don’t need to repeat the test in order to avoid being unlucky with only
+getting thread interleavings that don’t reveal the bug.</p>
 <div class="sourceCode" id="cb29"><pre
-class="sourceCode diff"><code class="sourceCode diff"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="va">+  runCommandMonad _ m sig = runReaderT m sig</span></span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a> prop_counter :: Commands Counter -&gt; Property</span>
-<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a> prop_counter cmds = monadicIO $ do</span>
-<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a><span class="st">-  run reset</span></span>
-<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a><span class="va">+  liftIO reset</span></span>
-<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>   runCommands cmds</span>
+class="sourceCode diff"><code class="sourceCode diff"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a> prop_parallelCounter :: ParallelCommands Counter -&gt; Property</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a> prop_parallelCounter cmds = monadicIO $ do</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="st">-  replicateM_ 10 $ do</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="st">-    run reset</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a><span class="st">-    runParallelCommands cmds</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a><span class="va">+  run reset</span></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a><span class="va">+  runParallelCommands cmds</span></span>
 <span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>   assert True</span></code></pre></div>
-<div class="sourceCode" id="cb30"><pre
-class="sourceCode diff"><code class="sourceCode diff"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="st">-instance ParallelModel Counter where</span></span>
-<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="st">-</span></span>
-<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="st">-  -- The command monad is IO, so we don&#39;t need to do anything here.</span></span>
-<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="st">-  runCommandMonad _ = id</span></span>
-<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a><span class="va">+instance ParallelModel Counter</span></span>
-<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a> prop_parallelCounter :: ParallelCommands Counter -&gt; Property</span>
-<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a> prop_parallelCounter cmds = monadicIO $ do</span>
-<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a><span class="st">-  replicateM_ 10 $ do</span></span>
-<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a><span class="st">-    run reset</span></span>
-<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a><span class="st">-    runParallelCommands cmds</span></span>
-<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a><span class="va">+  run reset</span></span>
-<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a><span class="va">+  runParallelCommands cmds</span></span>
-<span id="cb30-14"><a href="#cb30-14" aria-hidden="true" tabindex="-1"></a>   assert True</span></code></pre></div>
+<p>Running the parallel property gives output such as the following:</p>
+<pre><code>&gt;&gt;&gt; quickCheck prop_parallelCounter
+Seed: SMGen 14250666030628800360 1954972351745194697
+Seed: SMGen 13912848539649022280 6105520832690741705
+Seed: SMGen 11982463081258021613 5563494797767522969
+Seed: SMGen 3766496530906674898 8913882928510646053
+Seed: SMGen 9878140450988724144 11431408445192688375
+Seed: SMGen 10677049786290338516 2728325560351012375
+Seed: SMGen 8857820011662424543 17283242182436244785
+Seed: SMGen 8857820011662424543 17283242182436244785
+Seed: SMGen 8857820011662424543 17283242182436244785shrinks)...
+Seed: SMGen 8857820011662424543 17283242182436244785rink)...
+Seed: SMGen 8857820011662424543 17283242182436244785shrinks)...
+Seed: SMGen 8857820011662424543 17283242182436244785rinks)...
+Seed: SMGen 8857820011662424543 17283242182436244785shrinks)...
+Seed: SMGen 8857820011662424543 17283242182436244785shrinks)...
+Seed: SMGen 8857820011662424543 17283242182436244785shrinks)...
+Seed: SMGen 8857820011662424543 17283242182436244785shrinks)...
+Seed: SMGen 8857820011662424543 17283242182436244785shrinks)...
+Seed: SMGen 8857820011662424543 17283242182436244785rinks)...
+Seed: SMGen 8857820011662424543 17283242182436244785shrinks)...
+Seed: SMGen 8857820011662424543 17283242182436244785shrinks)...
+Seed: SMGen 8857820011662424543 17283242182436244785shrinks)...
+Seed: SMGen 8857820011662424543 17283242182436244785shrinks)...
+Seed: SMGen 8857820011662424543 17283242182436244785shrinks)...
+*** Failed! Assertion failed (after 7 tests and 3 shrinks):
+ParallelCommands [Fork [Incr,Incr],Fork [Get]]
+History [Invoke (Pid 0) Incr,Invoke (Pid 1) Incr,Ok (Pid 0) (Incr_ ()),Ok (Pid 1) (Incr_ ()),Invoke (
+Pid 0) Get,Ok (Pid 0) (Get_ 1)]</code></pre>
+<p>We can see that different seeds are used up until the test fails,
+then shrinking is done with the same seed.</p>
 </section>
 </section>
 <section id="conclusion-and-further-work" class="level2">
@@ -781,7 +823,10 @@ class="sourceCode diff"><code class="sourceCode diff"><span id="cb30-1"><a href=
 title="Conclusion and further work">Conclusion and further work</a></h2>
 <ul>
 <li><p>some seeds don’t give the minimal counterexample, shrinking can
-be improved as already pointed out in my previous post</p></li>
+be improved as already pointed out in my previous post</p>
+<ul>
+<li>could also be that shrinking causes different interleavings!?</li>
+</ul></li>
 <li><p>enumarate all interleavings upto some depth, model checking
 style, perhaps using smallcheck? Compare to dejafu library</p></li>
 <li><p>rewrite into proper library?</p></li>
@@ -793,6 +838,7 @@ deterministic?</p>
 <li>hypervisor (Antithesis)</li>
 <li>language support for user schedulers</li>
 </ul></li>
+<li><p>other consistency models? eventual consistency?</p></li>
 </ul>
 </section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
