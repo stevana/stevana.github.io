@@ -98,7 +98,7 @@ that introduces sleeps around the operations. This creates less
 non-determinism, because the jitter of each operation will have less of
 an impact, and therefore helps shrinking.</p>
 <p>This isn’t a satisfactory solution, of course, and I left a to do
-item to implement a determinstic scheduler, like the authors do in the
+item to implement a deterministic scheduler, like the authors do in the
 <a
 href="https://www.cse.chalmers.se/~nicsma/papers/finding-race-conditions.pdf">paper</a>
 that first introduced parallel property-based testing.</p>
@@ -129,18 +129,18 @@ href="https://matklad.github.io/2023/07/05/properly-testing-concurrent-data-stru
 where he shows how he’d do it in a multi-threaded shared memory
 setting.</p>
 <p>In this post I’ll port matklad’s approach from Rust to Haskell and
-hook it up to the parallel property-based testing machinary from my
+hook it up to the parallel property-based testing machinery from my
 previous post.</p>
 <p>Another difference between matklad and the approach in this post is
-that matklad uses an ad-hoc correctness criteria, whereas I follow the
+that matklad uses an ad hoc correctness criteria, whereas I follow the
 parallel property-based testing paper and use <a
 href="https://cs.brown.edu/~mph/HerlihyW90/p463-herlihy.pdf">linearisability</a>.</p>
-<p>An ad-hoc criteria can be faster than linearisability checking, but
+<p>An ad hoc criteria can be faster than linearisability checking, but
 depending on how complicated your system is, it might be harder to find
 one. Linearisability checking on the other hand follows mechanically
 (for free) from a sequential (single-threaded) model/fake.</p>
-<p>If you know what you are doing, then by all means figure out an
-ad-hoc correctness criteria like matklad does. If on the otherhand you
+<p>If you know what you are doing, then by all means figure out an ad
+hoc correctness criteria like matklad does. If on the other hand you
 haven’t tested much concurrent code before, then I’d recommend starting
 with the linearisability checking approach that we are about to
 describe<a href="#fn3" class="footnote-ref" id="fnref3"
@@ -299,8 +299,8 @@ deterministically choose which thread to unpause.</p>
 scheduler from Rust to Haskell, hopefully in a way that shows that this
 can be done in any other language with decent multi-threaded programming
 primitives. Then we’ll do a short recap of how parallel property-based
-testing works, and finally we’ll hook up the deterministic schduler to
-the parallel property-based testing machinary.</p>
+testing works, and finally we’ll hook up the deterministic scheduler to
+the parallel property-based testing machinery.</p>
 </section>
 <section id="deterministic-scheduler" class="level2">
 <h2><a href="#deterministic-scheduler"
@@ -317,8 +317,8 @@ deterministic scheduler itself.</p>
 title="Thread-scheduler communication">Thread-scheduler
 communication</a></h3>
 <p>The scheduler needs to be able to communicate with the running
-threads, in order to be able to determinstically unpause, or “step”, one
-thread at a time.</p>
+threads, in order to be able to deterministically unpause, or “step”,
+one thread at a time.</p>
 <p>We’ll use Haskell’s <code>TMVar</code>s for this, but any kind of
 shared memory will do.</p>
 <p>Haskell’s <code>MVar</code>s can be thought of boxes that contain a
@@ -333,7 +333,7 @@ spinning.</p>
 href="https://en.wikipedia.org/wiki/Software_transactional_memory">STM</a>
 transactions around <code>MVar</code>s, we’ll see an example of what
 these are useful for shortly.</p>
-<p>We’ll call our communcation channel <code>Signal</code>:</p>
+<p>We’ll call our communication channel <code>Signal</code>:</p>
 <div class="sourceCode" id="cb1"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Signal</span> <span class="ot">=</span> <span class="dt">SingleThreaded</span> <span class="op">|</span> <span class="dt">MultiThreaded</span> (<span class="dt">TMVar</span> ())</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> <span class="dt">Eq</span></span></code></pre></div>
@@ -405,7 +405,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a 
 <p>Noticed that the spawned IO action gets access to the communication
 channel.</p>
 <p>The <code>Async</code> thread API exposes a way to check if a thread
-is still executing, threw an exeception or finished yeilding a result.
+is still executing, threw an exception or finished yielding a result.
 We’ll extend this by also being able to check if the thread is paused as
 follows.</p>
 <div class="sourceCode" id="cb9"><pre
@@ -551,7 +551,7 @@ with different seeds we get different outcomes:</p>
 <div class="sourceCode" id="cb16"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="ot">test2 ::</span> <span class="dt">IO</span> ()</span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>test2 <span class="ot">=</span> <span class="kw">let</span> seed <span class="ot">=</span> <span class="dv">2</span> <span class="kw">in</span> replicateM_ <span class="dv">10</span> (<span class="fu">print</span> <span class="op">=&lt;&lt;</span> test seed)</span></code></pre></div>
-<p>then we get the same outcome everytime:</p>
+<p>Then we get the same outcome every time:</p>
 <pre><code>&gt;&gt;&gt; test2
 (2,False,1)
 (2,False,1)
@@ -586,9 +586,9 @@ increments and gets via some network. Imagine a client first does an
 increment and this request times out or the client crashes, then another
 client does a get operation, what’s the return value of the get? It
 depends, it can be 0 or 1 depending on if the timeout or crash happened
-before or after the server receieved the increment;</li>
+before or after the server received the increment;</li>
 <li>The above gets a lot more complicated with more operations involved
-or more complicated datastructures than a counter, e.g. key-value store
+or more complicated data structures than a counter, e.g. key-value store
 with deletes.</li>
 </ul>
 <p>Luckily there’s a correctness criteria for concurrent programs like
@@ -596,12 +596,12 @@ these which is based on a sequential model, <a
 href="https://cs.brown.edu/~mph/HerlihyW90/p463-herlihy.pdf">Linearizability:
 a correctness condition for concurrent objects</a> by Herlihy and Wing
 (1990), which hides the complexity of non-determinism and crashing
-threads and works on arbitrary datastrucures. This is what we use in
+threads and works on arbitrary data structures. This is what we use in
 parallel property-based testing.</p>
 <p>The idea in a nutshell: execute commands in parallel, collect a
 concurrent history of when each command started and stopped executing,
 try to find an interleaving of commands which satisfies the sequential
-model. For a more detailed explaination see my <a
+model. For a more detailed explanation see my <a
 href="https://stevana.github.io/the_sad_state_of_property-based_testing_libraries.html#parallel-property-based-testing">previous
 post</a>.</p>
 </section>
@@ -610,7 +610,7 @@ post</a>.</p>
 title="Integrating the scheduler into the testing">Integrating the
 scheduler into the testing</a></h2>
 <p>I don’t want to reimplement the parallel property-based testing
-machinary from my previous post here, but merely show that integrating
+machinery from my previous post here, but merely show that integrating
 the deterministic scheduler isn’t too much work.</p>
 <p>We need to change the code from the previous post in three different
 places: the sequential module, the parallel module and the counter
@@ -755,7 +755,7 @@ class="sourceCode diff"><code class="sourceCode diff"><span id="cb27-1"><a href=
 <span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="va">+</span></span>
 <span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="va">+  runCommandMonad _ m sig = runReaderT m sig</span></span></code></pre></div>
 <p>The construction of the fake shared memory interface happens in the
-<code>runReal</code> function, where <code>ask</code> retrives the
+<code>runReal</code> function, where <code>ask</code> retrieves the
 <code>sig</code>nal via the reader monad:</p>
 <div class="sourceCode" id="cb28"><pre
 class="sourceCode diff"><code class="sourceCode diff"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>   -- We also need to explain which part of the counter API each command</span>
@@ -847,7 +847,7 @@ shrunk commands and thus the original interleavings will be
 preserved.</p></li>
 <li><p>Currently random interleavings are checked, but we could also
 imagine enumerating all interleavings up to some depth. This would be
-more inline with what model checkers do. Perhaps <a
+more in line with what model checkers do. Perhaps <a
 href="https://github.com/Bodigrim/smallcheck">SmallCheck</a> could be
 used for this? It would also be interesting to compare this approach to
 what the <a href="https://github.com/barrucadu/dejafu">dejafu</a>
@@ -862,7 +862,7 @@ deterministic testing.</p>
 <li>Intercepting and recording the syscalls that the multi-threaded
 program does and then somehow using the recorded trace to
 deterministically reproduce the same execution when the program is
-rerun. I believe this is what Mozilla’s time traveling debugger, <a
+rerun. I believe this is what Mozilla’s time travelling debugger, <a
 href="https://www.youtube.com/watch?v=ytNlefY8PIE">rr</a>, and
 Facebook’s <a
 href="https://github.com/facebookexperimental/hermit">hermit</a>
@@ -879,11 +879,11 @@ user writes in that case doesn’t need to be changed to get the
 deterministic testing, i.e. a black-box approach.</p>
 <p>Implementing a new language and rewriting all your code in that
 language is also a lot of work as well though. Perhaps existing
-languages can be incrementally changed to expose scheduler hoos or allow
-user defined schedulers? Either way, it seems to me that this should be
-solved at the language-level, rather than OS-level, but maybe that’s
-partly because I don’t understand the OS-level solutions well enough.
-I’d be curious to hear about other opinions or ideas.</p></li>
+languages can be incrementally changed to expose scheduler hooks or
+allow user defined schedulers? Either way, it seems to me that this
+should be solved at the language-level, rather than OS-level, but maybe
+that’s partly because I don’t understand the OS-level solutions well
+enough. I’d be curious to hear about other opinions or ideas.</p></li>
 <li><p>We’ve looked at linearisability (to strictly serialisable), but
 what about other consistency models? For example, eventual
 consistency?</p></li>
@@ -898,7 +898,7 @@ href="https://martinfowler.com/bliki/TestDouble.html">fakes</a> before,
 think of them as a more elaborate test double than a mock. A mock of a
 component expects to be called in some particular way (i.e. exposes only
 some limited subset of the components API), and typically throw an
-expeception when called in any other way. While a fake exposes the full
+exception when called in any other way. While a fake exposes the full
 API and can be called just like the real component, but unlike the real
 component it takes some shortcuts. For example a fake might lose all
 data when restarted (i.e. keeps all data in memory, while the real
