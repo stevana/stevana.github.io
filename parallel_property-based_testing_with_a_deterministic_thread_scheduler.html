@@ -121,7 +121,7 @@ Erlang) about 6 years <a
 href="https://github.com/advancedtelematic/quickcheck-state-machine-distributed#readme">ago</a>,
 but I didn’t know how to do it in a non-message-passing setting. I was
 therefore happy to see that my post inspired matklad to write a <a
-href="https://matklad.github.io/2023/07/05/properly-testing-concurrent-data-structures.html">post</a>
+href="https://matklad.github.io/2024/07/05/properly-testing-concurrent-data-structures.html">post</a>
 where he shows how he’d do it in a multi-threaded shared memory
 setting.</p>
 <p>In this post I’ll port matklad’s approach from Rust to Haskell and
@@ -879,9 +879,13 @@ allow user defined schedulers? Either way, it seems to me that this
 should be solved at the language-level, rather than OS-level, but maybe
 that’s partly because I don’t understand the OS-level solutions well
 enough. I’d be curious to hear about other opinions or ideas.</p></li>
-<li><p>We’ve looked at linearisability (to strictly serialisable), but
-what about other consistency models? For example, eventual
-consistency?</p></li>
+<li><p>We’ve looked at linearisability, but what about other consistency
+models? For example, eventual consistency? See John Hughes et al’s <a
+href="https://publications.lib.chalmers.se/records/fulltext/232551/local_232551.pdf"><em>Mysteries
+of Dropbox Property-Based Testing of a Distributed Synchronization
+Service</em></a> (2016) as well as matklad’s <a
+href="https://matklad.github.io/2024/07/05/properly-testing-concurrent-data-structures.html">post</a>
+for hints.</p></li>
 <li><p>Partial-order reduction: during concurrent execution sometimes we
 can commute two operations without changing the outcome, e.g. the
 interleaving of two increments doesn’t matter, they all end up the same
