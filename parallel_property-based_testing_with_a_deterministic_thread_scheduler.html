@@ -71,8 +71,6 @@ id="toc-acknowledgments">Acknowledgments</a></li>
 </ul>
 </nav>
 <div class="date">Posted on Jul 19, 2024</div>
-<p><em>Work in progress, please don’t share, but do feel free to get
-involved!</em></p>
 <p>This post is about how to write tests that can catch race conditions
 in a reproducible way. The approach is programming language agnostic,
 and should work in most languages that have a decent multi-threaded
@@ -122,7 +120,8 @@ used to introduce randomness, without introducing non-determinism.</p>
 Erlang) about 6 years <a
 href="https://github.com/advancedtelematic/quickcheck-state-machine-distributed#readme">ago</a>,
 but I didn’t know how to do it in a non-message-passing setting. I was
-therefore happy to see that my post inspired matklad to write a <a
+therefore happy to see that my previous post inspired matklad to write a
+<a
 href="https://matklad.github.io/2024/07/05/properly-testing-concurrent-data-structures.html">post</a>
 where he shows how he’d do it in a multi-threaded shared memory
 setting.</p>
@@ -287,11 +286,11 @@ known as “Heisenbugs”.</p>
 <p>What we’d like to do is to be able to start a program with some seed
 and if the same seed is used then we get the same thread interleaving
 and therefore a reproducible result.</p>
-<p>The idea, due to matklad, is to insert pauses between each shared
-memory operation (the reads and writes), have a scheduler unpause one
-thread at the time. The scheduler is parametrised by a seed which is
-used together with a pseudorandom number generator which allows it to
-deterministically choose which thread to unpause.</p>
+<p>The idea, due to matklad, is to insert pauses around each shared
+memory operation (the reads and writes) and have a scheduler unpause one
+thread at the time. The scheduler is parametrised by a seed, which is
+fed into a pseudorandom number generator which in turn lets the
+scheduler deterministically choose which thread to unpause.</p>
 <p>In the rest of this post we will port matklad’s deterministic
 scheduler from Rust to Haskell, hopefully in a way that shows that this
 can be done in any other language with decent multi-threaded programming
@@ -465,7 +464,10 @@ title="Example: broken atomic counter">Example: broken atomic
 counter</a></h3>
 <p>To show that our scheduler is indeed deterministic, let’s implement
 the race condition between two increments from the introduction.</p>
-<p>First let’s introduce an interface for shared memory.</p>
+<p>First let’s introduce an interface for shared memory. The idea is
+that we will use two different instances of this interface: a “real” one
+which just does what we’d expect from shared memory, and a “fake” one
+which pauses around the real operations.</p>
 <div class="sourceCode" id="cb12"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">SharedMemory</span> a <span class="ot">=</span> <span class="dt">SharedMemory</span></span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> memReadIORef  ::</span> <span class="dt">IORef</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> a</span>
@@ -488,11 +490,8 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a
 <span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>        writeIORef ref x</span>
 <span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>        pause signal</span>
 <span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>    }</span></code></pre></div>
-<p>The idea is that we will use two different instances of this
-interface: a “real” one which just does what we’d expect from shared
-memory, and a “fake” one which pauses around the real operations. The
-real one will be used when we deploy the actual software and the fake
-one while we do our testing.</p>
+<p>The real one will be used when we deploy the actual software and the
+fake one while we do our testing.</p>
 <p>We can now implement our counter example against the shared memory
 interface:</p>
 <div class="sourceCode" id="cb13"><pre
@@ -715,8 +714,9 @@ class="sourceCode diff"><code class="sourceCode diff"><span id="cb25-1"><a href=
 <h3><a href="#changes-to-the-counter-example"
 title="Changes to the counter example">Changes to the counter
 example</a></h3>
-<p>We start by replacing our sleeps (<code>threadDelay</code>s) with
-operations from the shared memory interface:</p>
+<p>We start by replacing our sleeps (<code>threadDelay</code>s) and
+direct manipulation of shared memory (<code>{read,write}IORef</code>)
+with operations from the shared memory interface:</p>
 <div class="sourceCode" id="cb26"><pre
 class="sourceCode diff"><code class="sourceCode diff"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="va">+import qualified ManagedThread2 as Scheduler</span></span>
 <span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a></span>
