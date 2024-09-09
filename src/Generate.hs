@@ -138,6 +138,7 @@ markdownToHtml site markdownFile = do
           , writerTableOfContents = True
           , writerTemplate = Just template
           , writerSectionDivs = True
+          , writerHTMLMathMethod  = MathJax defaultMathJaxURL 
           , writerVariables = context $
               [ ("lang", "en")
               , ("title", title)
