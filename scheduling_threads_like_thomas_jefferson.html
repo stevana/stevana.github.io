@@ -32,8 +32,8 @@
 <nav id="TOC" class="sidenote" role="doc-toc">
 <h2 id="toc-title">Table of contents</h2>
 <ul>
-<li><a href="#background-and-motiviation"
-id="toc-background-and-motiviation">Background and motiviation</a></li>
+<li><a href="#background-and-motivation"
+id="toc-background-and-motivation">Background and motivation</a></li>
 <li><a href="#inspiration-and-prior-work"
 id="toc-inspiration-and-prior-work">Inspiration and prior work</a></li>
 <li><a href="#big-picture" id="toc-big-picture">Big picture</a></li>
@@ -53,14 +53,14 @@ involved!</em></p>
 <p>This post is about how to schedule workers across a pipeline of
 queues in order to minimise total processing time, and an unexpected
 connection between this kind of scheduling and Thomas Jefferson.</p>
-<section id="background-and-motiviation" class="level2">
-<h2><a href="#background-and-motiviation"
-title="Background and motiviation">Background and motiviation</a></h2>
+<section id="background-and-motivation" class="level2">
+<h2><a href="#background-and-motivation"
+title="Background and motivation">Background and motivation</a></h2>
 <p>Implicit parallelism via pipelining is a topic that interests me. The
 idea is that we can get parallelism for free by splitting our task up in
 stages and arranging them in a pipeline, similarly to how manufacturing
 and CPUs do.</p>
-<p>The way it works is that each stage runs independenly (one CPU/core)
+<p>The way it works is that each stage runs independently (one CPU/core)
 and the stages are connected via queues, so when the first CPU/core is
 done with the first stage of the first item, it passes it on to the
 second stage while continuing to work at the first stage of the second
@@ -91,7 +91,7 @@ CPUs/cores are available.</p>
 <h2><a href="#inspiration-and-prior-work"
 title="Inspiration and prior work">Inspiration and prior work</a></h2>
 <p>Pipelining parallelism isn’t something I’ve come up with myself.</p>
-<p>While there are examples of pipelining in manufactoring that pre-date
+<p>While there are examples of pipelining in manufacturing that pre-date
 Henry Ford, it seems that’s when it took off and become a common place.
 Wikipedia <a
 href="https://en.wikipedia.org/wiki/Assembly_line#20th_century">says</a>:</p>
@@ -108,7 +108,7 @@ took 12.5h before the assembly line.</p>
 speeding up the processing of instructions. A pipeline might look like:
 fetch the instruction, fetch the operands, do the instruction, and
 finally write the results.</p>
-<p>Give this tremendous success in both manufactoring and hardware one
+<p>Given this tremendous success in both manufacturing and hardware one
 could expect that perhaps it’s worth doing in software as well?</p>
 <p>For reasons not entirely clear to me, it hasn’t seem to have taken
 off yet, but there are proponents of this idea.</p>
@@ -198,7 +198,7 @@ socket.</p>
 <p>In between the source and the sink is where the interesting
 processing happens in stages.</p>
 <ul>
-<li>Schedulling typically assigns work to queues, but here we assign
+<li>XXX: Scheduling typically assigns work to queues, but here we assign
 workers to queues?</li>
 </ul>
 </section>
@@ -350,7 +350,7 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a
 <h2><a href="#unexpected-connection-to-thomas-jefferson"
 title="Unexpected connection to Thomas Jefferson">Unexpected connection
 to Thomas Jefferson</a></h2>
-<p>As I came up with this idea of schedulling described above, I bounced
+<p>As I came up with this idea of scheduling described above, I bounced
 it off my friend Daniel Gustafsson who immediately replied “this reminds
 me a bit of Jefferson’s <a
 href="https://en.wikipedia.org/wiki/D%27Hondt_method">method</a>” (of
@@ -401,7 +401,7 @@ same as in the implementation.</p></li>
 </ol>
 <p>Daniel also explained that while Jefferson came up with this method,
 it’s not actually used in the USA, but in most of Europe including the
-EU paralment use the method.</p>
+EU parliament use the method.</p>
 </section>
 <section id="future-work" class="level2">
 <h2><a href="#future-work" title="Future work">Future work</a></h2>
