@@ -11,6 +11,7 @@
         title="RSS feed"
         href="rss.xml" />
   <script src="script.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
@@ -98,9 +99,9 @@ src="https://raw.githubusercontent.com/stevana/elastically-scalable-thread-pools
 <p>We’d like to increase the parallelism of the processors if the input
 queue grows, and decrease it when the queue shrinks. One simple strategy
 might be to establish thresholds, i.e. if there’s over <span
-class="math inline">100</span> items in the input queue then allocate
-more processors and if there’s no items in the queue then deallocate
-them.</p>
+class="math inline">\(100\)</span> items in the input queue then
+allocate more processors and if there’s no items in the queue then
+deallocate them.</p>
 <p>Since allocating and deallocating processors can be an expense in
 itself, we’d like to avoid changing them processor count
 unnecessarily.</p>
@@ -127,13 +128,11 @@ loop:</p>
           +-------------------------------------------------+
 </code></pre>
 <p>The PID controller monitors the queue length <span
-class="math inline"><em>y</em>(<em>t</em>)</span>, compares it to some
-desired queue length <span
-class="math inline"><em>r</em>(<em>t</em>)</span> (also known as the
+class="math inline">\(y(t)\)</span>, compares it to some desired queue
+length <span class="math inline">\(r(t)\)</span> (also known as the
 setpoint) and calculates the error <span
-class="math inline"><em>e</em>(<em>t</em>)</span>. The error determines
-the control variable <span
-class="math inline"><em>u</em>(<em>t</em>)</span> which is used to grow
+class="math inline">\(e(t)\)</span>. The error determines the control
+variable <span class="math inline">\(u(t)\)</span> which is used to grow
 or shrink the processor pool.</p>
 </section>
 <section id="pseudo-code" class="level2">
@@ -202,19 +201,19 @@ removes the last process id from <code>pool.pids</code>.</p>
 generator</a></h3>
 <p>In order to create work load that varies over time we use the sine
 function. The sine function oscillates between <span
-class="math inline"> − 1</span> and <span
-class="math inline">1</span>:</p>
+class="math inline">\(-1\)</span> and <span
+class="math inline">\(1\)</span>:</p>
 <p><img
 src="https://raw.githubusercontent.com/stevana/elastically-scalable-thread-pools/main/img/sine.svg" /></p>
 <p>We would like to have it oscillate between <span
-class="math inline">0</span> and some max value <span
-class="math inline"><em>m</em></span>. By multiplying the output of the
-sine function by <span class="math inline"><em>m</em>/2</span> we get an
-oscillation between <span class="math inline"> − <em>m</em>/2</span> and
-<span class="math inline"><em>m</em>/2</span>, we can then add <span
-class="math inline"><em>m</em>/2</span> to make it oscillate between
-<span class="math inline">0</span> and <span
-class="math inline"><em>m</em></span>.</p>
+class="math inline">\(0\)</span> and some max value <span
+class="math inline">\(m\)</span>. By multiplying the output of the sine
+function by <span class="math inline">\(m/2\)</span> we get an
+oscillation between <span class="math inline">\(-m/2\)</span> and <span
+class="math inline">\(m/2\)</span>, we can then add <span
+class="math inline">\(m/2\)</span> to make it oscillate between <span
+class="math inline">\(0\)</span> and <span
+class="math inline">\(m\)</span>.</p>
 <p>We’ll sample the resulting function once every <code>timesStep</code>
 seconds, this gives us the amount of work items (<code>n</code>) to
 create we then spread those out evenly in time, rinse and repeat until
@@ -249,12 +248,12 @@ the <em>present</em> error value, the integral acts on the <em>past</em>
 and the derivative tries to predict the <em>future</em>. The measured
 value is the input queue length and the setpoint, i.e. desired queue
 length, is set to zero. If the <code>output</code> of the PID controller
-is less than <span class="math inline"> − 100</span> (i.e. the queue
-length is over <span class="math inline">100</span> taking the present,
-past and possible future into account) then we scale up and if it’s more
-than <span class="math inline"> − 20</span> (i.e. the queue length is
-less than <span class="math inline">20</span>) then we scale down the
-worker pool.</p>
+is less than <span class="math inline">\(-100\)</span> (i.e. the queue
+length is over <span class="math inline">\(100\)</span> taking the
+present, past and possible future into account) then we scale up and if
+it’s more than <span class="math inline">\(-20\)</span> (i.e. the queue
+length is less than <span class="math inline">\(20\)</span>) then we
+scale down the worker pool.</p>
 </section>
 </section>
 <section id="how-it-works" class="level2">
@@ -269,29 +268,29 @@ src="https://raw.githubusercontent.com/stevana/elastically-scalable-thread-pools
 it allocates and deallocates workers unnecessarily. In order to smooth
 things out we introduce the integral part, i.e. a PI-controller. The
 integral part takes the <em>past</em> into account. We see now that the
-worker count stabilises at <span class="math inline">28</span>:</p>
+worker count stabilises at <span class="math inline">\(28\)</span>:</p>
 <p><img
 src="https://raw.githubusercontent.com/stevana/elastically-scalable-thread-pools/main/img/elastically-scalable-thread-pools-1.0-5.0e-2-0.0.svg" /></p>
 <p>We can improve on this by adding the derivative part which takes the
 <em>future</em> into account. We then see that it stabilises at <span
-class="math inline">26</span> workers:</p>
+class="math inline">\(26\)</span> workers:</p>
 <p><img
 src="https://raw.githubusercontent.com/stevana/elastically-scalable-thread-pools/main/img/elastically-scalable-thread-pools-1.0-5.0e-2-5.0e-2.svg" /></p>
 <p>With the full PID controller, which stabilises using less workers
 than the PI-controller, we see that the queue length spikes up to <span
-class="math inline">20</span> or so each time the work load generator
-hits one of the sine function’s peaks. Recall that we started scaling
-down once the queue length was less than <span
-class="math inline">20</span>.</p>
+class="math inline">\(20\)</span> or so each time the work load
+generator hits one of the sine function’s peaks. Recall that we started
+scaling down once the queue length was less than <span
+class="math inline">\(20\)</span>.</p>
 </section>
 <section id="usage" class="level2">
 <h2><a href="#usage" title="Usage">Usage</a></h2>
 <p>The above graphs were generated by running:
 <code>cabal run app -- kp ki kd</code>, where the <span
-class="math inline"><em>K</em><sub><em>p</em></sub></span>, <span
-class="math inline"><em>K</em><sub><em>i</em></sub></span>, and <span
-class="math inline"><em>K</em><sub><em>d</em></sub></span> parameters
-are the tuning parameters for the PID controller.</p>
+class="math inline">\(K_p\)</span>, <span
+class="math inline">\(K_i\)</span>, and <span
+class="math inline">\(K_d\)</span> parameters are the tuning parameters
+for the PID controller.</p>
 <p>If you don’t have the GHC Haskell compiler and the <code>cabal</code>
 build tool already installed, then the easiest way to get it is via <a
 href="https://www.haskell.org/ghcup/"><code>ghcup</code></a>.

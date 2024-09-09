@@ -11,6 +11,7 @@
         title="RSS feed"
         href="rss.xml" />
   <script src="script.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
@@ -170,17 +171,14 @@ workers.</p>
 <li>Generate all possible configurations of allocating workers across
 the stages;</li>
 <li>Score each configuration using the formula: <span
-class="math inline">$\sum_{s}\frac{l_{s} \cdot t_{s}}{w_{s} +
-1}$</span>, where <span class="math inline"><em>s</em></span> is a
-stage, <span class="math inline"><em>l</em><sub><em>s</em></sub></span>
-is the input queue length of the stage <span
-class="math inline"><em>s</em></span>, <span
-class="math inline"><em>t</em><sub><em>s</em></sub></span> is the
-average service time of the stage <span
-class="math inline"><em>s</em></span> and <span
-class="math inline"><em>w</em><sub><em>s</em></sub></span> is the amount
-of workers allocated to the stage <span
-class="math inline"><em>s</em></span>;</li>
+class="math inline">\(\sum_{s}\frac{l_{s} \cdot t_{s}}{w_{s} +
+1}\)</span>, where <span class="math inline">\(s\)</span> is a stage,
+<span class="math inline">\(l_{s}\)</span> is the input queue length of
+the stage <span class="math inline">\(s\)</span>, <span
+class="math inline">\(t_{s}\)</span> is the average service time of the
+stage <span class="math inline">\(s\)</span> and <span
+class="math inline">\(w_{s}\)</span> is the amount of workers allocated
+to the stage <span class="math inline">\(s\)</span>;</li>
 <li>Pick the configuration with the lowest score, i.e. the one where the
 total processing time is the lowest.</li>
 </ol>
@@ -299,10 +297,9 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a 
 <h2><a href="#running-the-prototype"
 title="Running the prototype">Running the prototype</a></h2>
 <p>Let’s finish off with a couple of examples in the REPL. Let’s say we
-have two workers, and two stages (<span
-class="math inline"><em>A</em></span> and <span
-class="math inline"><em>B</em></span>), the <span
-class="math inline"><em>A</em></span> stage has three items on its input
+have two workers, and two stages (<span class="math inline">\(A\)</span>
+and <span class="math inline">\(B\)</span>), the <span
+class="math inline">\(A\)</span> stage has three items on its input
 queue (and this will be all the inputs it will receive), and no stage is
 done yet (that’s the last <code>S.empty</code> argument):</p>
 <div class="sourceCode" id="cb8"><pre
@@ -317,11 +314,10 @@ as first argument and a list of service times as second argument.)</p>
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="dt">Just</span> (<span class="dt">Config</span> (fromList [(<span class="st">&quot;A&quot;</span>,<span class="dv">2</span>),(<span class="st">&quot;B&quot;</span>,<span class="dv">0</span>)]))</span></code></pre></div>
 <p>Which means both workers should be allocated to the $A@ stage. Let’s
 say that we do that allocation and after 1 time unit passes both workers
-finish, that means that the <span class="math inline"><em>A</em></span>
-input queue now has one item left on it, while the second stage (<span
-class="math inline"><em>B</em></span>) now has two items on its input
-queue. Since both workers are done, we rerun the allocation
-function:</p>
+finish, that means that the <span class="math inline">\(A\)</span> input
+queue now has one item left on it, while the second stage (<span
+class="math inline">\(B\)</span>) now has two items on its input queue.
+Since both workers are done, we rerun the allocation function:</p>
 <div class="sourceCode" id="cb10"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> allocateWorkers <span class="dv">2</span> </span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>                    (M.fromList [ (<span class="st">&quot;A&quot;</span>, <span class="dt">QueueStats</span> <span class="dv">1</span> [<span class="dv">1</span>,<span class="dv">1</span>])</span>
@@ -331,9 +327,9 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a
 <p>The result now is that we should allocate one worker to each stage.
 If we again imagine that we do so and they both finish after one time
 unit, we end up in a situation where all three items have been processed
-from the first stage (<span class="math inline"><em>A</em></span>), so
-we can mark <span class="math inline"><em>A</em></span> as done, while
-the second stage will have two items on its input queue:</p>
+from the first stage (<span class="math inline">\(A\)</span>), so we can
+mark <span class="math inline">\(A\)</span> as done, while the second
+stage will have two items on its input queue:</p>
 <div class="sourceCode" id="cb11"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> allocateWorkers <span class="dv">2</span> </span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>                    (M.fromList [ (<span class="st">&quot;A&quot;</span>, <span class="dt">QueueStats</span> <span class="dv">0</span> [<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">1</span>])</span>
@@ -365,7 +361,7 @@ allocating seats in parliaments).</p>
 calculated for each party. The party with the largest quotient wins one
 seat, and its quotient is recalculated. This is repeated until the
 required number of seats is filled. The formula for the quotient is:</p>
-<p><span class="math inline">$quot = \frac{V}{s + 1}$</span></p>
+<p><span class="math inline">\(quot = \frac{V}{s + 1}\)</span></p>
 <p>where:</p>
 <ul>
 <li>V is the total number of votes that party received, and</li>
@@ -379,26 +375,27 @@ seats per party : workers allocated to a stage
 votes           : &quot;score&quot; (= length of input queue times average service time)
 rounds          : total number of workers</code></pre>
 <p>Let’s try to redo the example from above, where the stage <span
-class="math inline"><em>A</em></span> and <span
-class="math inline"><em>B</em></span> had queue length of <span
-class="math inline">1</span> and <span class="math inline">2</span>
-respectively, but using the Jefferson method:</p>
+class="math inline">\(A\)</span> and <span
+class="math inline">\(B\)</span> had queue length of <span
+class="math inline">\(1\)</span> and <span
+class="math inline">\(2\)</span> respectively, but using the Jefferson
+method:</p>
 <ol type="1">
 <li><p>In the first round, party/stage <span
-class="math inline"><em>A</em></span> gets <span
-class="math inline">1</span> vote, while party <span
-class="math inline"><em>B</em></span> gets <span
-class="math inline">2</span> votes, so the quotient is <span
-class="math inline">$\frac{1}{0 + 1}$</span> and <span
-class="math inline">$\frac{2}{0 + 1}$</span> respectively, which means
-that stage <span class="math inline"><em>B</em></span> wins the round
-and gets allocated a seat;</p></li>
+class="math inline">\(A\)</span> gets <span
+class="math inline">\(1\)</span> vote, while party <span
+class="math inline">\(B\)</span> gets <span
+class="math inline">\(2\)</span> votes, so the quotient is <span
+class="math inline">\(\frac{1}{0 + 1}\)</span> and <span
+class="math inline">\(\frac{2}{0 + 1}\)</span> respectively, which means
+that stage <span class="math inline">\(B\)</span> wins the round and
+gets allocated a seat;</p></li>
 <li><p>In the second round we get the quotients: <span
-class="math inline">$\frac{1}{0 + 1} = 1$</span> and <span
-class="math inline">$\frac{2}{1 + 1} = 1$</span> (note that <span
-class="math inline"><em>s</em> = 1</span> here, because stage/party
-<span class="math inline"><em>B</em></span> already won a seat in the
-previous round). Which means we get a tie, in this case I guess we could
+class="math inline">\(\frac{1}{0 + 1} = 1\)</span> and <span
+class="math inline">\(\frac{2}{1 + 1} = 1\)</span> (note that <span
+class="math inline">\(s = 1\)</span> here, because stage/party <span
+class="math inline">\(B\)</span> already won a seat in the previous
+round). Which means we get a tie, in this case I guess we could
 arbitrarily pick the first party, just so that our example works out the
 same as in the implementation.</p></li>
 </ol>

@@ -11,6 +11,7 @@
         title="RSS feed"
         href="rss.xml" />
   <script src="script.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
@@ -144,8 +145,8 @@ class="sourceCode erlang"><code class="sourceCode erlang"><span id="cb2-1"><a hr
 (e.g. <code>char</code> in C or <code>Int8</code> in Haskell) but
 Erlang’s bit syntax lets us encode, e.g., <code>Red</code> using only 5
 bits (rather than the default 8 bits) and thus we can fit all three
-integers in <span class="math inline">5 + 6 + 5 = 16</span> bits or two
-bytes.</p>
+integers in <span class="math inline">\(5 + 6 + 5 = 16\)</span> bits or
+two bytes.</p>
 <p>We can also pattern match at the bit-level using sizes to get our
 integers back:</p>
 <div class="sourceCode" id="cb3"><pre
@@ -460,12 +461,11 @@ possible to convert between different text formats, e.g. from Markdown
 to HTML.</p>
 <p>The list of supported formats to convert from and to is pretty long.
 If we were to convert to and from each pair of possibilities would
-require <span
-class="math inline"><em>O</em>(<em>N</em><sup>2</sup>)</span> <a
+require <span class="math inline">\(O(N^2)\)</span> <a
 href="https://youtu.be/ed7A7r6DBsM?t=2311">work</a>. So what
 <code>pandoc</code> does instead is to convert each format to and from
 its internal abstract representation, thereby reducing the problem to
-<span class="math inline"><em>O</em>(<em>N</em>)</span>.</p>
+<span class="math inline">\(O(N)\)</span>.</p>
 <p>Could we do something similar for binary encodings?</p>
 <p>In the book <em>Development and Deployment of Multiplayer Online
 Games, Vol. I</em> by Sergey Ignatchenko (pp. 259-285, 2017) the author

@@ -11,6 +11,7 @@
         title="RSS feed"
         href="rss.xml" />
   <script src="script.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
   <noscript>
@@ -157,21 +158,21 @@ the specification and then the program that implements that type is the
 formal proof that the program is correct. For example, let’s say you’ve
 implemented a list sorting function, the specification typically then is
 that the output of the sorting function is ordered, i.e. for any index
-<span class="math inline"><em>i</em></span> in your output list the
-element at that index must be smaller or equal to the element at index
-<span class="math inline"><em>i</em> + 1</span>. Formally proving that a
-program is correct with respect to a specification is often as much work
-as writing the program in the first place, so merely testing it can
-often be a sweet spot where you get some confidence that the
-specification is correct, without having to do the proving work. For
-example in the sorting example you can simply generate a random input
-list and then compare the output of your sorting function with the one
-in the standard library (which is likely to be correct). As programs get
-more complicated the ratio of effort saved by merely testing, as opposed
-to proving, increases. In fact for bigger programs the effort involved
-in proving correctness is simply too high for it to be practical (this
-is an active area of research). Given all this, I hope that you can
-start to see why this idea excited John.</p>
+<span class="math inline">\(i\)</span> in your output list the element
+at that index must be smaller or equal to the element at index <span
+class="math inline">\(i + 1\)</span>. Formally proving that a program is
+correct with respect to a specification is often as much work as writing
+the program in the first place, so merely testing it can often be a
+sweet spot where you get some confidence that the specification is
+correct, without having to do the proving work. For example in the
+sorting example you can simply generate a random input list and then
+compare the output of your sorting function with the one in the standard
+library (which is likely to be correct). As programs get more
+complicated the ratio of effort saved by merely testing, as opposed to
+proving, increases. In fact for bigger programs the effort involved in
+proving correctness is simply too high for it to be practical (this is
+an active area of research). Given all this, I hope that you can start
+to see why this idea excited John.</p>
 <p>While John was working on this idea, Koen Claessen, another member of
 the Functional Programming group, <a
 href="https://youtu.be/x4BNj7mVTkw?t=289">stuck his head</a> into John’s
@@ -2855,13 +2856,12 @@ depending on the second:</p>
    |        |              |         |
    +--------+              +---------+</code></pre>
 <p>If we want to integration test component <span
-class="math inline"><em>A</em></span> and <span
-class="math inline"><em>B</em></span> then we first need to start or
-enable component <span class="math inline"><em>B</em></span> and then
-start testing component <span class="math inline"><em>A</em></span>. In
-a larger system there can be many dependencies and integration tests can
-get slow and flaky due to the infrastructure for starting up the
-dependencies.</p>
+class="math inline">\(A\)</span> and <span
+class="math inline">\(B\)</span> then we first need to start or enable
+component <span class="math inline">\(B\)</span> and then start testing
+component <span class="math inline">\(A\)</span>. In a larger system
+there can be many dependencies and integration tests can get slow and
+flaky due to the infrastructure for starting up the dependencies.</p>
 <p>With fakes we can get fast and deterministic integration tests by
 depending on the fake of the dependency instead of the real
 dependency:</p>
