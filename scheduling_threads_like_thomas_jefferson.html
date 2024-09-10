@@ -44,7 +44,8 @@ id="toc-running-the-prototype">Running the prototype</a></li>
 <li><a href="#unexpected-connection-to-thomas-jefferson"
 id="toc-unexpected-connection-to-thomas-jefferson">Unexpected connection
 to Thomas Jefferson</a></li>
-<li><a href="#future-work" id="toc-future-work">Future work</a></li>
+<li><a href="#conclusion-and-future-work"
+id="toc-conclusion-and-future-work">Conclusion and future work</a></li>
 </ul>
 </nav>
 <div class="date">Posted on Sep  9, 2024</div>
@@ -312,10 +313,11 @@ as first argument and a list of service times as second argument.)</p>
 <p>If we run the above, we get:</p>
 <div class="sourceCode" id="cb9"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="dt">Just</span> (<span class="dt">Config</span> (fromList [(<span class="st">&quot;A&quot;</span>,<span class="dv">2</span>),(<span class="st">&quot;B&quot;</span>,<span class="dv">0</span>)]))</span></code></pre></div>
-<p>Which means both workers should be allocated to the $A@ stage. Let’s
-say that we do that allocation and after 1 time unit passes both workers
-finish, that means that the <span class="math inline">\(A\)</span> input
-queue now has one item left on it, while the second stage (<span
+<p>Which means both workers should be allocated to the <span
+class="math inline">\(A\)</span> stage. Let’s say that we do that
+allocation and after 1 time unit passes both workers finish, that means
+that the <span class="math inline">\(A\)</span> input queue now has one
+item left on it, while the second stage (<span
 class="math inline">\(B\)</span>) now has two items on its input queue.
 Since both workers are done, we rerun the allocation function:</p>
 <div class="sourceCode" id="cb10"><pre
@@ -397,14 +399,26 @@ class="math inline">\(s = 1\)</span> here, because stage/party <span
 class="math inline">\(B\)</span> already won a seat in the previous
 round). Which means we get a tie, in this case I guess we could
 arbitrarily pick the first party, just so that our example works out the
-same as in the implementation.</p></li>
+same as in the implementation<a href="#fn1" class="footnote-ref"
+id="fnref1" role="doc-noteref"><sup>1</sup></a>.</p></li>
 </ol>
 <p>Daniel also explained that while Jefferson came up with this method,
 it’s not actually used in the USA, but in most of Europe including the
 EU parliament use the method.</p>
 </section>
-<section id="future-work" class="level2">
-<h2><a href="#future-work" title="Future work">Future work</a></h2>
+<section id="conclusion-and-future-work" class="level2">
+<h2><a href="#conclusion-and-future-work"
+title="Conclusion and future work">Conclusion and future work</a></h2>
+<p>We’ve seen a strategy of how one can elastically scale the amount of
+CPUs/cores dedicated to one stage in a pipeline. Being able to do so
+should come handy if:</p>
+<ol type="1">
+<li><p>The load on the system changes and suddenly one stage becomes
+slower than another, by being elastic we can rebalance the cores and
+maintain throughput;</p></li>
+<li><p>The load decreases, we can scale down and use the cores elsewhere
+in the system.</p></li>
+</ol>
 <p>There are many ways in which this can be extended, here’s a few in no
 particular order:</p>
 <ol type="1">
@@ -428,11 +442,35 @@ checking and debugging;</p></li>
 <li><p>Finally, anything performance related would benefit from
 benchmarking on a good set of examples. A few things worth trying:</p>
 <ul>
-<li>Against single-thread</li>
-<li>One green thread per stage</li>
-<li>N green threads per stage, where N = # of CPUs/cores</li>
+<li>Against single-thread, trying to avoid <a
+href="http://www.frankmcsherry.org/graph/scalability/cost/2015/01/15/COST.html">this</a>;</li>
+<li>One core per stage</li>
+<li>N green threads per stage, where N = # of CPUs/cores? Are there
+better ways to offload the rebalancing to the runtime?</li>
 <li>Other libraries?</li>
 </ul></li>
+</ol>
+<p>If any of this interests you feel free to get in <a
+href="https://stevana.github.io/about.html">touch</a>.</p>
+</section>
+<section id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>This tie actually highlights a small difference between
+the Jefferson method and my approach. In my approach allocating one
+worker on both <span class="math inline">\(A\)</span> and <span
+class="math inline">\(B\)</span> has a lower score than allocating both
+workers to <span class="math inline">\(B\)</span>, because if we
+instantiate the <span class="math inline">\(\sum{s} \frac{l_s \cdot
+l_t}{w_s + 1}\)</span> for the two configurations we get <span
+class="math inline">\(\frac{1 \cdot 1}{1 + 1} + \frac{2 \cdot 1}{1 + 1}
+= 1.5\)</span> and <span class="math inline">\(\frac{1 \cdot 1}{1 + 0} +
+\frac{2 \cdot 1}{1 + 2} = 1.66...\)</span> respectively, i.e. <span
+class="math inline">\(A\)</span> is part of the calculation even if we
+allocate both workers to the <span class="math inline">\(B\)</span>
+stage. I’m still not sure which is preferable.<a href="#fnref1"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
 </main>
