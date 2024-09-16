@@ -91,6 +91,11 @@ topics:
       content: https://raw.githubusercontent.com/stevana/deterministic-scheduler/main/README.md
       status: Done
 
+    - title: Coverage-guided property-based testing
+      date: 2024-09-16T00:00:00Z
+      content: https://raw.githubusercontent.com/stevana/coverage-guided-pbt/main/README.md
+      status: FirstDraft
+
 # ----------------------------------------------------------------------
 - topic: Deployment
   posts:
