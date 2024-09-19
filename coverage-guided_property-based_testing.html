@@ -45,6 +45,7 @@ with the prototype</a></li>
 <li><a href="#conclusion-and-further-work"
 id="toc-conclusion-and-further-work">Conclusion and further
 work</a></li>
+<li><a href="#see-also" id="toc-see-also">See also</a></li>
 </ul>
 </nav>
 <div class="date">Posted on Sep 16, 2024</div>
@@ -60,11 +61,23 @@ any language-specific instrumentation of the software under test.</p>
 <section id="background-and-prior-work" class="level2">
 <h2><a href="#background-and-prior-work"
 title="Background and prior work">Background and prior work</a></h2>
+<p>Fuzzing has an interesting origin. It was a class <a
+href="http://pages.cs.wisc.edu/~bart/fuzz/CS736-Projects-f1988.pdf">project</a>
+in an advanced OS course taught by Barton Miller at the University of
+Wisconsin in 1988.</p>
+<p>A couple of years later Barton et al published <a
+href="https://dl.acm.org/doi/10.1145/96267.96279"><em>An empirical study
+of the reliability of UNIX utilities</em></a> (1990).</p>
+<p>The way Barton’s fuzzer worked was just to generate random bytes and
+feed it to command line tools and see if they crashed.</p>
 <ul>
-<li><p>AFL</p></li>
+<li><p>AFL (2013), <a
+href="https://lcamtuf.coredump.cx/afl/historical_notes.txt"
+class="uri">https://lcamtuf.coredump.cx/afl/historical_notes.txt</a></p></li>
 <li><p><a href="https://llvm.org/docs/LibFuzzer.html">libfuzzer</a> and
-it’s successor <a
-href="https://github.com/google/fuzztest">FuzzTest</a></p></li>
+it’s successor <a href="https://github.com/google/fuzztest">FuzzTest</a>
+(“It is a first-of-its-kind tool that bridges the gap between fuzzing
+and property-based testing”)</p></li>
 <li><p><a
 href="https://github.com/google/honggfuzz">honggfuzz</a></p></li>
 </ul>
@@ -88,8 +101,16 @@ href="https://github.com/HypothesisWorks/hypothesis/pull/1564/commits/dcbea9148b
 </ul></li>
 <li><p><a
 href="https://github.com/stedolan/crowbar">Crowbar</a></p></li>
-<li><p><a
-href="https://dl.acm.org/doi/10.1145/3360607">FuzzChick</a>?</p></li>
+<li><p><a href="https://dl.acm.org/doi/10.1145/3360607">FuzzChick</a>?
+Not released, lives in an <a
+href="https://github.com/QuickChick/QuickChick/compare/master...FuzzChick">unmaintained
+branch</a> that <a
+href="https://github.com/QuickChick/QuickChick/issues/277">doesn’t
+compile</a>?</p>
+<ul>
+<li>coverage info is <a href="https://youtu.be/RR6c_fiMfJQ?t=2226">same
+as in AFL</a></li>
+</ul></li>
 <li><p>Shae “shapr” Erisson’s post <a
 href="https://shapr.github.io/posts/2023-07-30-goldilocks-property-tests.html"><em>Run
 property tests until coverage stops increasing</em></a> (2023) and <a
@@ -143,6 +164,8 @@ O(2^{10}) = 1024\)</span> tries. With other words coverage-guidence
 turns an exponential problem into a polynomial problem!</p>
 <p>Great, but where do we get this coverage information from?</p>
 <p>AFL and <code>go-fuzz</code> both get it from the compiler.</p>
+<p>AFL injects code into every <a
+href="https://en.wikipedia.org/wiki/Basic_block">basic block</a>.</p>
 <p>When I’ve been thinking about how to implement coverage-guided
 property-based testing in the past, I always got stuck thinking that
 parsing the coverage output from the compiler in between test case
@@ -181,61 +204,64 @@ testing already has?</p>
 <h2><a href="#prototype-implementation"
 title="Prototype implementation">Prototype implementation</a></h2>
 <ul>
-<li>Edsko de Vries’ <a
-href="https://www.well-typed.com/blog/2019/05/integrated-shrinking/">Mini-QuickCheck</a></li>
+<li><p>QuickCheck as defined in the appendix of the original <a
+href="https://dl.acm.org/doi/10.1145/351240.351266">paper</a> (ICFP,
+2000)</p>
+<ul>
+<li>Extended with shrinking</li>
+<li>Extended monadic properties</li>
+</ul></li>
+<li><p>Edsko de Vries’ <a
+href="https://www.well-typed.com/blog/2019/05/integrated-shrinking/">Mini-QuickCheck</a></p></li>
 </ul>
 <div class="sourceCode" id="cb3"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Seed</span> <span class="ot">=</span> <span class="dt">Int</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="ot">checkM ::</span> <span class="kw">forall</span> a c<span class="op">.</span> (<span class="dt">Show</span> a, <span class="dt">Show</span> c)</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>       <span class="ot">=&gt;</span> <span class="dt">Seed</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Integrated</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> () <span class="ot">-&gt;</span> ([a] <span class="ot">-&gt;</span> <span class="dt">Coverage</span> c <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Bool</span>) <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>checkM seed numTests gen reset p <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  coverage <span class="ot">&lt;-</span> emptyCoverage</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  mShrinkSteps <span class="ot">&lt;-</span> go numTests coverage <span class="dv">0</span> []</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> mShrinkSteps <span class="kw">of</span></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Nothing</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="st">&quot;\nOK&quot;</span></span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>      cov <span class="ot">&lt;-</span> readCoverage coverage</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;Coverage: &quot;</span> <span class="op">++</span> <span class="fu">show</span> cov</span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Just</span> shrinkSteps <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;Failed: &quot;</span> <span class="op">++</span> <span class="kw">case</span> shrinkSteps <span class="kw">of</span></span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>                                 [] <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="st">&quot;impossible: shrinkSteps empty&quot;</span></span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>                                 (s <span class="op">:</span> _ss) <span class="ot">-&gt;</span> <span class="fu">show</span> s</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Shrinking</span> <span class="ot">=</span> <span class="dt">Bool</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="ot">checkM ::</span> <span class="kw">forall</span> a c<span class="op">.</span> (<span class="dt">Show</span> a, <span class="dt">Show</span> c)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>       <span class="ot">=&gt;</span> <span class="dt">Seed</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a <span class="ot">-&gt;</span> (<span class="dt">Shrinking</span> <span class="ot">-&gt;</span> <span class="dt">Coverage</span> c <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Bool</span>) <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>checkM seed numTests gen p <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  coverage <span class="ot">&lt;-</span> emptyCoverage</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  mShrinkSteps <span class="ot">&lt;-</span> go numTests coverage <span class="dv">0</span> []</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> mShrinkSteps <span class="kw">of</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Nothing</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="st">&quot;\nOK&quot;</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>      cov <span class="ot">&lt;-</span> readCoverage coverage</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;Coverage: &quot;</span> <span class="op">++</span> <span class="fu">show</span> cov</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Just</span> shrinkSteps <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;Failed: &quot;</span> <span class="op">++</span> <span class="fu">show</span> (NonEmpty.head shrinkSteps)</span>
 <span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;Shrinking: &quot;</span> <span class="op">++</span> <span class="fu">show</span> shrinkSteps</span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;Shrunk: &quot;</span> <span class="op">++</span> <span class="fu">show</span> (<span class="fu">last</span> shrinkSteps)</span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>      cov <span class="ot">&lt;-</span> readCoverage coverage</span>
-<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;Coverage: &quot;</span> <span class="op">++</span> <span class="fu">show</span> cov</span>
-<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a><span class="ot">    go ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Coverage</span> c <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">Maybe</span> [[a]])</span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>    go <span class="dv">0</span> _cov _before _cmds <span class="ot">=</span> <span class="fu">return</span> <span class="dt">Nothing</span></span>
-<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    go n _cov  before  cmds <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>      <span class="kw">let</span> cmd <span class="ot">=</span> root <span class="op">$</span> runIntegrated (mkStdGen (seed <span class="op">+</span> n)) gen</span>
-<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>      cmds&#39; <span class="ot">&lt;-</span> randomMutation cmds cmd</span>
-<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>      (ok, after) <span class="ot">&lt;-</span> withCoverage (p cmds&#39;)</span>
-<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>      <span class="kw">if</span> ok</span>
-<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>      <span class="kw">then</span> <span class="kw">do</span></span>
-<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> diff <span class="ot">=</span> compareCoverage before after</span>
-<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>        <span class="kw">case</span> diff <span class="kw">of</span></span>
-<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>          <span class="dt">Increased</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>            <span class="co">-- putStr &quot;p&quot;</span></span>
-<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>            go (n <span class="op">-</span> <span class="dv">1</span>) _cov after cmds&#39;</span>
-<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>          <span class="dt">Same</span>      <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>            <span class="co">-- putStr &quot;p&quot;</span></span>
-<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>            go (n <span class="op">-</span> <span class="dv">1</span>) _cov after cmds&#39;</span>
-<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>          <span class="dt">Decreased</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>            <span class="co">-- putStr &quot;.&quot;</span></span>
-<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>            go (n <span class="op">-</span> <span class="dv">1</span>) _cov before cmds</span>
-<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>      <span class="kw">else</span> <span class="kw">do</span></span>
-<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a>        <span class="fu">putStrLn</span> <span class="st">&quot;\n(Where `p` and `.` indicate picked and dropped values respectively.)&quot;</span></span>
-<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Just</span> <span class="op">&lt;$&gt;</span> minimise (<span class="fu">flip</span> p _cov) reset (unfoldTree (shrinkList (<span class="fu">const</span> [])) cmds&#39;)</span></code></pre></div>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;#Shrinks: &quot;</span> <span class="op">++</span> <span class="fu">show</span> (NonEmpty.length shrinkSteps <span class="op">-</span> <span class="dv">1</span>)</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;Shrunk: &quot;</span> <span class="op">++</span> <span class="fu">show</span> (NonEmpty.last shrinkSteps)</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>      cov <span class="ot">&lt;-</span> readCoverage coverage</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;Coverage: &quot;</span> <span class="op">++</span> <span class="fu">show</span> cov</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a><span class="ot">    go ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Coverage</span> c <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">Maybe</span> (<span class="dt">NonEmpty</span> [a]))</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    go <span class="dv">0</span> _cov _before _cmds <span class="ot">=</span> <span class="fu">return</span> <span class="dt">Nothing</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>    go n _cov  before  cmds <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>      <span class="kw">let</span> sz  <span class="ot">=</span> n <span class="op">*</span> <span class="dv">3</span> <span class="ot">`div`</span> <span class="dv">2</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>      <span class="kw">let</span> cmd <span class="ot">=</span> generate sz (mkStdGen (seed <span class="op">+</span> n)) gen</span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>      cmds&#39; <span class="ot">&lt;-</span> randomMutation cmds cmd</span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>      (ok, after) <span class="ot">&lt;-</span> withCoverage (\cov <span class="ot">-&gt;</span> p <span class="dt">False</span> cov cmds&#39;)</span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>      <span class="kw">if</span> ok</span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>      <span class="kw">then</span> <span class="kw">do</span></span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> diff <span class="ot">=</span> compareCoverage before after</span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>        <span class="kw">case</span> diff <span class="kw">of</span></span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>          <span class="dt">Increased</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>            <span class="co">-- putStr &quot;p&quot;</span></span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>            go (n <span class="op">-</span> <span class="dv">1</span>) _cov after cmds&#39;</span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>          <span class="dt">Same</span>      <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>            <span class="co">-- putStr &quot;p&quot;</span></span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>            go (n <span class="op">-</span> <span class="dv">1</span>) _cov after cmds&#39;</span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>          <span class="dt">Decreased</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>            <span class="co">-- putStr &quot;.&quot;</span></span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>            go (n <span class="op">-</span> <span class="dv">1</span>) _cov before cmds</span>
+<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a>      <span class="kw">else</span> <span class="kw">do</span></span>
+<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a>        <span class="fu">putStrLn</span> <span class="st">&quot;\n(Where `p` and `.` indicate picked and dropped values respectively.)&quot;</span></span>
+<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Just</span> <span class="op">&lt;$&gt;</span> shrinker (p <span class="dt">True</span> _cov) (shrinkList (<span class="fu">const</span> [])) cmds&#39;</span></code></pre></div>
 <div class="sourceCode" id="cb4"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ot">minimise ::</span> (a <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Bool</span>) <span class="ot">-&gt;</span> <span class="dt">IO</span> () <span class="ot">-&gt;</span> <span class="dt">Tree</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> [a]</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>minimise p reset (<span class="dt">Node</span> x xs) <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  xs&#39; <span class="ot">&lt;-</span> filterM (\x&#39; <span class="ot">-&gt;</span> reset <span class="op">&gt;&gt;</span> <span class="fu">fmap</span> <span class="fu">not</span> (p (root x&#39;))) xs</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> xs&#39; <span class="kw">of</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    []   <span class="ot">-&gt;</span> <span class="fu">return</span> [x]</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    x&#39;<span class="op">:</span>_ <span class="ot">-&gt;</span> (<span class="op">:</span>) <span class="op">&lt;$&gt;</span> <span class="fu">pure</span> x <span class="op">&lt;*&gt;</span> minimise p reset x&#39;</span></code></pre></div>
+class="sourceCode haskell"><code class="sourceCode haskell"></code></pre></div>
 <div class="sourceCode" id="cb5"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ot">randomMutation ::</span> [a] <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> [a]</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>randomMutation [] x <span class="ot">=</span> <span class="fu">return</span> [x]</span>
@@ -267,37 +293,24 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a 
 <span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>checkCoverage (<span class="dt">Coverage</span> ref) <span class="ot">=</span> Set.size <span class="op">&lt;$&gt;</span> readIORef ref</span>
 <span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">CoverageDiff</span> <span class="ot">=</span> <span class="dt">Decreased</span> <span class="op">|</span> <span class="dt">Same</span> <span class="op">|</span> <span class="dt">Increased</span></span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a><span class="ot">compareCoverage ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">CoverageDiff</span></span>
-<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>compareCoverage before after <span class="ot">=</span> <span class="kw">case</span> <span class="fu">compare</span> after before <span class="kw">of</span></span>
-<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>  <span class="dt">LT</span> <span class="ot">-&gt;</span> <span class="dt">Decreased</span></span>
-<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>  <span class="dt">EQ</span> <span class="ot">-&gt;</span> <span class="dt">Same</span></span>
-<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>  <span class="dt">GT</span> <span class="ot">-&gt;</span> <span class="dt">Increased</span></span>
-<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a><span class="ot">withCoverage ::</span> (<span class="dt">Coverage</span> c <span class="ot">-&gt;</span> <span class="dt">IO</span> a) <span class="ot">-&gt;</span> <span class="dt">IO</span> (a, <span class="dt">Int</span>)</span>
-<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>withCoverage k <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>  c <span class="ot">&lt;-</span> emptyCoverage</span>
-<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>  x <span class="ot">&lt;-</span> k c</span>
-<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>  after <span class="ot">&lt;-</span> checkCoverage c</span>
-<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> (x, after)</span></code></pre></div>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> <span class="dt">Eq</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a><span class="ot">compareCoverage ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">CoverageDiff</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>compareCoverage before after <span class="ot">=</span> <span class="kw">case</span> <span class="fu">compare</span> after before <span class="kw">of</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>  <span class="dt">LT</span> <span class="ot">-&gt;</span> <span class="dt">Decreased</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>  <span class="dt">EQ</span> <span class="ot">-&gt;</span> <span class="dt">Same</span></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>  <span class="dt">GT</span> <span class="ot">-&gt;</span> <span class="dt">Increased</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a><span class="ot">withCoverage ::</span> (<span class="dt">Coverage</span> c <span class="ot">-&gt;</span> <span class="dt">IO</span> a) <span class="ot">-&gt;</span> <span class="dt">IO</span> (a, <span class="dt">Int</span>)</span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>withCoverage k <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>  c <span class="ot">&lt;-</span> emptyCoverage</span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>  x <span class="ot">&lt;-</span> k c</span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>  after <span class="ot">&lt;-</span> checkCoverage c</span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> (x, after)</span></code></pre></div>
 <div class="sourceCode" id="cb7"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">Gen</span> a <span class="ot">=</span> <span class="dt">Gen</span> (<span class="dt">StdGen</span> <span class="ot">-&gt;</span> a)</span>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">Gen</span> a <span class="ot">=</span> <span class="dt">Gen</span> (<span class="dt">Size</span> <span class="ot">-&gt;</span> <span class="dt">StdGen</span> <span class="ot">-&gt;</span> a)</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">Gen</span> <span class="kw">where</span></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fmap</span> f (<span class="dt">Gen</span> k) <span class="ot">=</span> <span class="dt">Gen</span> (f <span class="op">.</span> k)</span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="ot">runGen ::</span> <span class="dt">StdGen</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a <span class="ot">-&gt;</span> a</span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>runGen prng (<span class="dt">Gen</span> g) <span class="ot">=</span> g prng</span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">Applicative</span> <span class="dt">Gen</span> <span class="kw">where</span></span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pure</span> x <span class="ot">=</span> <span class="dt">Gen</span> <span class="op">$</span> \_prng <span class="ot">-&gt;</span> x</span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>  (<span class="op">&lt;*&gt;</span>)  <span class="ot">=</span> ap</span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">Monad</span> <span class="dt">Gen</span> <span class="kw">where</span></span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>  <span class="ot">=</span> <span class="fu">pure</span></span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>  x <span class="op">&gt;&gt;=</span> f <span class="ot">=</span> <span class="dt">Gen</span> <span class="op">$</span> \prng <span class="ot">-&gt;</span></span>
-<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> (prngX, prngF) <span class="ot">=</span> split prng</span>
-<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    <span class="kw">in</span> runGen prngF (f (runGen prngX x))</span></code></pre></div>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Size</span> <span class="ot">=</span> <span class="dt">Int</span></span></code></pre></div>
 <p>The full source code is available <a
 href="https://github.com/stevana/coverage-guided-pbt">here</a>.</p>
 </section>
@@ -310,6 +323,22 @@ with the prototype</a></h2>
 <h2><a href="#conclusion-and-further-work"
 title="Conclusion and further work">Conclusion and further work</a></h2>
 <ul>
+<li><p>Makes more sense for stateful systems than pure functions? Or
+atleast properties that expect a sequence of inputs?</p></li>
+<li><p>Don’t rerun all commands for every newly generate command</p>
+<ul>
+<li>only reset the system when shrinking</li>
+</ul></li>
+<li><p>Problem of strategy (pick something as basis for progress):
+coverage, logs, value of memory, helps bootstap the process. Generalise
+to support more?</p></li>
+<li><p>Local maxima?</p></li>
+<li><p>Problem of tactics: picking a good input distributed for the
+testing problem at hand. Make previous input influence the next input?
+Dependent events, e.g. if one packet gets lost, there’s a higher chance
+that the next packet will be lost as well.</p></li>
+<li><p>Save <code>(Coverage, Mutation, Frequency, Coverage)</code>
+stats?</p></li>
 <li><p>More realistic example, e.g.: leader election, transaction
 rollback, failover?</p></li>
 <li><p>Annoying to sprinkle sometimes assertions everywhere?</p>
@@ -318,6 +347,41 @@ rollback, failover?</p></li>
 </ul></li>
 <li><p>Use size parameter to implement AFL heuristic for choosing
 integers? Or just use <code>frequency</code>?</p></li>
+<li><p>Type-generic mutation?</p></li>
+</ul>
+</section>
+<section id="see-also" class="level2">
+<h2><a href="#see-also" title="See also">See also</a></h2>
+<ul>
+<li><a href="https://aflplus.plus/docs/power_schedules/"
+class="uri">https://aflplus.plus/docs/power_schedules/</a></li>
+<li><a href="https://github.com/mboehme/aflfast"
+class="uri">https://github.com/mboehme/aflfast</a></li>
+<li><a href="https://mboehme.github.io/paper/CCS16.pdf"
+class="uri">https://mboehme.github.io/paper/CCS16.pdf</a></li>
+<li><a
+href="https://carstein.github.io/fuzzing/2020/04/18/writing-simple-fuzzer-1.html"
+class="uri">https://carstein.github.io/fuzzing/2020/04/18/writing-simple-fuzzer-1.html</a></li>
+<li><a
+href="https://carstein.github.io/fuzzing/2020/04/25/writing-simple-fuzzer-2.html"
+class="uri">https://carstein.github.io/fuzzing/2020/04/25/writing-simple-fuzzer-2.html</a></li>
+<li><a
+href="https://carstein.github.io/fuzzing/2020/05/02/writing-simple-fuzzer-3.html"
+class="uri">https://carstein.github.io/fuzzing/2020/05/02/writing-simple-fuzzer-3.html</a></li>
+<li><a
+href="https://carstein.github.io/fuzzing/2020/05/21/writing-simple-fuzzer-4.html"
+class="uri">https://carstein.github.io/fuzzing/2020/05/21/writing-simple-fuzzer-4.html</a></li>
+<li><a href="https://antithesis.com/blog/sdtalk/">How Antithesis finds
+bugs (with help from the Super Mario Bros)</a></li>
+<li>Swarm testing</li>
+<li><a href="https://lcamtuf.coredump.cx/afl/technical_details.txt">AFL
+“whitepaper”</a></li>
+<li><a
+href="https://lcamtuf.blogspot.com/2014/08/binary-fuzzing-strategies-what-works.html">AFL
+mutation heuristics</a></li>
+<li><a
+href="https://lcamtuf.blogspot.com/2014/11/pulling-jpegs-out-of-thin-air.html"
+class="uri">https://lcamtuf.blogspot.com/2014/11/pulling-jpegs-out-of-thin-air.html</a></li>
 </ul>
 </section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
