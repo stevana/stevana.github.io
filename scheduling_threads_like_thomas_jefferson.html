@@ -49,8 +49,6 @@ id="toc-conclusion-and-future-work">Conclusion and future work</a></li>
 </ul>
 </nav>
 <div class="date">Posted on Sep  9, 2024</div>
-<p><em>Work in progress, please don’t share, but do feel free to get
-involved!</em></p>
 <p>This post is about how to schedule workers across a pipeline of
 queues in order to minimise total processing time, and an unexpected
 connection between this kind of scheduling and Thomas Jefferson.</p>
@@ -123,13 +121,17 @@ href="https://lmax-exchange.github.io/disruptor/disruptor.html">LMAX
 Disruptor</a> pattern is also based on pipelining parallelism and
 supports, what Jim calls, partition parallelism. One of the sources that
 the Disruptor paper mentions is <a
-href="https://people.eecs.berkeley.edu/~brewer/papers/SEDA-sosp.pdf">SEDA</a>.
-More recently, as I was digging into more of Jim’s <a
+href="https://people.eecs.berkeley.edu/~brewer/papers/SEDA-sosp.pdf"><em>SEDA:
+An Architecture for Well-Conditioned, Scalable Internet
+Services</em></a> (2001), which also talk about pipelines and
+dynamically allocating threads to the stages. More recently, as I was
+digging into more of Jim’s <a
 href="https://jimgray.azurewebsites.net/papers/CacmParallelDB.pdf">work</a>,
 I discovered that database engines also implement something akin to
-pipeline parallelism. One of the most advanced examples of this is
-Umbra’s <a
-href="https://db.in.tum.de/~leis/papers/morsels.pdf">morsels</a>.</p>
+pipeline parallelism. For a more recent example of database engines that
+use this technique, see the paper on Umbra’s <a
+href="https://db.in.tum.de/~leis/papers/morsels.pdf">morsel-driven
+parallelism</a> (2014).</p>
 <p>These are the examples of software pipeline parallelism that inspired
 me to start thinking about it. However it wasn’t until I read Martin
 Thompson, one of the people behind the LMAX Disruptor, say the
@@ -198,9 +200,10 @@ where the interesting processing happens in stages.</p>
 <h2><a href="#prototype-implementation"
 title="Prototype implementation">Prototype implementation</a></h2>
 <p>From the above picture, I hope that it’s clear that most of the code
-is plumbing (connecting the components).</p>
-<p>The most interesting aspect is: when a worker is done, how does the
-scheduler figure out what it shall tell it to do next?</p>
+is plumbing (connecting the components with queues). The most
+interesting aspect of the code is: when a worker is done, how does the
+scheduler figure out what it shall tell it to do next? So let’s focus on
+that.</p>
 <p>We start off by representing what a configuration of workers across a
 pipeline looks like. Each stage has an name, or identifier, and so a
 configuration can be represented as a map from the stage identifier to
