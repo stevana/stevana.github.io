@@ -210,7 +210,7 @@ interesting aspect of the code is: when a worker is done, how does the
 scheduler figure out what it shall tell it to do next? So let’s focus on
 that.</p>
 <p>We start off by representing what a configuration of workers across a
-pipeline looks like. Each stage has an name, or identifier, and so a
+pipeline looks like. Each stage has a name, or identifier, and so a
 configuration can be represented as a map from the stage identifier to
 the number of workers assigned to that stage:</p>
 <div class="sourceCode" id="cb1"><pre
@@ -418,39 +418,11 @@ throughput;</li>
 <li>The load decreases, we can scale down and use the cores elsewhere in
 the system.</li>
 </ol>
-<p>There are many ways in which this can be extended, here’s a few in no
-particular order:</p>
-<ol type="1">
-<li>Can we find other places where this algorithm pops up? The problem
-seems related to mathematical optimisation, but I haven’t been able to
-find an exact match;</li>
-<li>Can we have scoring algorithms that optimise for latency (prefer
-working on sink queues / preallocate workers on queues that will likely
-be non-empty) vs throughput (avoid switching / dynamically increase
-batch sizes);</li>
-<li>The prototype uses simple concurrent queues, what would be more
-interesting is to scale the <a
-href="https://stevana.github.io/parallel_stream_processing_with_zero-copy_fan-out_and_sharding.html#disruptor-pipeline-deployment">sharding</a>
-of LMAX Disruptors up and down as we allocate/deallocate workers between
-them, that way we could retain determinism of the order in which items
-are processed;</li>
-<li>It would also be useful to <a
-href="https://stevana.github.io/visualising_datastructures_over_time_using_svg.html">visualise</a>
-the pipelines and how threads are scheduled over time, for sanity
-checking and debugging;</li>
-<li>Finally, anything performance related would benefit from
-benchmarking on a good set of examples. A few things worth trying:
-<ul>
-<li>Against single-thread, trying to avoid <a
-href="http://www.frankmcsherry.org/graph/scalability/cost/2015/01/15/COST.html">this</a>;</li>
-<li>One core per stage</li>
-<li>N green threads per stage, where N = # of CPUs/cores? Are there
-better ways to offload the rebalancing to the runtime?</li>
-<li>Other libraries?</li>
-</ul></li>
-</ol>
-<p>If any of this interests you feel free to get in <a
-href="https://stevana.github.io/about.html">touch</a>.</p>
+<p>We also saw how Thomas Jefferson’s method of allocating seats in a
+parliament can be used to solve the same problem. This unexpected
+connection makes me wonder where else this algorithm pops up? Please let
+<a href="https://stevana.github.io/about.html">me know</a> if it reminds
+you of something you’ve seen before.</p>
 </section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
