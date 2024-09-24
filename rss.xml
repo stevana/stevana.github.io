@@ -341,7 +341,7 @@ href="https://en.wikipedia.org/wiki/D%27Hondt_method">method</a>” (of
 allocating seats in parliaments).</p>
 <p>Here’s how the process works:</p>
 <blockquote>
-<p>After all the votes have been tallied, successive quotients are
+<p>“After all the votes have been tallied, successive quotients are
 calculated for each party. The party with the largest quotient wins one
 seat, and its quotient is recalculated. This is repeated until the
 required number of seats is filled. The formula for the quotient is:</p>
@@ -350,7 +350,7 @@ required number of seats is filled. The formula for the quotient is:</p>
 <ul>
 <li>V is the total number of votes that party received, and</li>
 <li>s is the number of seats that party has been allocated so far,
-initially 0 for all parties.</li>
+initially 0 for all parties.”</li>
 </ul>
 </blockquote>
 <p>The analogy being:</p>
@@ -414,7 +414,7 @@ href="https://stevana.github.io/parallel_stream_processing_with_zero-copy_fan-ou
 post</a>. I’ve collected a bunch of other things left to do in a
 separate <a
 href="https://github.com/stevana/scheduled-pipelines/blob/main/TODO.md">file</a>.
-If any of this interests you feel free to get in <a
+If any of this interests you, feel free to get in <a
 href="https://stevana.github.io/about.html">touch</a>.</p>
 </section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
