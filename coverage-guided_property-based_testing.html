@@ -63,23 +63,37 @@ any language-specific instrumentation of the software under test.</p>
 title="Background and prior work">Background and prior work</a></h2>
 <p>Fuzzing has an interesting origin. It was a class <a
 href="http://pages.cs.wisc.edu/~bart/fuzz/CS736-Projects-f1988.pdf">project</a>
-in an advanced OS course taught by Barton Miller at the University of
-Wisconsin in 1988.</p>
+in an advanced operating systems course taught by Barton Miller at the
+University of Wisconsin in 1988.</p>
+<p>The project was inspired by the observation that back then, if you
+logged into your workstation via a dail-up modem from home and it
+rained, then frequently random characters would appear in the terminal.
+The line noise wasn’t the surprising thing, but rather that the extra
+characters would sometimes crash the program that they tried to
+invoke.</p>
+<p>Among these programs were basic utilities such as vi, mail, cc, make,
+sed, awk, sort, etc, and it was reasonable to expect that these would
+give an error message rather than crash and core dump if fed with some
+extra characters caused by the rain.</p>
+<p>So the project set out to basically recreate what the rain did, but
+more effectively, but essentially generating random noise (stream of
+bytes) and feeding that to different utilities and see if they
+crashed.</p>
 <p>A couple of years later Barton et al published <a
 href="https://dl.acm.org/doi/10.1145/96267.96279"><em>An empirical study
 of the reliability of UNIX utilities</em></a> (1990).</p>
-<p>The way Barton’s fuzzer worked was just to generate random bytes and
-feed it to command line tools and see if they crashed.</p>
+<p>Inserting random characters was effective in finding corner cases
+where the programmers forgot to properly validate the input from the
+user.</p>
+<p>However it wouldn’t trigger bugs hiding deeper under the surface.</p>
+<p>This changed around 2007 when people <a
+href="https://lcamtuf.coredump.cx/afl/historical_notes.txt">started
+thinking</a> about how fuzzing can be combined with <a
+href="https://en.wikipedia.org/wiki/Evolutionary_algorithm">evolutionary
+algorithms</a>.</p>
+<p>the idea being that</p>
 <ul>
-<li><p>AFL (2013), <a
-href="https://lcamtuf.coredump.cx/afl/historical_notes.txt"
-class="uri">https://lcamtuf.coredump.cx/afl/historical_notes.txt</a></p></li>
-<li><p><a href="https://llvm.org/docs/LibFuzzer.html">libfuzzer</a> and
-it’s successor <a href="https://github.com/google/fuzztest">FuzzTest</a>
-(“It is a first-of-its-kind tool that bridges the gap between fuzzing
-and property-based testing”)</p></li>
-<li><p><a
-href="https://github.com/google/honggfuzz">honggfuzz</a></p></li>
+<li>AFL (2013),</li>
 </ul>
 <p>Coverage-guided fuzzers, such as <a
 href="https://lcamtuf.coredump.cx/afl/">American Fuzzy Lop</a> (AFL),
@@ -89,7 +103,24 @@ take bytes as input. That means any kind of programs that takes user
 strings, command line arguments or files as inputs, parsers, but also
 arrays of ints, etc.</p>
 <ul>
+<li><p><a
+href="https://lcamtuf.blogspot.com/2014/11/pulling-jpegs-out-of-thin-air.html"
+class="uri">https://lcamtuf.blogspot.com/2014/11/pulling-jpegs-out-of-thin-air.html</a></p></li>
+<li><p>AFL is the tool that Dan Luu explicitly mentions, so let’s stop
+here and go back to his point, before looking at else has happened
+since</p></li>
 <li><p>PBT</p></li>
+<li><p>I’ve written about the <a
+href="https://stevana.github.io/the_sad_state_of_property-based_testing_libraries.html#the-history-of-property-based-testing">history</a>
+of property-based testing and explained how it <a
+href="https://stevana.github.io/the_sad_state_of_property-based_testing_libraries.html#pure-property-based-testing-recap">works</a>
+already, so I won’t take up space by repeating myself here.</p></li>
+<li><p>The idea of combining coverage-guidance and PBT</p></li>
+<li><p>Now let’s have a look at what has happend since Dan wrote his
+post.</p></li>
+<li><p>First off, at some point he added an update to his post where he
+explicitly mentiones:</p>
+<ul>
 <li><p>Go-fuzz?</p></li>
 <li><p>Hypothesis</p>
 <ul>
@@ -99,8 +130,9 @@ class="uri">https://hypothesis.readthedocs.io/en/latest/details.html#hypothesis.
 <li>But coverage-guided testing was <a
 href="https://github.com/HypothesisWorks/hypothesis/pull/1564/commits/dcbea9148be3446392bc3af8892d49f3cc74fbe3">removed</a></li>
 </ul></li>
-<li><p><a
-href="https://github.com/stedolan/crowbar">Crowbar</a></p></li>
+</ul></li>
+<li><p>When you search for coverage guided property-based
+testing</p></li>
 <li><p><a href="https://dl.acm.org/doi/10.1145/3360607">FuzzChick</a>?
 Not released, lives in an <a
 href="https://github.com/QuickChick/QuickChick/compare/master...FuzzChick">unmaintained
@@ -111,6 +143,18 @@ compile</a>?</p>
 <li>coverage info is <a href="https://youtu.be/RR6c_fiMfJQ?t=2226">same
 as in AFL</a></li>
 </ul></li>
+<li><p><a href="https://llvm.org/docs/LibFuzzer.html">libfuzzer</a> and
+it’s successor <a href="https://github.com/google/fuzztest">FuzzTest</a>
+(“It is a first-of-its-kind tool that bridges the gap between fuzzing
+and property-based testing”) (2022?)</p></li>
+<li><p><a
+href="https://github.com/google/honggfuzz">honggfuzz</a></p></li>
+<li><p><a
+href="https://github.com/stedolan/crowbar">Crowbar</a></p></li>
+<li><p><a
+href="https://www.mista.me/assets/pdf/icst23-preprint.pdf">MUTAGEN:
+Reliable Coverage-Guided, Property-Based Testing using Exhaustive
+Mutations</a> (2023)</p></li>
 <li><p>Shae “shapr” Erisson’s post <a
 href="https://shapr.github.io/posts/2023-07-30-goldilocks-property-tests.html"><em>Run
 property tests until coverage stops increasing</em></a> (2023) and <a
@@ -348,6 +392,7 @@ rollback, failover?</p></li>
 <li><p>Use size parameter to implement AFL heuristic for choosing
 integers? Or just use <code>frequency</code>?</p></li>
 <li><p>Type-generic mutation?</p></li>
+<li><p>sometimes_each?</p></li>
 </ul>
 </section>
 <section id="see-also" class="level2">
@@ -379,9 +424,6 @@ bugs (with help from the Super Mario Bros)</a></li>
 <li><a
 href="https://lcamtuf.blogspot.com/2014/08/binary-fuzzing-strategies-what-works.html">AFL
 mutation heuristics</a></li>
-<li><a
-href="https://lcamtuf.blogspot.com/2014/11/pulling-jpegs-out-of-thin-air.html"
-class="uri">https://lcamtuf.blogspot.com/2014/11/pulling-jpegs-out-of-thin-air.html</a></li>
 </ul>
 </section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
