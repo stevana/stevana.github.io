@@ -91,7 +91,7 @@ href="https://lcamtuf.coredump.cx/afl/historical_notes.txt">started
 thinking</a> about how fuzzing can be combined with <a
 href="https://en.wikipedia.org/wiki/Evolutionary_algorithm">evolutionary
 algorithms</a>.</p>
-<p>the idea being that</p>
+<p>XXX: The idea being that…</p>
 <ul>
 <li>AFL (2013),</li>
 </ul>
@@ -116,12 +116,17 @@ of property-based testing and explained how it <a
 href="https://stevana.github.io/the_sad_state_of_property-based_testing_libraries.html#pure-property-based-testing-recap">works</a>
 already, so I won’t take up space by repeating myself here.</p></li>
 <li><p>The idea of combining coverage-guidance and PBT</p></li>
-<li><p>Now let’s have a look at what has happend since Dan wrote his
+<li><p>Now let’s have a look at what has happend since Dan’s
 post.</p></li>
 <li><p>First off, at some point he added an update to his post where he
 explicitly mentiones:</p>
 <ul>
-<li><p>Go-fuzz?</p></li>
+<li><p>Go-fuzz?</p>
+<ul>
+<li><a
+href="https://adalogics.com/blog/structure-aware-go-fuzzing-complex-types"
+class="uri">https://adalogics.com/blog/structure-aware-go-fuzzing-complex-types</a></li>
+</ul></li>
 <li><p>Hypothesis</p>
 <ul>
 <li>Has notion of coverage: <a
@@ -133,8 +138,8 @@ href="https://github.com/HypothesisWorks/hypothesis/pull/1564/commits/dcbea9148b
 </ul></li>
 <li><p>When you search for coverage guided property-based
 testing</p></li>
-<li><p><a href="https://dl.acm.org/doi/10.1145/3360607">FuzzChick</a>?
-Not released, lives in an <a
+<li><p><a href="https://dl.acm.org/doi/10.1145/3360607">FuzzChick</a>
+(2019). Not released, lives in an <a
 href="https://github.com/QuickChick/QuickChick/compare/master...FuzzChick">unmaintained
 branch</a> that <a
 href="https://github.com/QuickChick/QuickChick/issues/277">doesn’t
@@ -143,28 +148,45 @@ compile</a>?</p>
 <li>coverage info is <a href="https://youtu.be/RR6c_fiMfJQ?t=2226">same
 as in AFL</a></li>
 </ul></li>
+<li><p>FuzzChick, related work mentions:</p></li>
+<li><p><a href="https://github.com/rohanpadhye/jqf">JQF + Zest:
+Coverage-guided semantic fuzzing for Java</a>?</p></li>
+<li><p><a href="https://github.com/stedolan/crowbar">Crowbar</a></p>
+<ul>
+<li><a
+href="https://github.com/ocaml/ocaml.org-media/blob/086fc25105cbccb188c28ec74126d72962921ff8/meetings/ocaml/2017/extended-abstract__2017__stephen-dolan_mindy-preston__testing-with-crowbar.pdf">extended
+abstract from OCaml workshop</a>
+<ol start="2017" type="1">
+<li></li>
+</ol></li>
+<li>Uses fuzzing indirectly to generate the data?</li>
+</ul></li>
 <li><p><a href="https://llvm.org/docs/LibFuzzer.html">libfuzzer</a> and
 it’s successor <a href="https://github.com/google/fuzztest">FuzzTest</a>
 (“It is a first-of-its-kind tool that bridges the gap between fuzzing
 and property-based testing”) (2022?)</p></li>
-<li><p><a
-href="https://github.com/google/honggfuzz">honggfuzz</a></p></li>
-<li><p><a
-href="https://github.com/stedolan/crowbar">Crowbar</a></p></li>
-<li><p><a
-href="https://www.mista.me/assets/pdf/icst23-preprint.pdf">MUTAGEN:
-Reliable Coverage-Guided, Property-Based Testing using Exhaustive
-Mutations</a> (2023)</p></li>
-<li><p>Shae “shapr” Erisson’s post <a
-href="https://shapr.github.io/posts/2023-07-30-goldilocks-property-tests.html"><em>Run
-property tests until coverage stops increasing</em></a> (2023) and <a
-href="https://github.com/shapr/trynocular">trynocular</a>
-library.</p></li>
-<li><p><a href="https://github.com/rohanpadhye/jqf">JQF + Zest:
-Coverage-guided semantic fuzzing for Java</a>?</p></li>
+<li><p><a href="https://github.com/google/honggfuzz">honggfuzz</a></p>
+<ul>
+<li>open PR to add it to cargo fuzz: <a
+href="https://github.com/rust-fuzz/book/pull/14"
+class="uri">https://github.com/rust-fuzz/book/pull/14</a></li>
+</ul></li>
 <li><p><a
 href="https://rust-fuzz.github.io/book/cargo-fuzz/structure-aware-fuzzing.html">Structure-aware
 fuzzing using libfuzzer-sys in Rust</a></p></li>
+<li><p><a
+href="https://www.mista.me/assets/pdf/icst23-preprint.pdf">MUTAGEN:
+Reliable Coverage-Guided, Property-Based Testing using Exhaustive
+Mutations</a> (2023)</p>
+<ul>
+<li><a href="https://github.com/OctopiChalmers/mutagen/"
+class="uri">https://github.com/OctopiChalmers/mutagen/</a></li>
+<li>Uses GHC <a
+href="https://github.com/OctopiChalmers/mutagen/blob/main/src/Test/Mutagen/Tracer/Plugin.hs">plugin</a>
+to annotate source code with coverage information of: function clauses,
+case statements, multi-way ifs, and each branch of if-then-else
+expressions</li>
+</ul></li>
 </ul>
 </section>
 <section id="examples-and-the-main-idea-of-coverage-guidance"
@@ -206,6 +228,10 @@ effectively reduce the problem to only need <span
 class="math inline">\(O(2^8 + 2^8 + 2^8 + 2^8) = O(2^8 \cdot 4) =
 O(2^{10}) = 1024\)</span> tries. With other words coverage-guidence
 turns an exponential problem into a polynomial problem!</p>
+</section>
+<section id="prototype-implementation" class="level2">
+<h2><a href="#prototype-implementation"
+title="Prototype implementation">Prototype implementation</a></h2>
 <p>Great, but where do we get this coverage information from?</p>
 <p>AFL and <code>go-fuzz</code> both get it from the compiler.</p>
 <p>AFL injects code into every <a
@@ -243,16 +269,11 @@ id="fnref2" role="doc-noteref"><sup>2</sup></a>!</p>
 <p>So the question is: can we implement coverage-guided property-based
 testing using the internal notion of coverage that property-based
 testing already has?</p>
-</section>
-<section id="prototype-implementation" class="level2">
-<h2><a href="#prototype-implementation"
-title="Prototype implementation">Prototype implementation</a></h2>
 <ul>
 <li><p>QuickCheck as defined in the appendix of the original <a
 href="https://dl.acm.org/doi/10.1145/351240.351266">paper</a> (ICFP,
 2000)</p>
 <ul>
-<li>Extended with shrinking</li>
 <li>Extended monadic properties</li>
 </ul></li>
 <li><p>Edsko de Vries’ <a
@@ -424,6 +445,15 @@ bugs (with help from the Super Mario Bros)</a></li>
 <li><a
 href="https://lcamtuf.blogspot.com/2014/08/binary-fuzzing-strategies-what-works.html">AFL
 mutation heuristics</a></li>
+<li>Shae “shapr” Erisson’s post <a
+href="https://shapr.github.io/posts/2023-07-30-goldilocks-property-tests.html"><em>Run
+property tests until coverage stops increasing</em></a> (2023) (2023)
+and <a href="https://github.com/shapr/trynocular">trynocular</a>
+library.
+<ul>
+<li>This only uses coverage as a stopping condition, not to actually
+drive the generation…</li>
+</ul></li>
 </ul>
 </section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
