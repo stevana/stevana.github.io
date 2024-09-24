@@ -310,102 +310,36 @@ href="https://dl.acm.org/doi/10.1145/351240.351266">paper</a> (ICFP,
 href="https://www.well-typed.com/blog/2019/05/integrated-shrinking/">Mini-QuickCheck</a></p></li>
 </ul>
 <div class="sourceCode" id="cb3"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Seed</span> <span class="ot">=</span> <span class="dt">Int</span></span>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">Gen</span> a <span class="ot">=</span> <span class="dt">Gen</span> (<span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">StdGen</span> <span class="ot">-&gt;</span> a)</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Shrinking</span> <span class="ot">=</span> <span class="dt">Bool</span></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="ot">checkM ::</span> <span class="kw">forall</span> a c<span class="op">.</span> (<span class="dt">Show</span> a, <span class="dt">Show</span> c)</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>       <span class="ot">=&gt;</span> <span class="dt">Seed</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a <span class="ot">-&gt;</span> (<span class="dt">Shrinking</span> <span class="ot">-&gt;</span> <span class="dt">Coverage</span> c <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Bool</span>) <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>checkM seed numTests gen p <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  coverage <span class="ot">&lt;-</span> emptyCoverage</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  mShrinkSteps <span class="ot">&lt;-</span> go numTests coverage <span class="dv">0</span> []</span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> mShrinkSteps <span class="kw">of</span></span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Nothing</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="st">&quot;\nOK&quot;</span></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>      cov <span class="ot">&lt;-</span> readCoverage coverage</span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;Coverage: &quot;</span> <span class="op">++</span> <span class="fu">show</span> cov</span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Just</span> shrinkSteps <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;Failed: &quot;</span> <span class="op">++</span> <span class="fu">show</span> (NonEmpty.head shrinkSteps)</span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;Shrinking: &quot;</span> <span class="op">++</span> <span class="fu">show</span> shrinkSteps</span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;#Shrinks: &quot;</span> <span class="op">++</span> <span class="fu">show</span> (NonEmpty.length shrinkSteps <span class="op">-</span> <span class="dv">1</span>)</span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;Shrunk: &quot;</span> <span class="op">++</span> <span class="fu">show</span> (NonEmpty.last shrinkSteps)</span>
-<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>      cov <span class="ot">&lt;-</span> readCoverage coverage</span>
-<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>      <span class="fu">putStrLn</span> <span class="op">$</span> <span class="st">&quot;Coverage: &quot;</span> <span class="op">++</span> <span class="fu">show</span> cov</span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a><span class="ot">    go ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Coverage</span> c <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">Maybe</span> (<span class="dt">NonEmpty</span> [a]))</span>
-<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    go <span class="dv">0</span> _cov _before _cmds <span class="ot">=</span> <span class="fu">return</span> <span class="dt">Nothing</span></span>
-<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>    go n _cov  before  cmds <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>      <span class="kw">let</span> sz  <span class="ot">=</span> n <span class="op">*</span> <span class="dv">3</span> <span class="ot">`div`</span> <span class="dv">2</span></span>
-<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>      <span class="kw">let</span> cmd <span class="ot">=</span> generate sz (mkStdGen (seed <span class="op">+</span> n)) gen</span>
-<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>      cmds&#39; <span class="ot">&lt;-</span> randomMutation cmds cmd</span>
-<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>      (ok, after) <span class="ot">&lt;-</span> withCoverage (\cov <span class="ot">-&gt;</span> p <span class="dt">False</span> cov cmds&#39;)</span>
-<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>      <span class="kw">if</span> ok</span>
-<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>      <span class="kw">then</span> <span class="kw">do</span></span>
-<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> diff <span class="ot">=</span> compareCoverage before after</span>
-<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>        <span class="kw">case</span> diff <span class="kw">of</span></span>
-<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>          <span class="dt">Increased</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>            <span class="co">-- putStr &quot;p&quot;</span></span>
-<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>            go (n <span class="op">-</span> <span class="dv">1</span>) _cov after cmds&#39;</span>
-<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>          <span class="dt">Same</span>      <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>            <span class="co">-- putStr &quot;p&quot;</span></span>
-<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>            go (n <span class="op">-</span> <span class="dv">1</span>) _cov after cmds&#39;</span>
-<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>          <span class="dt">Decreased</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>            <span class="co">-- putStr &quot;.&quot;</span></span>
-<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>            go (n <span class="op">-</span> <span class="dv">1</span>) _cov before cmds</span>
-<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a>      <span class="kw">else</span> <span class="kw">do</span></span>
-<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a>        <span class="fu">putStrLn</span> <span class="st">&quot;\n(Where `p` and `.` indicate picked and dropped values respectively.)&quot;</span></span>
-<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Just</span> <span class="op">&lt;$&gt;</span> shrinker (p <span class="dt">True</span> _cov) (shrinkList (<span class="fu">const</span> [])) cmds&#39;</span></code></pre></div>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="ot">generate ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">StdGen</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a <span class="ot">-&gt;</span> a</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>generate n rnd (<span class="dt">Gen</span> m) <span class="ot">=</span> m size rnd&#39;</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a> <span class="kw">where</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  (size, rnd&#39;) <span class="ot">=</span> randomR (<span class="dv">0</span>, n) rnd</span></code></pre></div>
 <div class="sourceCode" id="cb4"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"></code></pre></div>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ot">rand ::</span> <span class="dt">Gen</span> <span class="dt">StdGen</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>rand <span class="ot">=</span> <span class="dt">Gen</span> (\_n r <span class="ot">-&gt;</span> r)</span></code></pre></div>
 <div class="sourceCode" id="cb5"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ot">randomMutation ::</span> [a] <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> [a]</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>randomMutation [] x <span class="ot">=</span> <span class="fu">return</span> [x]</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>randomMutation xs x <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  appendOrUpdate <span class="ot">&lt;-</span> randomIO <span class="co">-- XXX: nondet</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">if</span> appendOrUpdate</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">then</span> <span class="fu">return</span> (xs <span class="op">++</span> [x])</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">else</span> <span class="kw">do</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    ix <span class="ot">&lt;-</span> randomRIO (<span class="dv">0</span>, <span class="fu">length</span> xs <span class="op">-</span> <span class="dv">1</span>)</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">return</span> (update ix xs x)</span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="ot">    update ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> [a]</span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    update ix xs0 x&#39; <span class="ot">=</span> <span class="kw">case</span> <span class="fu">splitAt</span> ix xs0 <span class="kw">of</span></span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>      (before, _x <span class="op">:</span> after) <span class="ot">-&gt;</span> before <span class="op">++</span> x&#39; <span class="op">:</span> after</span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>      (_, []) <span class="ot">-&gt;</span> <span class="fu">error</span> <span class="st">&quot;update: impossible&quot;</span></span></code></pre></div>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ot">sized ::</span> (<span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a) <span class="ot">-&gt;</span> <span class="dt">Gen</span> a</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>sized fgen <span class="ot">=</span> <span class="dt">Gen</span> (\n r <span class="ot">-&gt;</span> <span class="kw">let</span> <span class="dt">Gen</span> m <span class="ot">=</span> fgen n <span class="kw">in</span> m n r)</span></code></pre></div>
 <div class="sourceCode" id="cb6"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">Coverage</span> a <span class="ot">=</span> <span class="dt">Coverage</span> (<span class="dt">IORef</span> (<span class="dt">Set</span> a))</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="ot">emptyCoverage ::</span> <span class="dt">IO</span> (<span class="dt">Coverage</span> a)</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>emptyCoverage <span class="ot">=</span> <span class="dt">Coverage</span> <span class="op">&lt;$&gt;</span> newIORef Set.empty</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="ot">addCoverage ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> <span class="dt">Coverage</span> a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>addCoverage (<span class="dt">Coverage</span> ref) x <span class="ot">=</span> modifyIORef&#39; ref (Set.insert x)</span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="ot">readCoverage ::</span> <span class="dt">Coverage</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">Set</span> a)</span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>readCoverage (<span class="dt">Coverage</span> ref) <span class="ot">=</span> readIORef ref</span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="ot">checkCoverage ::</span> <span class="dt">Coverage</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">Int</span></span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>checkCoverage (<span class="dt">Coverage</span> ref) <span class="ot">=</span> Set.size <span class="op">&lt;$&gt;</span> readIORef ref</span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">CoverageDiff</span> <span class="ot">=</span> <span class="dt">Decreased</span> <span class="op">|</span> <span class="dt">Same</span> <span class="op">|</span> <span class="dt">Increased</span></span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> <span class="dt">Eq</span></span>
-<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a><span class="ot">compareCoverage ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">CoverageDiff</span></span>
-<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>compareCoverage before after <span class="ot">=</span> <span class="kw">case</span> <span class="fu">compare</span> after before <span class="kw">of</span></span>
-<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>  <span class="dt">LT</span> <span class="ot">-&gt;</span> <span class="dt">Decreased</span></span>
-<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>  <span class="dt">EQ</span> <span class="ot">-&gt;</span> <span class="dt">Same</span></span>
-<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>  <span class="dt">GT</span> <span class="ot">-&gt;</span> <span class="dt">Increased</span></span>
-<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a><span class="ot">withCoverage ::</span> (<span class="dt">Coverage</span> c <span class="ot">-&gt;</span> <span class="dt">IO</span> a) <span class="ot">-&gt;</span> <span class="dt">IO</span> (a, <span class="dt">Int</span>)</span>
-<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>withCoverage k <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>  c <span class="ot">&lt;-</span> emptyCoverage</span>
-<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>  x <span class="ot">&lt;-</span> k c</span>
-<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>  after <span class="ot">&lt;-</span> checkCoverage c</span>
-<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span> (x, after)</span></code></pre></div>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ot">coverCheck ::</span> (<span class="dt">Arbitrary</span> a, <span class="dt">Show</span> a) <span class="ot">=&gt;</span> <span class="dt">Config</span> <span class="ot">-&gt;</span> ([a] <span class="ot">-&gt;</span> <span class="dt">Property</span>)  <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>coverCheck config prop <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  rnd <span class="ot">&lt;-</span> newStdGen</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  testsC config arbitrary prop [] <span class="dv">0</span> rnd <span class="dv">0</span> <span class="dv">0</span> []</span></code></pre></div>
 <div class="sourceCode" id="cb7"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">Gen</span> a <span class="ot">=</span> <span class="dt">Gen</span> (<span class="dt">Size</span> <span class="ot">-&gt;</span> <span class="dt">StdGen</span> <span class="ot">-&gt;</span> a)</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Size</span> <span class="ot">=</span> <span class="dt">Int</span></span></code></pre></div>
+class="sourceCode haskell"><code class="sourceCode haskell"></code></pre></div>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"></code></pre></div>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ot">label ::</span> <span class="dt">Testable</span> a <span class="ot">=&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>label s a <span class="ot">=</span> <span class="dt">Prop</span> (add <span class="ot">`fmap`</span> evaluate a)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a> <span class="kw">where</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  add res <span class="ot">=</span> res{ stamp <span class="ot">=</span> s <span class="op">:</span> stamp res }</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="ot">classify ::</span> <span class="dt">Testable</span> a <span class="ot">=&gt;</span> <span class="dt">Bool</span> <span class="ot">-&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>classify <span class="dt">True</span>  name <span class="ot">=</span> label name</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>classify <span class="dt">False</span> _    <span class="ot">=</span> property</span></code></pre></div>
 <p>The full source code is available <a
 href="https://github.com/stevana/coverage-guided-pbt">here</a>.</p>
 </section>
@@ -413,6 +347,23 @@ href="https://github.com/stevana/coverage-guided-pbt">here</a>.</p>
 <h2><a href="#testing-some-examples-with-the-prototype"
 title="Testing some examples with the prototype">Testing some examples
 with the prototype</a></h2>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ot">bad ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>bad s <span class="ot">=</span> coverage <span class="dv">0</span> <span class="ch">&#39;b&#39;</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>      <span class="op">$</span> coverage <span class="dv">1</span> <span class="ch">&#39;a&#39;</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>      <span class="op">$</span> coverage <span class="dv">2</span> <span class="ch">&#39;d&#39;</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>      <span class="op">$</span> coverage <span class="dv">3</span> <span class="ch">&#39;!&#39;</span> <span class="op">$</span> <span class="kw">if</span> s <span class="op">==</span> <span class="st">&quot;bad!&quot;</span> <span class="kw">then</span> <span class="dt">False</span> <span class="kw">else</span> <span class="dt">True</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="ot">    coverage ::</span> <span class="dt">Testable</span> a <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Char</span> <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>    coverage i ch <span class="ot">=</span> classify (s <span class="op">!?</span> i <span class="op">==</span> <span class="dt">Just</span> ch) [ch]</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="ot">    (!?) ::</span> [a] <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Maybe</span> a</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    xs <span class="op">!?</span> i <span class="op">|</span> i <span class="op">&lt;</span> <span class="fu">length</span> xs <span class="ot">=</span> <span class="dt">Just</span> (xs <span class="op">!!</span> i)</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>            <span class="op">|</span> <span class="fu">otherwise</span>     <span class="ot">=</span> <span class="dt">Nothing</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a><span class="ot">testBad ::</span> <span class="dt">IO</span> ()</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>testBad <span class="ot">=</span> coverCheck (verbose { maxTest <span class="ot">=</span> <span class="dv">2</span><span class="op">^</span><span class="dv">7</span><span class="op">*</span><span class="dv">4</span><span class="op">*</span><span class="dv">2</span> }) bad</span></code></pre></div>
 </section>
 <section id="conclusion-and-further-work" class="level2">
 <h2><a href="#conclusion-and-further-work"
