@@ -10,7 +10,7 @@
       <title>Scheduling threads like Thomas Jefferson</title>
       <link>https://stevana.github.io/scheduling_threads_like_thomas_jefferson.html</link>
       <guid>https://stevana.github.io/scheduling_threads_like_thomas_jefferson.html</guid>
-      <pubDate>Mon, 23 Sep 2024 00:00:00 GMT</pubDate>
+      <pubDate>Tue, 24 Sep 2024 00:00:00 GMT</pubDate>
       <description><![CDATA[<h1>Scheduling threads like Thomas Jefferson</h1>
 <nav id="TOC" class="sidenote" role="doc-toc">
 <h2 id="toc-title">Table of contents</h2>
@@ -31,7 +31,7 @@ to Thomas Jefferson</a></li>
 id="toc-conclusion-and-future-work">Conclusion and future work</a></li>
 </ul>
 </nav>
-<div class="date">Posted on Sep 23, 2024</div>
+<div class="date">Posted on Sep 24, 2024</div>
 <p>This post is about how to schedule workers across a pipeline of
 queues in order to minimise total processing time, and an unexpected
 connection between this kind of scheduling and Thomas Jefferson.</p>
