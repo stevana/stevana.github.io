@@ -14,7 +14,7 @@ import System.Directory
 import System.FilePath
 import Text.DocTemplates
 import Text.Pandoc hiding (getDataFileName)
-import Text.Pandoc.Walk (walk, query)
+import Text.Pandoc.Walk (query, walk)
 
 import Download (titleToFileName)
 import Paths_stevana_github_io
@@ -138,7 +138,7 @@ markdownToHtml site markdownFile = do
           , writerTableOfContents = True
           , writerTemplate = Just template
           , writerSectionDivs = True
-          , writerHTMLMathMethod  = MathJax defaultMathJaxURL 
+          , writerHTMLMathMethod  = MathJax defaultMathJaxURL
           , writerVariables = context $
               [ ("lang", "en")
               , ("title", title)
@@ -201,17 +201,22 @@ displayDate d = mconcat
 
 generateAbout :: Site -> IO Text
 generateAbout s = generatePage s $ T.unlines $ map p $
-  [ "How do we build reliable, scalable and maintainable computer systems?"
+  [ "How can we make it easier to build reliable, scalable and maintainable computer \
+    \ systems?"
 
-  , "This site contains notes on how, I think, we can improve on the state \
-    \ of development, documentation, testing, deployment, observability, debugging, \
-    \ and upgrading of distributed systems. Most of the ideas are stolen from \
-    \ others, many from Erlang and Joe Armstrong. Over time I hope to turn this \
-    \ into a more coherent text, for now think of it as a crude blog or some basic \
+  , "This website is a collection of notes on how, I think, we can improve on the \
+    \ state of development, documentation, testing, deployment, observability, \
+    \ debugging, and upgrading of distributed systems."
+
+  , "Many of the ideas I write about on these topics are inspired by the work of Joe \
+    \ Armstrong (how to structure code to make it testable and reliable), Jim Gray \
+    \ (implicit parallelism via pipelining) and Barbara Liskov (the importance of \
+    \ programming language design to the spread of new ideas). Over time I hope to \
+    \ turn these notes into a more coherent text, for now I like to think of it as \
     \ scaffolding for me to hang my thoughts on."
 
-  , "If you got comments, feedback or questions then feel free to get in \
-    \ touch via <a href=\"mailto:4hsz4ji43@mozmail.com\">email</a>!"
+  , "If you got comments, feedback, questions or would like to work with me, then \
+    \ feel free to get in touch via <a href=\"mailto:4hsz4ji43@mozmail.com\">email</a>."
   ]
 
 ------------------------------------------------------------------------

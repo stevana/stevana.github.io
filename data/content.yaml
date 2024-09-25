@@ -53,7 +53,7 @@ topics:
   - title: Scheduling threads like Thomas Jefferson
     status: Done
     content: https://raw.githubusercontent.com/stevana/scheduled-pipelines/main/README.md
-    date: 2024-09-23T00:00:00Z
+    date: 2024-09-24T00:00:00Z
 
 # ----------------------------------------------------------------------
 - topic: Documentation
@@ -92,7 +92,7 @@ topics:
       status: Done
 
     - title: Coverage-guided property-based testing
-      date: 2024-09-24T00:00:00Z
+      date: 2024-09-25T00:00:00Z
       content: https://raw.githubusercontent.com/stevana/coverage-guided-pbt/main/README.md
       status: FirstDraft
 
