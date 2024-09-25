@@ -51,17 +51,17 @@ jAVASCRIPT_FILE = "script.js"
 
 ------------------------------------------------------------------------
 
-writeIndex :: Site -> FilePath -> IO ()
-writeIndex site outputDir =
-  T.writeFile (outputDir </> iNDEX_FILE) =<< generateReverseChronologicalIndex  site
+writeIndex :: Site -> String -> FilePath -> IO ()
+writeIndex site cssModifiedAt outputDir =
+  T.writeFile (outputDir </> iNDEX_FILE) =<< generateReverseChronologicalIndex site cssModifiedAt
 
 -- writeReverseChronologicalIndex :: Site -> FilePath -> IO ()
 -- writeReverseChronologicalIndex site outputDir =
 --   T.writeFile (outputDir </> cHRONOLOGICAL_FILE) =<< generateReverseChronologicalIndex site
 
-writeAbout :: Site -> FilePath -> IO ()
-writeAbout site outputDir =
-  T.writeFile (outputDir </> aBOUT_FILE) =<< generateAbout site
+writeAbout :: Site -> String -> FilePath -> IO ()
+writeAbout site cssModifiedAt outputDir =
+  T.writeFile (outputDir </> aBOUT_FILE) =<< generateAbout site cssModifiedAt
 
 installDataFiles :: FilePath -> IO ()
 installDataFiles outputDir = do
@@ -119,8 +119,8 @@ addAnchorsToHeaders = walk aux
         title = extractText inlines
     aux b = b
 
-markdownToHtml :: Site -> FilePath -> IO ()
-markdownToHtml site markdownFile = do
+markdownToHtml :: Site -> String -> FilePath -> IO ()
+markdownToHtml site cssModifiedAt markdownFile = do
   let mDate = lookupDate markdownFile site
   print (markdownFile, mDate)
   template <- prepareTemplate
@@ -145,7 +145,7 @@ markdownToHtml site markdownFile = do
               , ("path", T.pack (takeFileName htmlFile))
               , ("author-meta", _author site)
               , ("pagetitle", title)
-              , ("css", T.pack cSS_FILE)
+              , ("css", T.pack (cSS_FILE ++ "?modified=" ++ cssModifiedAt))
               , ("toc-title", "Table of contents")
               ] ++ (maybe []
                    (\date -> [("date", T.pack (formatTime defaultTimeLocale dATE_FORMAT date))]) mDate)
@@ -156,8 +156,8 @@ markdownToHtml site markdownFile = do
 
 ------------------------------------------------------------------------
 
-generatePage :: Site -> Text -> IO Text
-generatePage site body = do
+generatePage :: Site -> String -> Text -> IO Text
+generatePage site cssModifiedAt body = do
   template <- prepareTemplate
   runIOorExplode $ do
     pandoc <- readHtml def { readerExtensions = pandocExtensions } body
@@ -167,7 +167,7 @@ generatePage site body = do
               [ ("lang", "en")
               , ("author-meta", _author site)
               , ("pagetitle", _name site)
-              , ("css", T.pack cSS_FILE)
+              , ("css", T.pack (cSS_FILE ++ "?modified=" ++ cssModifiedAt))
               ]
           }
     writeHtml5String writerOpts pandoc
@@ -176,8 +176,8 @@ generatePage site body = do
 -- generateIndex s = generatePage s
 --   (ul (map (\t -> _topic t <> ul (concatMap displayPost (_posts t))) (_topics s)))
 
-generateReverseChronologicalIndex :: Site -> IO Text
-generateReverseChronologicalIndex s = generatePage s
+generateReverseChronologicalIndex :: Site -> String -> IO Text
+generateReverseChronologicalIndex s cssModifiedAt = generatePage s cssModifiedAt
   (ul (concatMap displayPost (sortBy (flip compare `on` _date) (concatMap _posts (_topics s)))))
 
 displayPost :: Post -> [Text]
@@ -199,8 +199,8 @@ displayDate d = mconcat
   , "</div>"
   ]
 
-generateAbout :: Site -> IO Text
-generateAbout s = generatePage s $ T.unlines $ map p $
+generateAbout :: Site -> String -> IO Text
+generateAbout s cssModifiedAt = generatePage s cssModifiedAt $ T.unlines $ map p $
   [ "How can we make it easier to build reliable, scalable and maintainable computer \
     \ systems?"
 
