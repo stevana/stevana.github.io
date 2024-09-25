@@ -18,7 +18,7 @@ libMain inputFile outputDir skipDownload = do
   site <- parse inputFile
   createDirectoryIfMissing True outputDir
   markdowns <- downloadMarkdown skipDownload outputDir site
-  cssModifiedAt <- readProcess "git" ["log", "-1", "--pretty=%at", "data/style.css"] ""
+  cssModifiedAt <- readProcess "git" ["log", "-1", "--pretty=%cs", "data/style.css"] ""
   let cssModifiedAt_ = dropWhileEnd (== '\n') cssModifiedAt
   print cssModifiedAt_
   writeIndex site cssModifiedAt outputDir
