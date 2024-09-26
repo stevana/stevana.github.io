@@ -60,28 +60,25 @@ any language-specific instrumentation of the software under test.</p>
 <h2><a href="#motivation" title="Motivation">Motivation</a></h2>
 <p>Before we start, let me try to motivate why one would want to combine
 coverage-guided fuzzing and property-based testing to begin with.</p>
-<p>This example is due to Dmitry Vyukov, the main author of <a
-href="https://github.com/dvyukov/go-fuzz">go-fuzz</a>, but it’s
-basically an easier to understand version of the example from Dan’s
-post<a href="#fn1" class="footnote-ref" id="fnref1"
-role="doc-noteref"><sup>1</sup></a>.</p>
+<p>Consider the following example<a href="#fn1" class="footnote-ref"
+id="fnref1" role="doc-noteref"><sup>1</sup></a>:</p>
 <pre><code>func sut(input []byte) {
-    slice := []int{}
-    if input[0] == &#39;A&#39; {
-        if input[1] == &#39;B&#39; {
-            if input[2] == &#39;C&#39; {
-                if input[3] == &#39;D&#39; {
-                    slice[input[4]] = 1 // out-of-bounds here
+    if input[0] == &#39;b&#39; {
+        if input[1] == &#39;a&#39; {
+            if input[2] == &#39;d&#39; {
+                if input[3] == &#39;!&#39; {
+                    panic(&quot;input must not be bad!&quot;)
                 }
             }
         }
     }
 }</code></pre>
-<p>Even if we generate random inputs of exactly the length 4, it would
+<p>If we were to try to test this function with property-based testing,
+where we restrict the input to be of exactly length 4, then it would
 still take <span class="math inline">\(O(2^8 \cdot 2^8 \cdot 2^8 \cdot
-2^8) = O((2^8)^4) = O(2^{32}) = 4294967296\)</span> tries to trigger the
-bug (and obviously even longer if we tried arrays of varying
-length).</p>
+2^8) = O((2^8)^4) = O(2^{32}) \approx 4B\)</span> tries to trigger the
+bug! A more realistic test wouldn’t fix the length of the input, which
+would make the probability of triggering the bug even worse.</p>
 <p>With coverage-guidance we keep track of inputs that resulted in
 increased coverage. So, for example, if we generate the array
 <code>[]byte{'A'}</code> we get further into the nested ifs, and so we
@@ -90,8 +87,9 @@ and see if we get even further, etc.</p>
 <p>By building on previous succeses in getting more coverage, we can
 effectively reduce the problem to only need <span
 class="math inline">\(O(2^8 + 2^8 + 2^8 + 2^8) = O(2^8 \cdot 4) =
-O(2^{10}) = 1024\)</span> tries. With other words coverage-guidence
-turns an exponential problem into a polynomial problem!</p>
+O(2^{10}) = 1024\)</span> tries.</p>
+<p>In other words coverage-guidence turns an exponential problem into a
+polynomial problem!</p>
 </section>
 <section id="background-and-prior-work" class="level2">
 <h2><a href="#background-and-prior-work"
@@ -120,7 +118,8 @@ of the reliability of UNIX utilities</em></a> (1990).</p>
 <p>Inserting random characters was effective in finding corner cases
 where the programmers forgot to properly validate the input from the
 user.</p>
-<p>However it wouldn’t trigger bugs hiding deeper under the surface.</p>
+<p>However it wouldn’t trigger bugs hiding deeper under the surface,
+such as the “bad!” example from the previous section.</p>
 <p>This changed around 2007 when people <a
 href="https://lcamtuf.coredump.cx/afl/historical_notes.txt">started
 thinking</a> about how fuzzing can be combined with <a
@@ -188,7 +187,16 @@ alone (or recall from the example in the introduction, the probability
 of generating the input in a single shot is simply too
 unlikely).</p></li>
 <li><p>First off, at some point he added an update to his post where he
-explicitly mentiones:</p>
+explicitly mentiones:</p></li>
+</ul>
+<blockquote>
+<p>“Update: Dmitry Vyukov’s Go-fuzz, which looks like it was started a
+month after this post was written, uses the approach from the proof of
+concept in this post of combining the sort of logic seen in AFL with a
+QuickCheck-like framework, and has been shown to be quite effective. I
+believe David R. MacIver is also planning to use this approach in the
+next version of hypothesis.”</p>
+</blockquote>
 <ul>
 <li><p>Go-fuzz?</p>
 <ul>
@@ -207,7 +215,9 @@ class="uri">https://hypothesis.readthedocs.io/en/latest/details.html#hypothesis.
 <li>But coverage-guided testing was <a
 href="https://github.com/HypothesisWorks/hypothesis/pull/1564/commits/dcbea9148be3446392bc3af8892d49f3cc74fbe3">removed</a></li>
 </ul></li>
-</ul></li>
+</ul>
+<!-- -->
+<ul>
 <li><p>Now let’s have a look at what has happend since Dan’s
 post.</p></li>
 <li><p>“Note: AFL hasn’t been updated for a couple of years; while it
@@ -226,8 +236,8 @@ and adds some news ones</li>
 <li><a href="https://github.com/mboehme/aflfast"
 class="uri">https://github.com/mboehme/aflfast</a></li>
 </ul></li>
-<li><p>When you search for coverage guided property-based
-testing</p></li>
+<li><p>When you search for “coverage-guided property-based testing” in
+the academic literature</p></li>
 <li><p><a href="https://dl.acm.org/doi/10.1145/3360607">FuzzChick</a>
 (2019). Not released, lives in an <a
 href="https://github.com/QuickChick/QuickChick/compare/master...FuzzChick">unmaintained
@@ -254,7 +264,10 @@ abstract from OCaml workshop</a>
 <li><p><a href="https://llvm.org/docs/LibFuzzer.html">libfuzzer</a> and
 it’s successor <a href="https://github.com/google/fuzztest">FuzzTest</a>
 (“It is a first-of-its-kind tool that bridges the gap between fuzzing
-and property-based testing”) (2022?)</p></li>
+and property-based testing”) (2022?)</p>
+<ul>
+<li>Difference to go-fuzz?</li>
+</ul></li>
 <li><p><a href="https://github.com/google/honggfuzz">honggfuzz</a></p>
 <ul>
 <li>open PR to add it to cargo fuzz: <a
@@ -288,8 +301,9 @@ implementation.</p>
 <section id="prototype-implementation" class="level2">
 <h2><a href="#prototype-implementation"
 title="Prototype implementation">Prototype implementation</a></h2>
-<p>If we want</p>
-<p>Great, but where do we get this coverage information from?</p>
+<p>One key question we need to answer in order to be able to implement
+anything that’s coverage-guided is: where do we get the coverage
+information from?</p>
 <p>AFL and <code>go-fuzz</code> both get it from the compiler.</p>
 <p>AFL injects code into every <a
 href="https://en.wikipedia.org/wiki/Basic_block">basic block</a>.</p>
@@ -396,9 +410,47 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  rnd <span class="ot">&lt;-</span> newStdGen</span>
 <span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  testsC config arbitrary prop [] <span class="dv">0</span> rnd <span class="dv">0</span> <span class="dv">0</span> []</span></code></pre></div>
 <div class="sourceCode" id="cb12"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"></code></pre></div>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ot">testsC&#39; ::</span> <span class="dt">Show</span> a <span class="ot">=&gt;</span> <span class="dt">Config</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a <span class="ot">-&gt;</span> ([a] <span class="ot">-&gt;</span> <span class="dt">Property</span>) <span class="ot">-&gt;</span> <span class="dt">StdGen</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [[<span class="dt">String</span>]] <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>testsC&#39; config gen prop <span class="ot">=</span> tests config genResult</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Prop</span> genResult <span class="ot">=</span> forAll (genList gen) prop</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    genList gen <span class="ot">=</span> sized <span class="op">$</span> \len <span class="ot">-&gt;</span> replicateM len gen</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a><span class="ot">testsC ::</span> <span class="dt">Show</span> a <span class="ot">=&gt;</span> <span class="dt">Config</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a <span class="ot">-&gt;</span> ([a] <span class="ot">-&gt;</span> <span class="dt">Property</span>) <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">Int</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>       <span class="ot">-&gt;</span> <span class="dt">StdGen</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [[<span class="dt">String</span>]] <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>testsC config gen prop xs cov rnd0 ntest nfail stamps</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> ntest <span class="op">==</span> maxTest config <span class="ot">=</span> <span class="kw">do</span> done <span class="st">&quot;OK, passed&quot;</span> ntest stamps</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> nfail <span class="op">==</span> maxFail config <span class="ot">=</span> <span class="kw">do</span> done <span class="st">&quot;Arguments exhausted after&quot;</span> ntest stamps</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="fu">otherwise</span>               <span class="ot">=</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>      <span class="kw">do</span> <span class="fu">putStr</span> (every config ntest (arguments result))</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>         <span class="kw">case</span> ok result <span class="kw">of</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>           <span class="dt">Nothing</span>    <span class="ot">-&gt;</span></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>             testsC config gen prop xs cov rnd1 ntest (nfail<span class="op">+</span><span class="dv">1</span>) stamps</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>           <span class="dt">Just</span> <span class="dt">True</span>  <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>             <span class="kw">let</span> stamps&#39; <span class="ot">=</span> stamp result <span class="op">:</span> stamps</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>                 cov&#39;    <span class="ot">=</span> <span class="fu">length</span> (nub (<span class="fu">concat</span> stamps&#39;))</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>             <span class="kw">if</span> cov&#39; <span class="op">&gt;</span> cov</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>             <span class="kw">then</span> testsC config gen prop xs&#39; cov&#39; rnd1 (ntest<span class="op">+</span><span class="dv">1</span>) nfail stamps&#39;</span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>             <span class="kw">else</span> testsC config gen prop xs  cov  rnd1 (ntest<span class="op">+</span><span class="dv">1</span>) nfail stamps&#39;</span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>           <span class="dt">Just</span> <span class="dt">False</span> <span class="ot">-&gt;</span></span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>             <span class="fu">putStrLn</span> ( <span class="st">&quot;Falsifiable, after &quot;</span></span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>                   <span class="op">++</span> <span class="fu">show</span> ntest</span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a>                   <span class="op">++</span> <span class="st">&quot; tests:\n&quot;</span></span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>                   <span class="op">++</span> <span class="fu">head</span> (arguments result)</span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a>                    )</span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a>     <span class="kw">where</span></span>
+<span id="cb12-29"><a href="#cb12-29" aria-hidden="true" tabindex="-1"></a>       x              <span class="ot">=</span> generate (size config ntest) rnd3 gen</span>
+<span id="cb12-30"><a href="#cb12-30" aria-hidden="true" tabindex="-1"></a>       xs&#39;            <span class="ot">=</span> xs <span class="op">++</span> [x]</span>
+<span id="cb12-31"><a href="#cb12-31" aria-hidden="true" tabindex="-1"></a>       <span class="dt">Prop</span> genResult <span class="ot">=</span> prop xs&#39;</span>
+<span id="cb12-32"><a href="#cb12-32" aria-hidden="true" tabindex="-1"></a>       result_        <span class="ot">=</span> generate (size config ntest) rnd4 genResult</span>
+<span id="cb12-33"><a href="#cb12-33" aria-hidden="true" tabindex="-1"></a>       result         <span class="ot">=</span> result_ {arguments <span class="ot">=</span> <span class="fu">show</span> xs&#39; <span class="op">:</span> arguments result_ }</span>
+<span id="cb12-34"><a href="#cb12-34" aria-hidden="true" tabindex="-1"></a>       (rnd1,rnd2)    <span class="ot">=</span> split rnd0</span>
+<span id="cb12-35"><a href="#cb12-35" aria-hidden="true" tabindex="-1"></a>       (rnd3,rnd4)    <span class="ot">=</span> split rnd2</span></code></pre></div>
 <div class="sourceCode" id="cb13"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"></code></pre></div>
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="ot">testsC&#39; ::</span> <span class="dt">Show</span> a <span class="ot">=&gt;</span> <span class="dt">Config</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a <span class="ot">-&gt;</span> ([a] <span class="ot">-&gt;</span> <span class="dt">Property</span>) <span class="ot">-&gt;</span> <span class="dt">StdGen</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [[<span class="dt">String</span>]] <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>testsC&#39; config gen prop <span class="ot">=</span> tests config genResult</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Prop</span> genResult <span class="ot">=</span> forAll (genList gen) prop</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    genList gen <span class="ot">=</span> sized <span class="op">$</span> \len <span class="ot">-&gt;</span> replicateM len gen</span></code></pre></div>
 <div class="sourceCode" id="cb14"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="ot">label ::</span> <span class="dt">Testable</span> a <span class="ot">=&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>label s a <span class="ot">=</span> <span class="dt">Prop</span> (add <span class="ot">`fmap`</span> evaluate a)</span>
@@ -431,7 +483,104 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a
 <span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>            <span class="op">|</span> <span class="fu">otherwise</span>     <span class="ot">=</span> <span class="dt">Nothing</span></span>
 <span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a><span class="ot">testBad ::</span> <span class="dt">IO</span> ()</span>
-<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>testBad <span class="ot">=</span> coverCheck (verbose { maxTest <span class="ot">=</span> <span class="dv">2</span><span class="op">^</span><span class="dv">7</span><span class="op">*</span><span class="dv">4</span><span class="op">*</span><span class="dv">2</span> }) bad</span></code></pre></div>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>testBad <span class="ot">=</span> coverCheck config bad</span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>    config <span class="ot">=</span> verbose</span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>      { maxTest <span class="ot">=</span> <span class="dv">2</span><span class="op">^</span><span class="dv">7</span><span class="op">*</span><span class="dv">4</span><span class="op">*</span><span class="dv">2</span></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>      , every <span class="ot">=</span> \n args <span class="ot">-&gt;</span> <span class="fu">show</span> n <span class="op">++</span> <span class="st">&quot;: &quot;</span> <span class="op">++</span> <span class="fu">unlines</span> args</span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>      }</span></code></pre></div>
+<pre><code>&gt;&gt;&gt; testBad
+0: &quot;n&quot;
+1: &quot;T&quot;
+2: &quot;L&quot;
+3: &quot;|&quot;
+4: &quot;X&quot;
+5: &quot;\&quot;&quot;
+6: &quot;e&quot;
+7: &quot;G&quot;
+8: &quot;R&quot;
+9: &quot;}&quot;
+10: &quot;C&quot;
+11: &quot;3&quot;
+12: &quot;&gt;&quot;
+13: &quot;C&quot;
+14: &quot;J&quot;
+15: &quot;9&quot;
+16: &quot;=&quot;
+17: &quot;9&quot;
+18: &quot;L&quot;
+19: &quot;)&quot;
+20: &quot;5&quot;
+21: &quot;6&quot;
+22: &quot;x&quot;
+23: &quot;#&quot;
+24: &quot;T&quot;
+25: &quot;T&quot;
+26: &quot;_&quot;
+27: &quot;@&quot;
+28: &quot;}&quot;
+29: &quot;y&quot;
+30: &quot;-&quot;
+31: &quot;s&quot;
+32: &quot;b&quot;
+33: &quot;bx&quot;
+34: &quot;b9&quot;
+35: &quot;bf&quot;
+36: &quot;bl&quot;
+37: &quot;ba&quot;
+38: &quot;baC&quot;
+39: &quot;baX&quot;
+40: &quot;baA&quot;
+41: &quot;baE&quot;
+42: &quot;bay&quot;
+43: &quot;baX&quot;
+44: &quot;ba6&quot;
+45: &quot;ba@&quot;
+46: &quot;bai&quot;
+47: &quot;ba}&quot;
+48: &quot;bay&quot;
+49: &quot;bac&quot;
+50: &quot;bak&quot;
+51: &quot;ba`&quot;
+52: &quot;bad&quot;
+53: &quot;bad8&quot;
+54: &quot;bade&quot;
+55: &quot;bad0&quot;
+56: &quot;badA&quot;
+57: &quot;badP&quot;
+58: &quot;badQ&quot;
+59: &quot;bad0&quot;
+60: &quot;bade&quot;
+61: &quot;bad)&quot;
+62: &quot;bado&quot;
+63: &quot;badE&quot;
+64: &quot;bad\&quot;&quot;
+65: &quot;bad@&quot;
+66: &quot;bad{&quot;
+67: &quot;badX&quot;
+68: &quot;bado&quot;
+69: &quot;badb&quot;
+70: &quot;bad~&quot;
+71: &quot;bada&quot;
+72: &quot;bad%&quot;
+73: &quot;bad9&quot;
+74: &quot;badE&quot;
+75: &quot;bad8&quot;
+76: &quot;bad{&quot;
+77: &quot;badS&quot;
+78: &quot;badn&quot;
+79: &quot;bad?&quot;
+80: &quot;badn&quot;
+81: &quot;badq&quot;
+82: &quot;bady&quot;
+83: &quot;badA&quot;
+84: &quot;bad4&quot;
+85: &quot;bad;&quot;
+86: &quot;bad9&quot;
+87: &quot;badU&quot;
+88: &quot;bad!&quot;
+Falsifiable, after 88 tests:
+&quot;bad!&quot;</code></pre>
 </section>
 <section id="conclusion-and-further-work" class="level2">
 <h2><a href="#conclusion-and-further-work"
@@ -497,7 +646,10 @@ drive the generation…</li>
 role="doc-endnotes">
 <hr />
 <ol>
-<li id="fn1"><p>Here’s Dan’s example in full:</p>
+<li id="fn1"><p>This example is due to Dmitry Vyukov, the main author of
+<a href="https://github.com/dvyukov/go-fuzz">go-fuzz</a>, but it’s
+basically an easier to understand version of the example from Dan Luu’s
+post. For comparison, here’s Dan’s example in full:</p>
 <pre><code>// Checks that a number has its bottom bits set
 func some_filter(x int) bool {
     for i := 0; i &lt; 16; i = i + 1 {
@@ -529,9 +681,7 @@ func dut(a []int) int {
     }
     return 5
 }</code></pre>
-<p>As I hope we can agree, it’s very similar to Dmitry’s example, except
-it’s a bit less clear what exactly happens in the if statement.<a
-href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></li>
 <li id="fn2"><p>See the appendix of the original <a
 href="https://dl.acm.org/doi/10.1145/351240.351266">paper</a> that first
 introduced property-based testing. It’s interesting to note that this
