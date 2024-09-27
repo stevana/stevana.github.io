@@ -34,7 +34,11 @@
 <ul>
 <li><a href="#motivation" id="toc-motivation">Motivation</a></li>
 <li><a href="#background-and-prior-work"
-id="toc-background-and-prior-work">Background and prior work</a></li>
+id="toc-background-and-prior-work">Background and prior work</a>
+<ul>
+<li><a href="#before-2015" id="toc-before-2015">Before 2015</a></li>
+<li><a href="#after-2015" id="toc-after-2015">After 2015</a></li>
+</ul></li>
 <li><a href="#prototype-implementation"
 id="toc-prototype-implementation">Prototype implementation</a></li>
 <li><a href="#example-test-run-using-the-prototype"
@@ -52,16 +56,25 @@ involved!</em></p>
 <p>Almost ten years ago, back in 2015, Dan Luu wrote a <a
 href="https://danluu.com/testing/">post</a> asking why coverage-guided
 property-based testing wasn’t a thing.</p>
-<p>In this post I’ll show how one can implement such a thing starting
-from scratch.</p>
+<p>In this post I’ll survey the coverage-guided landscape, looking at
+what was there before Dan’s post and what has happened since.</p>
+<p>The short version is: imperative languages seem to be in the
+forefront of combining coverage-guidance and property-based testing.</p>
+<p>In an effort to try to help functional programming languages catch
+up, I’ll show how coverage-guidence can be added to the first version of
+the original property-based testing tool, QuickCheck, in about 35 lines
+of code.</p>
 <p>The technique is programming language agnostic and doesn’t rely on
-any language-specific instrumentation of the software under test.</p>
+any language-specific instrumentation of the software under test (unlike
+previous implementations of this idea).</p>
 <section id="motivation" class="level2">
 <h2><a href="#motivation" title="Motivation">Motivation</a></h2>
 <p>Before we start, let me try to motivate why one would want to combine
 coverage-guided fuzzing and property-based testing to begin with.</p>
 <p>Consider the following example<a href="#fn1" class="footnote-ref"
-id="fnref1" role="doc-noteref"><sup>1</sup></a>:</p>
+id="fnref1" role="doc-noteref"><sup>1</sup></a>, where an error is
+triggered if some input byte array starts with the bytes
+<code>"bad!"</code>:</p>
 <pre><code>func sut(input []byte) {
     if input[0] == &#39;b&#39; {
         if input[1] == &#39;a&#39; {
@@ -79,7 +92,7 @@ still take <span class="math inline">\(\mathcal{O}(2^8 \cdot 2^8 \cdot
 2^8 \cdot 2^8) = \mathcal{O}((2^8)^4) = \mathcal{O}(2^{32}) \approx
 4B\)</span> tries to trigger the bug! A more realistic test wouldn’t fix
 the length of the input, which would make the probability of triggering
-the bug even worse.</p>
+the bug even lower.</p>
 <p>With coverage-guidance we keep track of inputs that resulted in
 increased coverage. So, for example, if we generate the array
 <code>[]byte{'A'}</code> we get further into the nested ifs, and so we
@@ -96,6 +109,8 @@ polynomial problem!</p>
 <section id="background-and-prior-work" class="level2">
 <h2><a href="#background-and-prior-work"
 title="Background and prior work">Background and prior work</a></h2>
+<section id="before-2015" class="level3">
+<h3><a href="#before-2015" title="Before 2015">Before 2015</a></h3>
 <p>Fuzzing has an interesting origin. It was a class <a
 href="http://pages.cs.wisc.edu/~bart/fuzz/CS736-Projects-f1988.pdf">project</a>
 in an advanced operating systems course taught by Barton Miller at the
@@ -106,17 +121,19 @@ rained, then frequently random characters would appear in the terminal.
 The line noise wasn’t the surprising thing, but rather that the extra
 characters would sometimes crash the program that they tried to
 invoke.</p>
-<p>Among these programs were basic utilities such as vi, mail, cc, make,
-sed, awk, sort, etc, and it was reasonable to expect that these would
-give an error message rather than crash and core dump if fed with some
-extra characters caused by the rain.</p>
+<p>Among these programs were basic utilities such as <code>vi</code>,
+<code>mail</code>, <code>cc</code>, <code>make</code>, <code>sed</code>,
+<code>awk</code>, <code>sort</code>, etc, and it was reasonable to
+expect that these would give an error message rather than crash and core
+dump if fed with some extra characters caused by the rain.</p>
 <p>So the project set out to basically recreate what the rain did, but
 more effectively, but essentially generating random noise (stream of
 bytes) and feeding that to different utilities and see if they
 crashed.</p>
 <p>A couple of years later Barton et al published <a
 href="https://dl.acm.org/doi/10.1145/96267.96279"><em>An empirical study
-of the reliability of UNIX utilities</em></a> (1990).</p>
+of the reliability of UNIX utilities</em></a> (1990) which documents
+their findings.</p>
 <p>Inserting random characters was effective in finding corner cases
 where the programmers forgot to properly validate the input from the
 user.</p>
@@ -149,19 +166,18 @@ heuristics</a>.</p>
 stop at this point and go back to this point, before looking at what
 happened since with coverage-guided fuzzers.</p>
 <p>Recall that Dan was asking why this idea of coverage-guidance wasn’t
-present in the property-based testing tools.</p>
-<ul>
-<li><p>I’ve written about the <a
+present in property-based testing tools.</p>
+<p>I’ve written about the <a
 href="https://stevana.github.io/the_sad_state_of_property-based_testing_libraries.html#the-history-of-property-based-testing">history</a>
 of property-based testing and explained how it <a
 href="https://stevana.github.io/the_sad_state_of_property-based_testing_libraries.html#pure-property-based-testing-recap">works</a>
 already, so I won’t take up space by repeating myself here. Let’s just
 note that the <a
 href="https://www.cs.tufts.edu/~nr/cs257/archive/john-hughes/quick.pdf">original
-paper</a> on property-based testing was published in 2000.</p></li>
-<li><p>So when Dan wrote asking about this question property-based
-testing would have been fifteen and AFL two years old.</p></li>
-<li><p>The main difference between property-based testing and fuzzing is
+paper</a> on property-based testing was published in 2000.</p>
+<p>So when Dan wrote asking about this question property-based testing
+would have been fifteen and AFL two years old.</p>
+<p>The main difference between property-based testing and fuzzing is
 that fuzzing requires less work by the user. Simply hook up the byte
 generator to the function that expects bytes as input and off it goes
 looking for crashes.</p>
@@ -179,18 +195,21 @@ binary search trees.</p>
 good as the user provided generators. Corner cases where slightly
 modified data leads to e.g. exception handling is not explored
 automatically, and coverage information is not used to guide the input
-generation process.</p></li>
-<li><p>By now we should have enough background to see that the idea of
+generation process.</p>
+<p>By now we should have enough background to see that the idea of
 combining coverage-guidance and property-based testing makes sense. What
 if we can use user provided generators to kick start the exploration,
 but then mutate the data and use coverage information to find problems
 that wouldn’t have been surfaced with the user provided input generators
 alone (or recall from the example in the introduction, the probability
-of generating the input in a single shot is simply too
-unlikely).</p></li>
-<li><p>First off, at some point he added an update to his post where he
-explicitly mentiones:</p></li>
-</ul>
+of generating the input in a single shot is simply too unlikely).</p>
+</section>
+<section id="after-2015" class="level3">
+<h3><a href="#after-2015" title="After 2015">After 2015</a></h3>
+<p>Having covered what had happened before Dan’s post, let’s have a look
+at what has happened in the ten years since his post.</p>
+<p>First off, it’s worth noting that at some point he added an update to
+his post:</p>
 <blockquote>
 <p>“Update: Dmitry Vyukov’s Go-fuzz, which looks like it was started a
 month after this post was written, uses the approach from the proof of
@@ -199,29 +218,34 @@ QuickCheck-like framework, and has been shown to be quite effective. I
 believe David R. MacIver is also planning to use this approach in the
 next version of hypothesis.”</p>
 </blockquote>
+<p>So let’s start there, with Go-fuzz. At a first glance, all functions
+that are tested with Go-fuzz need to take an array of bytes as input. My
+initial thought was, how can I write properties which involve generating
+more interesting data structures? But it turns out it’s <a
+href="https://news.ycombinator.com/item?id=40876822">possible</a>, as
+somebody pointed out in the comments of an old post of mine. Furthermore
+there are also <a
+href="https://adalogics.com/blog/structure-aware-go-fuzzing-complex-types">ways</a>
+of making the fuzzer aware of more complex data structures. I haven’t
+played around enough with this to be able to compare how well shrinking
+works yet though, but overall I’d say this ticks the box of being a
+property-based testing tool that is also coverage-guided.</p>
+<p>Next up Dan mentions Python’s Hypothesis. I was searching through the
+documentation trying to find out how coverage-guidance works, but I
+couldn’t find anything. Searching through the repository I found the
+following <a
+href="https://github.com/HypothesisWorks/hypothesis/pull/1564/commits/dcbea9148be3446392bc3af8892d49f3cc74fbe3">release
+note</a> (2018):</p>
+<blockquote>
+<p>“This release deprecates the coverage-guided testing functionality,
+as it has proven brittle and does not really pull its weight.</p>
+<p>We intend to replace it with something more useful in the future, but
+the feature in its current form does not seem to be worth the cost of
+using, and whatever replaces it will likely look very different.”</p>
+</blockquote>
+<p>As far as I can tell, it hasn’t been reintroduced since.</p>
+<p>What else has happenend since Dan’s post?</p>
 <ul>
-<li><p>Go-fuzz?</p>
-<ul>
-<li>writing properties using go-fuzz: <a
-href="https://news.ycombinator.com/item?id=40876822"
-class="uri">https://news.ycombinator.com/item?id=40876822</a></li>
-<li><a
-href="https://adalogics.com/blog/structure-aware-go-fuzzing-complex-types"
-class="uri">https://adalogics.com/blog/structure-aware-go-fuzzing-complex-types</a></li>
-</ul></li>
-<li><p>Hypothesis</p>
-<ul>
-<li>Has notion of coverage: <a
-href="https://hypothesis.readthedocs.io/en/latest/details.html#hypothesis.event"
-class="uri">https://hypothesis.readthedocs.io/en/latest/details.html#hypothesis.event</a>)</li>
-<li>But coverage-guided testing was <a
-href="https://github.com/HypothesisWorks/hypothesis/pull/1564/commits/dcbea9148be3446392bc3af8892d49f3cc74fbe3">removed</a></li>
-</ul></li>
-</ul>
-<!-- -->
-<ul>
-<li><p>Now let’s have a look at what has happend since Dan’s
-post.</p></li>
 <li><p>“Note: AFL hasn’t been updated for a couple of years; while it
 should &gt; still work fine, a more complex fork with a variety of
 improvements &gt; and additional features, known as AFL++, is available
@@ -300,6 +324,7 @@ and property-based testing.</p>
 programming version, based on the original property-based testing
 implementation.</p>
 </section>
+</section>
 <section id="prototype-implementation" class="level2">
 <h2><a href="#prototype-implementation"
 title="Prototype implementation">Prototype implementation</a></h2>
@@ -317,6 +342,16 @@ generation rounds would be annoying and slow.</p>
 provided by the GHC compiler in Haskell, until I read Shae “shapr”
 Erisson does in his <a
 href="https://shapr.github.io/posts/2023-07-30-goldilocks-property-tests.html">post</a>.</p>
+<ul>
+<li>Footnote? Shae “shapr” Erisson’s post <a
+href="https://shapr.github.io/posts/2023-07-30-goldilocks-property-tests.html"><em>Run
+property tests until coverage stops increasing</em></a> (2023) and <a
+href="https://github.com/shapr/trynocular">trynocular</a> library.
+<ul>
+<li>This only uses coverage as a stopping condition, not to actually
+drive the generation…</li>
+</ul></li>
+</ul>
 <p>While this certainly makes things easier, it wasn’t until I read
 about Antithesis’ <a
 href="https://antithesis.com/docs/best_practices/sometimes_assertions.html">“sometime
@@ -470,9 +505,7 @@ href="https://github.com/stevana/coverage-guided-pbt">here</a>.</p>
 title="Example test run using the prototype">Example test run using the
 prototype</a></h2>
 <p>We now have all the pieces to test the example from the <a
-href="#motivation">motivation</a> section. This property basically says
-that there’s no string that’s equal to <code>"bad!"</code>, which is
-obviously false.</p>
+href="#motivation">motivation</a> section:</p>
 <div class="sourceCode" id="cb15"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="ot">bad ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>bad s <span class="ot">=</span> coverage <span class="dv">0</span> <span class="ch">&#39;b&#39;</span></span>
@@ -487,25 +520,20 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a
 <span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a><span class="ot">    (!?) ::</span> [a] <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Maybe</span> a</span>
 <span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>    xs <span class="op">!?</span> i <span class="op">|</span> i <span class="op">&lt;</span> <span class="fu">length</span> xs <span class="ot">=</span> <span class="dt">Just</span> (xs <span class="op">!!</span> i)</span>
 <span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>            <span class="op">|</span> <span class="fu">otherwise</span>     <span class="ot">=</span> <span class="dt">Nothing</span></span></code></pre></div>
-<p>If we try to test this property using the unmodified first version of
-QuickCheck:</p>
+<p>This property basically says that there’s no string that’s equal to
+<code>"bad!"</code>, which is obviously false. If we try to test this
+property using the unmodified first version of QuickCheck:</p>
 <div class="sourceCode" id="cb16"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="ot">testBad ::</span> <span class="dt">IO</span> ()</span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>testBad <span class="ot">=</span> check config bad</span>
 <span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    config <span class="ot">=</span> quick { maxTest <span class="ot">=</span> (<span class="dv">2</span><span class="op">^</span><span class="dv">8</span>)<span class="op">^</span><span class="dv">4</span> }</span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="ot">testBad&#39; ::</span> <span class="dt">IO</span> ()</span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>testBad&#39; <span class="ot">=</span> coverCheck config bad</span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
-<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>    config <span class="ot">=</span> verbose</span>
-<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>      { maxTest <span class="ot">=</span> (<span class="dv">2</span><span class="op">^</span><span class="dv">8</span>)<span class="op">*</span><span class="dv">4</span></span>
-<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>      , every <span class="ot">=</span> \n args <span class="ot">-&gt;</span> <span class="fu">show</span> n <span class="op">++</span> <span class="st">&quot;: &quot;</span> <span class="op">++</span> <span class="fu">unlines</span> args</span>
-<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>      }</span></code></pre></div>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    config <span class="ot">=</span> quick { maxTest <span class="ot">=</span> (<span class="dv">2</span><span class="op">^</span><span class="dv">8</span>)<span class="op">^</span><span class="dv">4</span> }</span></code></pre></div>
 <p>We’ll see spin away, but not actually find the bad string:</p>
 <pre><code>&gt;&gt;&gt; testBad
 32301
 ^CInterrupted.</code></pre>
-<p>I stopped it after about 32k tries.</p>
+<p>I stopped it after about 32k tries, in theory we’d need more than 4
+billion attempts to find the bad string using this approach.</p>
 <p>Whereas if we use coverage-guided generation:</p>
 <div class="sourceCode" id="cb18"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ot">testBad&#39; ::</span> <span class="dt">IO</span> ()</span>
@@ -615,6 +643,7 @@ Falsifiable, after 88 tests:
 <h2><a href="#conclusion-and-further-work"
 title="Conclusion and further work">Conclusion and further work</a></h2>
 <ul>
+<li><p>Exponential -&gt; polynomial</p></li>
 <li><p>Makes more sense for stateful systems than pure functions? Or
 atleast properties that expect a sequence of inputs?</p></li>
 <li><p>Don’t rerun all commands for every newly generate command</p>
@@ -660,15 +689,6 @@ href="https://carstein.github.io/fuzzing/2020/05/21/writing-simple-fuzzer-4.html
 class="uri">https://carstein.github.io/fuzzing/2020/05/21/writing-simple-fuzzer-4.html</a></li>
 <li><a href="https://antithesis.com/blog/sdtalk/">How Antithesis finds
 bugs (with help from the Super Mario Bros)</a></li>
-<li>Swarm testing</li>
-<li>Shae “shapr” Erisson’s post <a
-href="https://shapr.github.io/posts/2023-07-30-goldilocks-property-tests.html"><em>Run
-property tests until coverage stops increasing</em></a> (2023) and <a
-href="https://github.com/shapr/trynocular">trynocular</a> library.
-<ul>
-<li>This only uses coverage as a stopping condition, not to actually
-drive the generation…</li>
-</ul></li>
 </ul>
 </section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
