@@ -306,7 +306,9 @@ and adds some new ones</li>
 <li><a href="https://github.com/mboehme/aflfast"
 class="uri">https://github.com/mboehme/aflfast</a></li>
 </ul>
-<!-- -->
+<p>For example, which seed gets scheduled and how many times it gets
+mutated per round are two parameters that can be tweaked to achieve
+different paths of exploration throughout the system under test.</p>
 <ul>
 <li><p>When you search for “coverage-guided property-based testing” in
 the academic literature</p></li>
@@ -377,39 +379,33 @@ implementation.</p>
 <section id="prototype-implementation" class="level2">
 <h2><a href="#prototype-implementation"
 title="Prototype implementation">Prototype implementation</a></h2>
-<p>One key question we need to answer in order to be able to implement
-anything that’s coverage-guided is: where do we get the coverage
-information from?</p>
 <section id="getting-the-coverage-information" class="level3">
 <h3><a href="#getting-the-coverage-information"
 title="Getting the coverage information">Getting the coverage
 information</a></h3>
-<p>XXX:</p>
-<p>AFL and <code>go-fuzz</code> both get it from the compiler.</p>
-<p>AFL injects code into every <a
-href="https://en.wikipedia.org/wiki/Basic_block">basic block</a>.</p>
+<p>One key question we need to answer in order to be able to implement
+anything that’s coverage-guided is: where do we get the coverage
+information from?</p>
 <p>When I’ve been thinking about how to implement coverage-guided
 property-based testing in the past, I always got stuck thinking that
 parsing the coverage output from the compiler in between test case
 generation rounds would be annoying and slow.</p>
-<p>I didn’t know that you could get this information from a library
-provided by the GHC compiler in Haskell, until I read Shae “shapr”
-Erisson does in his <a
-href="https://shapr.github.io/posts/2023-07-30-goldilocks-property-tests.html">post</a>.</p>
-<ul>
-<li>Footnote? Shae “shapr” Erisson’s post <a
-href="https://shapr.github.io/posts/2023-07-30-goldilocks-property-tests.html"><em>Run
-property tests until coverage stops increasing</em></a> (2023) and <a
-href="https://github.com/shapr/trynocular">trynocular</a> library.
-<ul>
-<li>This only uses coverage as a stopping condition, not to actually
-drive the generation…</li>
-</ul></li>
-</ul>
-<p>While this certainly makes things easier, it wasn’t until I read
-about Antithesis’ <a
+<p>I thought that in the best case scenario the compiler might provide a
+library which exposes the coverage information<a href="#fn3"
+class="footnote-ref" id="fnref3"
+role="doc-noteref"><sup>3</sup></a>.</p>
+<p>It wasn’t until I started researching this post that I realised that
+AFL, and most coverage-guided fuzzers since, actually inject custom
+coverage capturing code into compiled programs at every branch point or
+<a href="https://en.wikipedia.org/wiki/Basic_block">basic block</a>.
+It’s explained in more detail in the <a
+href="https://lcamtuf.coredump.cx/afl/technical_details.txt">whitepaper</a>.</p>
+<p>The main reason they do it is because of performance, not because
+it’s necessarily easier, in fact I still don’t understand exactly how it
+works.</p>
+<p>It wasn’t until I read about Antithesis’ <a
 href="https://antithesis.com/docs/best_practices/sometimes_assertions.html">“sometime
-assertions”</a> that I started seeing a really simple solution to the
+assertions”</a> that I started seeing a simple solution to the
 problem.</p>
 <p>These “sometimes assertions” can be thought of as generalised
 coverage, in that if we would annotate every single line, expression or
@@ -419,16 +415,16 @@ branch-based coverage.</p>
 to annotate every single line, expression or branch, we can annotate
 <em>interesting</em> points in our program.</p>
 <p>The final piece of the puzzle, and I think this is the only original
-idea that this post adds<a href="#fn3" class="footnote-ref" id="fnref3"
-role="doc-noteref"><sup>3</sup></a>, is that property-based testing
+idea that this post adds<a href="#fn4" class="footnote-ref" id="fnref4"
+role="doc-noteref"><sup>4</sup></a>, is that property-based testing
 already has functionality for implementing “sometimes assertions”: the
 <code>label</code>, <code>classify</code> and <code>collect</code>
 machinary for gathering run-time statistics of the generated data!</p>
 <p>This machinary is <a
 href="https://www.youtube.com/watch?v=NcJOiQlzlXQ">crucial</a> for
 writing good tests and has been part of the QuickCheck implementation
-since the very first version<a href="#fn4" class="footnote-ref"
-id="fnref4" role="doc-noteref"><sup>4</sup></a>!</p>
+since the very first version<a href="#fn5" class="footnote-ref"
+id="fnref5" role="doc-noteref"><sup>5</sup></a>!</p>
 <p>So the question is: can we implement coverage-guided property-based
 testing using the internal notion of coverage that property-based
 testing already has?</p>
@@ -444,8 +440,8 @@ href="https://dl.acm.org/doi/10.1145/351240.351266">paper</a> (ICFP,
 <section id="generating-input-data" class="level4">
 <h4><a href="#generating-input-data"
 title="Generating input data">Generating input data</a></h4>
-<p>Let’s start with the generator<a href="#fn5" class="footnote-ref"
-id="fnref5" role="doc-noteref"><sup>5</sup></a>:</p>
+<p>Let’s start with the generator<a href="#fn6" class="footnote-ref"
+id="fnref6" role="doc-noteref"><sup>6</sup></a>:</p>
 <div class="sourceCode" id="cb3"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">Gen</span> a <span class="ot">=</span> <span class="dt">Gen</span> (<span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">StdGen</span> <span class="ot">-&gt;</span> a)</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -478,8 +474,8 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a 
 <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>vector n <span class="ot">=</span> <span class="fu">sequence</span> [ arbitrary <span class="op">|</span> _i <span class="ot">&lt;-</span> [<span class="dv">1</span><span class="op">..</span>n] ]</span></code></pre></div>
 <p>Instead of defining generators directly for different datatypes,
 QuickCheck first wraps generators in a type class called
-<code>Arbitrary</code><a href="#fn6" class="footnote-ref" id="fnref6"
-role="doc-noteref"><sup>6</sup></a>:</p>
+<code>Arbitrary</code><a href="#fn7" class="footnote-ref" id="fnref7"
+role="doc-noteref"><sup>7</sup></a>:</p>
 <div class="sourceCode" id="cb6"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">Arbitrary</span> a <span class="kw">where</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ot">  arbitrary ::</span> <span class="dt">Gen</span> a</span>
@@ -652,9 +648,9 @@ coverage-guidance</a></h3>
 property-based testing tool, QuickCheck. Now let’s add coverage-guidence
 to it!</p>
 <p>The function that checks a property with coverage-guidance slight
-different from <code>quickCheck</code><a href="#fn7"
-class="footnote-ref" id="fnref7"
-role="doc-noteref"><sup>7</sup></a>:</p>
+different from <code>quickCheck</code><a href="#fn8"
+class="footnote-ref" id="fnref8"
+role="doc-noteref"><sup>8</sup></a>:</p>
 <div class="sourceCode" id="cb17"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="ot">coverCheck ::</span> (<span class="dt">Arbitrary</span> a, <span class="dt">Show</span> a) <span class="ot">=&gt;</span> <span class="dt">Config</span> <span class="ot">-&gt;</span> ([a] <span class="ot">-&gt;</span> <span class="dt">Property</span>)  <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>coverCheck config prop <span class="ot">=</span> <span class="kw">do</span></span>
@@ -754,8 +750,8 @@ OK, passed 100 tests.
 elemens long! This is perhaps not what we expected. However if we
 consider that precondition says that the list must be sorted, then it
 should become clear that it’s unlikely to generate such longer such
-lists completely by random<a href="#fn8" class="footnote-ref"
-id="fnref8" role="doc-noteref"><sup>8</sup></a>.</p>
+lists completely by random<a href="#fn9" class="footnote-ref"
+id="fnref9" role="doc-noteref"><sup>9</sup></a>.</p>
 </section>
 <section id="using-coverage-to-guide-generation" class="level3">
 <h3><a href="#using-coverage-to-guide-generation"
@@ -896,7 +892,7 @@ so you can see how it first find the <code>"b"</code>, then
 Falsifiable, after 88 tests:
 &quot;bad!&quot;</code></pre>
 <p>The full source code is available <a
-href="https://github.com/stevana/coverage-guided-pbt">here</a>.</p>
+href="https://github.com/stevana/coverage-guided-pbt/blob/main/src/QuickCheckV1.hs">here</a>.</p>
 </section>
 </section>
 <section id="conclusion-and-further-work" class="level2">
@@ -931,6 +927,9 @@ rollback, failover?</p></li>
 integers? Or just use <code>frequency</code>?</p></li>
 <li><p>Type-generic mutation?</p></li>
 <li><p>sometimes_each?</p></li>
+<li><p><a href="https://en.wikipedia.org/wiki/L%C3%A9vy_flight"
+class="uri">https://en.wikipedia.org/wiki/L%C3%A9vy_flight</a>
+(optimises search)</p></li>
 </ul>
 </section>
 <section id="see-also" class="level2">
@@ -998,27 +997,34 @@ href="https://lcamtuf.coredump.cx/afl/technical_details.txt">AFL
 href="https://lcamtuf.blogspot.com/2014/08/binary-fuzzing-strategies-what-works.html">mutation
 heuristics</a>.<a href="#fnref2" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn3"><p>As I was writing up, I stumbled across the paper <a
+<li id="fn3"><p>In the case of Haskell, I didn’t know that there was
+such a library until read Shae “shapr” Erisson’s post <a
+href="https://shapr.github.io/posts/2023-07-30-goldilocks-property-tests.html"><em>Run
+property tests until coverage stops increasing</em></a> (2023). Note
+that Shae’s post only uses coverage as a stopping condition, not to
+actually drive the generation of test cases.<a href="#fnref3"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>As I was writing up, I stumbled across the paper <a
 href="https://ieeexplore.ieee.org/document/9152719"><em>Ijon: Exploring
 Deep State Spaces via Fuzzing</em></a> (2020) which lets the user to add
 custom coverage annotations. HypoFuzz also has this <a
 href="https://hypofuzz.com/docs/configuration.html#custom-coverage-events">functionality</a>.<a
-href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn4"><p>See the appendix of the original <a
+href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5"><p>See the appendix of the original <a
 href="https://dl.acm.org/doi/10.1145/351240.351266">paper</a> that first
 introduced property-based testing. It’s interesting to note that the
 collecting statistics functionality is older than shrinking.<a
-href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn5"><p>We’ll not talk about the <code>coarbitrary</code> method
+href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6"><p>We’ll not talk about the <code>coarbitrary</code> method
 of the <code>Arbitrary</code> type class, which is used to generate
-functions, in this post.<a href="#fnref5" class="footnote-back"
+functions, in this post.<a href="#fnref6" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn6"><p>The reason for wrapping <code>Gen</code> in the
+<li id="fn7"><p>The reason for wrapping <code>Gen</code> in the
 <code>Arbitrary</code> type class is so that generators don’t have to be
 passed explicitly. Not everyone agrees that this is a good idea, as type
-class instances cannot be managed by the module system.<a href="#fnref6"
+class instances cannot be managed by the module system.<a href="#fnref7"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn7"><p>It might be interesting to note that we can implement
+<li id="fn8"><p>It might be interesting to note that we can implement
 this signature using the original combinators:</p>
 <div class="sourceCode" id="cb16"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="ot">testsC&#39; ::</span> <span class="dt">Show</span> a <span class="ot">=&gt;</span> <span class="dt">Config</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a <span class="ot">-&gt;</span> ([a] <span class="ot">-&gt;</span> <span class="dt">Property</span>)</span>
@@ -1027,11 +1033,11 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb16-1"><a
 <span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
 <span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Prop</span> genResult <span class="ot">=</span> forAll (genList gen) prop</span>
 <span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    genList gen <span class="ot">=</span> sized <span class="op">$</span> \len <span class="ot">-&gt;</span> replicateM len gen</span></code></pre></div>
-<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></li>
-<li id="fn8"><p>The standard workaround here is to introduce a wrapper
+<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></li>
+<li id="fn9"><p>The standard workaround here is to introduce a wrapper
 type for which we write a custom generator which generates a random list
 and then sorts it before returning. That way no pre-condition is needed,
-as the input will be sorted by construction so to say.<a href="#fnref8"
+as the input will be sorted by construction so to say.<a href="#fnref9"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
