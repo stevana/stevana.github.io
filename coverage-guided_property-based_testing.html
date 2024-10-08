@@ -85,16 +85,14 @@ involved!</em></p>
 href="https://danluu.com/testing/">post</a> asking why coverage-guided
 property-based testing wasn’t a thing.</p>
 <p>In this post I’ll survey the coverage-guided landscape, looking at
-what was there before Dan’s post and what has happened since.</p>
-<p>The short version is: today imperative languages seem to be in the
-forefront of combining coverage-guidance and property-based testing.</p>
-<p>In an effort to try to help functional programming languages catch
-up, I’ll show how coverage-guidence can be added to the first version of
-the original property-based testing tool, QuickCheck, in about 35 lines
-of code.</p>
-<p>The technique is programming language agnostic and doesn’t rely on
-any language-specific instrumentation of the software under test (unlike
-previous implementations of this idea).</p>
+what was there before Dan’s post and what has happened since. I’ll also
+show how to add basic coverage-guidance to the first version of the
+original property-based testing tool, QuickCheck, in about 35 lines of
+code.</p>
+<p>Unlike many previous implementations of this idea, the technique used
+to implement coverage-guidance is programming language agnostic and
+doesn’t rely on any language-specific instrumentation of the software
+under test.</p>
 <section id="motivation" class="level2">
 <h2><a href="#motivation" title="Motivation">Motivation</a></h2>
 <p>Before we start, let me try to motivate why one would want to combine
@@ -114,24 +112,30 @@ triggered if some input byte array starts with the bytes
         }
     }
 }</code></pre>
-<p>If we were to try to test this function with property-based testing,
-where we restrict the input to be of exactly length 4, then it would
-still take <span class="math inline">\(\mathcal{O}(2^8 \cdot 2^8 \cdot
-2^8 \cdot 2^8) = \mathcal{O}((2^8)^4) = \mathcal{O}(2^{32}) \approx
-4B\)</span> tries to trigger the bug! A more realistic test wouldn’t fix
-the length of the input, which would make the probability of triggering
-the bug even lower.</p>
+<p>What are the odds that a property-based testing tool (without
+coverage-guidance) would be able to find the error?</p>
+<p>To make the calculation easier, let’s say that we always generate
+arrays of length <span class="math inline">\(4\)</span>. A byte consists
+of eight bits, so it has <span class="math inline">\(2^8\)</span>
+possible values. That means that the probability is <span
+class="math inline">\(\frac{1}{2^8} \cdot \frac{1}{2^8} \cdot
+\frac{1}{2^8} \cdot \frac{1}{2^8}) = \frac{1}{2^8}^4 =
+\frac{1}{2^{32}}\)</span> which is approximately <span
+class="math inline">\(1\)</span> in <span
+class="math inline">\(4\)</span> billion. In a realistic test suite, we
+wouldn’t restrict the length of the array to be <span
+class="math inline">\(4\)</span>, and hence the probability will be even
+worse.</p>
 <p>With coverage-guidance we keep track of inputs that resulted in
 increased coverage. So, for example, if we generate the array
-<code>[]byte{'A'}</code> we get further into the nested ifs, and so we
-take note of that and start generating longer arrays that start with ‘A’
-and see if we get even further, etc.</p>
-<p>By building on previous succeses in getting more coverage, we can
-effectively reduce the problem to only need <span
-class="math inline">\(\mathcal{O}(2^8 + 2^8 + 2^8 + 2^8) =
-\mathcal{O}(2^8 \cdot 4) = \mathcal{O}(2^{10}) = 1024\)</span>
-tries.</p>
-<p>In other words coverage-guidence turns an exponential problem into a
+<code>[]byte{'b'}</code> we get further into the nested ifs, and so we
+take note of that and start generating longer arrays that start with
+<code>'b'</code> and see if we get even further, etc. By building on
+previous successes in getting more coverage, we can effectively reduce
+the problem to only need <span class="math inline">\(\frac{1}{2^8} +
+\frac{1}{2^8} + \frac{1}{2^8} + \frac{2^8} = \frac{1}{2^8} \cdot 4 =
+\fraq{1}{2^{10}} = \frac{1}{1024}\)</span>.</p>
+<p>In other words coverage-guidance turns an exponential problem into a
 polynomial problem!</p>
 </section>
 <section id="background-and-prior-work" class="level2">
@@ -911,17 +915,14 @@ doesn’t matter.</p>
 greedy and will seek to maximise coverage, without ever backtracking.
 This means that it can easily get stuck in local maxima. Consider the
 example:</p>
-<pre><code>if input[0] == &#39;b&#39;
+<pre><code>if input[0] == &#39;o&#39;
+  if input[1] == &#39;k&#39;
+    return
+if input[0] == &#39;b&#39;
   if input[1] == &#39;a&#39;
     if input[2] == &#39;d&#39;
-      skip
-if input[0] == &#39;w&#39;
-  if input[1] == &#39;o&#39;
-    if input[2] == &#39;r&#39;
-      if input[3] == &#39;s&#39;
-        if input[4] == &#39;e&#39;
-          error</code></pre>
-<p>If we generate an input that starts with ‘b’ (rather than ‘w’), then
+      error</code></pre>
+<p>If we generate an input that starts with ‘o’ (rather than ‘b’), then
 we’ll get stuck never finding the error.</p>
 <p>Real coverage-guided tools, like AFL, will not get stuck like that.
 While I have a variant of the code that can cope with this, I chose to
