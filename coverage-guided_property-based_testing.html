@@ -119,7 +119,7 @@ arrays of length <span class="math inline">\(4\)</span>. A byte consists
 of eight bits, so it has <span class="math inline">\(2^8\)</span>
 possible values. That means that the probability is <span
 class="math inline">\(\frac{1}{2^8} \cdot \frac{1}{2^8} \cdot
-\frac{1}{2^8} \cdot \frac{1}{2^8}) = \frac{1}{2^8}^4 =
+\frac{1}{2^8} \cdot \frac{1}{2^8} = (\frac{1}{2^8})^4 =
 \frac{1}{2^{32}}\)</span> which is approximately <span
 class="math inline">\(1\)</span> in <span
 class="math inline">\(4\)</span> billion. In a realistic test suite, we
@@ -133,8 +133,8 @@ take note of that and start generating longer arrays that start with
 <code>'b'</code> and see if we get even further, etc. By building on
 previous successes in getting more coverage, we can effectively reduce
 the problem to only need <span class="math inline">\(\frac{1}{2^8} +
-\frac{1}{2^8} + \frac{1}{2^8} + \frac{2^8} = \frac{1}{2^8} \cdot 4 =
-\fraq{1}{2^{10}} = \frac{1}{1024}\)</span>.</p>
+\frac{1}{2^8} + \frac{1}{2^8} + \frac{1}{2^8} = \frac{1}{2^8} \cdot 4 =
+\frac{1}{2^{10}} = \frac{1}{1024}\)</span>.</p>
 <p>In other words coverage-guidance turns an exponential problem into a
 polynomial problem!</p>
 </section>
@@ -274,8 +274,8 @@ as it has proven brittle and does not really pull its weight.</p>
 the feature in its current form does not seem to be worth the cost of
 using, and whatever replaces it will likely look very different.”</p>
 </blockquote>
-<p>As far as I can tell, it hasn’t been reintroduced since.</p>
-<p>However it’s possible to hook Hypothesis up to <a
+<p>As far as I can tell, it hasn’t been reintroduced since. However it’s
+possible to hook Hypothesis up to <a
 href="https://hypothesis.readthedocs.io/en/latest/details.html#use-with-external-fuzzers">use
 external fuzzers</a>. Hypothesis already uses random bytes as basis for
 its generators, unlike QuickCheck which uses an integer seed, so I
@@ -287,7 +287,7 @@ many properties. The <a
 href="https://hypofuzz.com/docs/features.html#fuzzer-details">HypoFuzz</a>
 tool works around this mismatch by scheduling fuzzing time among the
 many Hypothesis properties in your test suite.</p>
-<p>What else has happenend since Dan’s post?</p>
+<p>What else has happened since Dan’s post?</p>
 <p>One of the first things I noticed is that AFL is no longer <a
 href="https://lcamtuf.coredump.cx/afl/">maintained</a>:</p>
 <blockquote>
@@ -301,8 +301,7 @@ exploration with very few knobs, <a
 href="https://www.usenix.org/system/files/woot20-paper-fioraldi.pdf">AFL++</a>
 (2020) keeps the basic AFL evolutionary algorithm structure, but
 incorporates a lot of new research on other ways to explore the state
-space.</p>
-<p>For example, which seed gets scheduled and how many times it gets
+space. For example, which seed gets scheduled and how many times it gets
 mutated per round are <a
 href="https://mboehme.github.io/paper/CCS16.pdf">two new parameters</a>
 that can be tweaked to achieve different paths of exploration throughout
