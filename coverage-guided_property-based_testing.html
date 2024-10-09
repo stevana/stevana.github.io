@@ -58,20 +58,15 @@ id="toc-collecting-statistics">Collecting statistics</a></li>
 <li><a href="#running-the-tests" id="toc-running-the-tests">Running the
 tests</a></li>
 </ul></li>
+<li><a href="#example-traditional-use-of-coverage"
+id="toc-example-traditional-use-of-coverage">Example: traditional use of
+coverage</a></li>
 <li><a href="#the-extension-to-add-coverage-guidance"
 id="toc-the-extension-to-add-coverage-guidance">The extension to add
 coverage-guidance</a></li>
-</ul></li>
-<li><a href="#example-test-runs-using-the-prototype"
-id="toc-example-test-runs-using-the-prototype">Example test runs using
-the prototype</a>
-<ul>
-<li><a href="#traditional-use-of-coverage"
-id="toc-traditional-use-of-coverage">Traditional use of
-coverage</a></li>
-<li><a href="#using-coverage-to-guide-generation"
-id="toc-using-coverage-to-guide-generation">Using coverage to guide
-generation</a></li>
+<li><a href="#example-using-coverage-to-guide-generation"
+id="toc-example-using-coverage-to-guide-generation">Example: using
+coverage to guide generation</a></li>
 </ul></li>
 <li><a href="#conclusion-and-further-work"
 id="toc-conclusion-and-further-work">Conclusion and further
@@ -434,7 +429,7 @@ machinery for gathering run-time statistics of the generated data!</p>
 href="https://www.youtube.com/watch?v=NcJOiQlzlXQ">crucial</a> for
 writing good tests and has been part of the QuickCheck implementation
 since the very first version<a href="#fn5" class="footnote-ref"
-id="fnref5" role="doc-noteref"><sup>5</sup></a>!</p>
+id="fnref5" role="doc-noteref"><sup>5</sup></a>.</p>
 <p>So the question is: can we implement coverage-guided property-based
 testing using the internal notion of coverage that property-based
 testing already has?</p>
@@ -443,15 +438,18 @@ testing already has?</p>
 <h3><a href="#the-first-version-of-quickcheck"
 title="The first version of QuickCheck">The first version of
 QuickCheck</a></h3>
-<p>For the sake of self-containment, let’s reproduce the essential parts
-of QuickCheck as defined in the appendix of the original <a
-href="https://dl.acm.org/doi/10.1145/351240.351266">paper</a> (ICFP,
-2000).</p>
+<p>Before we answer the above question, let’s remind ourselves of how a
+property-based testing library is implemented. For the sake of
+self-containment, let’s reproduce the essential parts of QuickCheck as
+defined in the appendix of the original <a
+href="https://dl.acm.org/doi/10.1145/351240.351266">paper</a> that first
+introduced property-based testing (ICFP, 2000).</p>
 <section id="generating-input-data" class="level4">
 <h4><a href="#generating-input-data"
 title="Generating input data">Generating input data</a></h4>
 <p>Let’s start with the generator<a href="#fn6" class="footnote-ref"
-id="fnref6" role="doc-noteref"><sup>6</sup></a>:</p>
+id="fnref6" role="doc-noteref"><sup>6</sup></a>, which is used to
+generate random inputs to the software under test:</p>
 <div class="sourceCode" id="cb5"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">Gen</span> a <span class="ot">=</span> <span class="dt">Gen</span> (<span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">StdGen</span> <span class="ot">-&gt;</span> a)</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -528,7 +526,7 @@ boolean indicates whether the property passed or not. The
 <code>stamp</code> field is used to collect statistics about the
 generated test cases, while <code>arguments</code> contains all the
 generated inputs (or arguments) to the property.</p>
-<p>In order to allow the user to write properties of variying arity
+<p>In order to allow the user to write properties of varying arity
 another type class is introduced:</p>
 <div class="sourceCode" id="cb11"><pre
 class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">Testable</span> a <span class="kw">where</span></span>
@@ -650,105 +648,42 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb17-1"><a
 <span id="cb17-30"><a href="#cb17-30" aria-hidden="true" tabindex="-1"></a>      (rnd1,rnd2) <span class="ot">=</span> split rnd0</span></code></pre></div>
 </section>
 </section>
-<section id="the-extension-to-add-coverage-guidance" class="level3">
-<h3><a href="#the-extension-to-add-coverage-guidance"
-title="The extension to add coverage-guidance">The extension to add
-coverage-guidance</a></h3>
-<p>Okey, so the above is the first version of the original
-property-based testing tool, QuickCheck. Now let’s add coverage-guidence
-to it!</p>
-<p>The function that checks a property with coverage-guidance slight
-different from <code>quickCheck</code><a href="#fn8"
-class="footnote-ref" id="fnref8"
-role="doc-noteref"><sup>8</sup></a>:</p>
-<div class="sourceCode" id="cb19"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="ot">coverCheck ::</span> (<span class="dt">Arbitrary</span> a, <span class="dt">Show</span> a) <span class="ot">=&gt;</span> <span class="dt">Config</span> <span class="ot">-&gt;</span> ([a] <span class="ot">-&gt;</span> <span class="dt">Property</span>)  <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>coverCheck config prop <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  rnd <span class="ot">&lt;-</span> newStdGen</span>
-<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  testsC config arbitrary prop [] <span class="dv">0</span> rnd <span class="dv">0</span> <span class="dv">0</span> []</span></code></pre></div>
-<p>In particular notice that instead of <code>Testable a</code> we use
-an explicit predicate on a list of <code>a</code>,
-<code>[a] -&gt; Property</code>. The reason for using a list in the
-predicate is so that we can iteratively make progress, using the
-coverage information. We see this more clearly if we look at the
-coverage-guided analogue of the <code>tests</code> function, in
-particular the <code>xs</code> parameter:</p>
-<div class="sourceCode" id="cb20"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="ot">testsC ::</span> <span class="dt">Show</span> a <span class="ot">=&gt;</span> <span class="dt">Config</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a <span class="ot">-&gt;</span> ([a] <span class="ot">-&gt;</span> <span class="dt">Property</span>) <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">Int</span></span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>       <span class="ot">-&gt;</span> <span class="dt">StdGen</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [[<span class="dt">String</span>]] <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>testsC config gen prop xs cov rnd0 ntest nfail stamps</span>
-<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> ntest <span class="op">==</span> maxTest config <span class="ot">=</span> <span class="kw">do</span> done <span class="st">&quot;OK, passed&quot;</span> ntest stamps</span>
-<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> nfail <span class="op">==</span> maxFail config <span class="ot">=</span> <span class="kw">do</span> done <span class="st">&quot;Arguments exhausted after&quot;</span> ntest stamps</span>
-<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="fu">otherwise</span>               <span class="ot">=</span></span>
-<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>      <span class="kw">do</span> <span class="fu">putStr</span> (every config ntest (arguments result))</span>
-<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>         <span class="kw">case</span> ok result <span class="kw">of</span></span>
-<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>           <span class="dt">Nothing</span>    <span class="ot">-&gt;</span></span>
-<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>             testsC config gen prop xs cov rnd1 ntest (nfail<span class="op">+</span><span class="dv">1</span>) stamps</span>
-<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>           <span class="dt">Just</span> <span class="dt">True</span>  <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>             <span class="kw">let</span> stamps&#39; <span class="ot">=</span> stamp result <span class="op">:</span> stamps</span>
-<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>                 cov&#39;    <span class="ot">=</span> <span class="fu">length</span> (nub (<span class="fu">concat</span> stamps&#39;))</span>
-<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>             <span class="kw">if</span> cov&#39; <span class="op">&gt;</span> cov</span>
-<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>             <span class="kw">then</span> testsC config gen prop xs&#39; cov&#39; rnd1 (ntest<span class="op">+</span><span class="dv">1</span>) nfail stamps&#39;</span>
-<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>             <span class="kw">else</span> testsC config gen prop xs  cov  rnd1 (ntest<span class="op">+</span><span class="dv">1</span>) nfail stamps&#39;</span>
-<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>           <span class="dt">Just</span> <span class="dt">False</span> <span class="ot">-&gt;</span></span>
-<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>             <span class="fu">putStrLn</span> ( <span class="st">&quot;Falsifiable, after &quot;</span></span>
-<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>                   <span class="op">++</span> <span class="fu">show</span> ntest</span>
-<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>                   <span class="op">++</span> <span class="st">&quot; tests:\n&quot;</span></span>
-<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a>                   <span class="op">++</span> <span class="fu">head</span> (arguments result)</span>
-<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a>                    )</span>
-<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a>     <span class="kw">where</span></span>
-<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a>       x              <span class="ot">=</span> generate (size config ntest) rnd3 gen</span>
-<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a>       xs&#39;            <span class="ot">=</span> xs <span class="op">++</span> [x]</span>
-<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a>       <span class="dt">Prop</span> genResult <span class="ot">=</span> prop xs&#39;</span>
-<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a>       result_        <span class="ot">=</span> generate (size config ntest) rnd4 genResult</span>
-<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a>       result         <span class="ot">=</span> result_ {arguments <span class="ot">=</span> <span class="fu">show</span> xs&#39; <span class="op">:</span> arguments result_ }</span>
-<span id="cb20-29"><a href="#cb20-29" aria-hidden="true" tabindex="-1"></a>       (rnd1,rnd2)    <span class="ot">=</span> split rnd0</span>
-<span id="cb20-30"><a href="#cb20-30" aria-hidden="true" tabindex="-1"></a>       (rnd3,rnd4)    <span class="ot">=</span> split rnd2</span></code></pre></div>
-<p>The other important difference is the <code>cov</code>erage
-parameter, which keeps track of how many things have been
-<code>classify</code>ed (the <code>stamps</code> parameter). Notice how
-we only add the newly generated input, <code>x</code>, if the
-<code>cov</code>erage increases.</p>
-</section>
-</section>
-<section id="example-test-runs-using-the-prototype" class="level2">
-<h2><a href="#example-test-runs-using-the-prototype"
-title="Example test runs using the prototype">Example test runs using
-the prototype</a></h2>
-<p>Before we go back to the example from the motivation section, let’s
-have a look at how coverage information is traditional used in
-property-based testing.</p>
-<section id="traditional-use-of-coverage" class="level3">
-<h3><a href="#traditional-use-of-coverage"
-title="Traditional use of coverage">Traditional use of coverage</a></h3>
-<p>Let’s start by having a look at how one would typically write a
-property using vanilla <code>quickCheck</code>. Consider
-<code>insert</code>ing into an already sorted list:</p>
-<div class="sourceCode" id="cb21"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="ot">insert ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> [a]</span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>insert x [] <span class="ot">=</span> [x]</span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>insert x (y <span class="op">:</span> xs) <span class="op">|</span> x <span class="op">&lt;=</span> y    <span class="ot">=</span> x <span class="op">:</span> y <span class="op">:</span> xs</span>
-<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>                  <span class="op">|</span> <span class="fu">otherwise</span> <span class="ot">=</span> y <span class="op">:</span> insert x xs</span></code></pre></div>
+<section id="example-traditional-use-of-coverage" class="level3">
+<h3><a href="#example-traditional-use-of-coverage"
+title="Example: traditional use of coverage">Example: traditional use of
+coverage</a></h3>
+<p>Okay, so the above is the first version of the original
+property-based testing tool, QuickCheck.</p>
+<p>Before we extend it with coverage-guidance, let’s have a look at an
+example property and how collecting statistics is typically used to
+ensure good coverage.</p>
+<p>The example we’ll have a look at is <code>insert</code>ing into an
+already sorted list (from which insertion sort can be implemented):</p>
+<div class="sourceCode" id="cb18"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ot">insert ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> [a]</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>insert x [] <span class="ot">=</span> [x]</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>insert x (y <span class="op">:</span> xs) <span class="op">|</span> x <span class="op">&lt;=</span> y    <span class="ot">=</span> x <span class="op">:</span> y <span class="op">:</span> xs</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>                  <span class="op">|</span> <span class="fu">otherwise</span> <span class="ot">=</span> y <span class="op">:</span> insert x xs</span></code></pre></div>
 <p>If we do so, then we resulting list should remain sorted:</p>
-<div class="sourceCode" id="cb22"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="ot">prop_insert ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [<span class="dt">Int</span>] <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>prop_insert x xs <span class="ot">=</span> isSorted xs <span class="op">==&gt;</span> isSorted (insert x xs)</span>
-<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="ot">isSorted ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
-<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>isSorted xs <span class="ot">=</span> <span class="fu">sort</span> xs <span class="op">==</span> xs</span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="ot">prop_insert ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [<span class="dt">Int</span>] <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>prop_insert x xs <span class="ot">=</span> isSorted xs <span class="op">==&gt;</span> isSorted (insert x xs)</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="ot">isSorted ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>isSorted xs <span class="ot">=</span> <span class="fu">sort</span> xs <span class="op">==</span> xs</span></code></pre></div>
 <p>This test passes:</p>
 <pre><code>&gt;&gt;&gt; quickCheck prop_insert
 OK, passed 100 tests.</code></pre>
 <p>What do the test cases that are generated look like? This is where
 <code>classify</code> comes in:</p>
-<div class="sourceCode" id="cb24"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="ot">prop_insert&#39; ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [<span class="dt">Int</span>] <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>prop_insert&#39; x xs <span class="ot">=</span> isSorted xs <span class="op">==&gt;</span></span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  classify (<span class="fu">null</span> xs) <span class="st">&quot;empty&quot;</span> <span class="op">$</span></span>
-<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  classify (<span class="fu">length</span> xs <span class="op">==</span> <span class="dv">1</span>) <span class="st">&quot;singleton&quot;</span> <span class="op">$</span></span>
-<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  classify (<span class="fu">length</span> xs <span class="op">&gt;</span> <span class="dv">1</span> <span class="op">&amp;&amp;</span> <span class="fu">length</span> xs <span class="op">&lt;=</span> <span class="dv">3</span>) <span class="st">&quot;short&quot;</span> <span class="op">$</span></span>
-<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>  classify (<span class="fu">length</span> xs <span class="op">&gt;</span> <span class="dv">3</span>) <span class="st">&quot;longer&quot;</span> <span class="op">$</span></span>
-<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>    isSorted (insert x xs)</span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="ot">prop_insert&#39; ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [<span class="dt">Int</span>] <span class="ot">-&gt;</span> <span class="dt">Property</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>prop_insert&#39; x xs <span class="ot">=</span> isSorted xs <span class="op">==&gt;</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  classify (<span class="fu">null</span> xs) <span class="st">&quot;empty&quot;</span> <span class="op">$</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  classify (<span class="fu">length</span> xs <span class="op">==</span> <span class="dv">1</span>) <span class="st">&quot;singleton&quot;</span> <span class="op">$</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>  classify (<span class="fu">length</span> xs <span class="op">&gt;</span> <span class="dv">1</span> <span class="op">&amp;&amp;</span> <span class="fu">length</span> xs <span class="op">&lt;=</span> <span class="dv">3</span>) <span class="st">&quot;short&quot;</span> <span class="op">$</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  classify (<span class="fu">length</span> xs <span class="op">&gt;</span> <span class="dv">3</span>) <span class="st">&quot;longer&quot;</span> <span class="op">$</span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>    isSorted (insert x xs)</span></code></pre></div>
 <p>Running this property, we get some statistics about the generated
 data:</p>
 <pre><code>&gt;&gt;&gt; quickCheck prop_insert&#39;
@@ -757,16 +692,75 @@ OK, passed 100 tests.
 27% singleton.
 19% short.</code></pre>
 <p>As we can see, all of the lists that get generated are less than 3
-elemens long! This is perhaps not what we expected. However if we
+elements long! This is perhaps not what we expected. However if we
 consider that precondition says that the list must be sorted, then it
 should become clear that it’s unlikely to generate such longer such
-lists completely by random<a href="#fn9" class="footnote-ref"
-id="fnref9" role="doc-noteref"><sup>9</sup></a>.</p>
+lists completely by random<a href="#fn8" class="footnote-ref"
+id="fnref8" role="doc-noteref"><sup>8</sup></a>.</p>
 </section>
-<section id="using-coverage-to-guide-generation" class="level3">
-<h3><a href="#using-coverage-to-guide-generation"
-title="Using coverage to guide generation">Using coverage to guide
-generation</a></h3>
+<section id="the-extension-to-add-coverage-guidance" class="level3">
+<h3><a href="#the-extension-to-add-coverage-guidance"
+title="The extension to add coverage-guidance">The extension to add
+coverage-guidance</a></h3>
+<p>Now let’s add coverage-guidance to it using the machinery for
+collecting statistics about the generated data.</p>
+<p>The function that checks a property with coverage-guidance slight
+different from <code>quickCheck</code><a href="#fn9"
+class="footnote-ref" id="fnref9"
+role="doc-noteref"><sup>9</sup></a>:</p>
+<div class="sourceCode" id="cb24"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="ot">coverCheck ::</span> (<span class="dt">Arbitrary</span> a, <span class="dt">Show</span> a) <span class="ot">=&gt;</span> <span class="dt">Config</span> <span class="ot">-&gt;</span> ([a] <span class="ot">-&gt;</span> <span class="dt">Property</span>)  <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>coverCheck config prop <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  rnd <span class="ot">&lt;-</span> newStdGen</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  testsC config arbitrary prop [] <span class="dv">0</span> rnd <span class="dv">0</span> <span class="dv">0</span> []</span></code></pre></div>
+<p>In particular notice that instead of <code>Testable a</code> we use
+an explicit predicate on a list of <code>a</code>,
+<code>[a] -&gt; Property</code>. The reason for using a list in the
+predicate is so that we can iteratively make progress, using the
+coverage information. We see this more clearly if we look at the
+coverage-guided analogue of the <code>tests</code> function, in
+particular the <code>xs</code> parameter:</p>
+<div class="sourceCode" id="cb25"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="ot">testsC ::</span> <span class="dt">Show</span> a <span class="ot">=&gt;</span> <span class="dt">Config</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a <span class="ot">-&gt;</span> ([a] <span class="ot">-&gt;</span> <span class="dt">Property</span>) <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">Int</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>       <span class="ot">-&gt;</span> <span class="dt">StdGen</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [[<span class="dt">String</span>]] <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>testsC config gen prop xs cov rnd0 ntest nfail stamps</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> ntest <span class="op">==</span> maxTest config <span class="ot">=</span> <span class="kw">do</span> done <span class="st">&quot;OK, passed&quot;</span> ntest stamps</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> nfail <span class="op">==</span> maxFail config <span class="ot">=</span> <span class="kw">do</span> done <span class="st">&quot;Arguments exhausted after&quot;</span> ntest stamps</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="fu">otherwise</span>               <span class="ot">=</span></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>      <span class="kw">do</span> <span class="fu">putStr</span> (every config ntest (arguments result))</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>         <span class="kw">case</span> ok result <span class="kw">of</span></span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>           <span class="dt">Nothing</span>    <span class="ot">-&gt;</span></span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>             testsC config gen prop xs cov rnd1 ntest (nfail<span class="op">+</span><span class="dv">1</span>) stamps</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>           <span class="dt">Just</span> <span class="dt">True</span>  <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a>             <span class="kw">let</span> stamps&#39; <span class="ot">=</span> stamp result <span class="op">:</span> stamps</span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a>                 cov&#39;    <span class="ot">=</span> <span class="fu">length</span> (nub (<span class="fu">concat</span> stamps&#39;))</span>
+<span id="cb25-14"><a href="#cb25-14" aria-hidden="true" tabindex="-1"></a>             <span class="kw">if</span> cov&#39; <span class="op">&gt;</span> cov</span>
+<span id="cb25-15"><a href="#cb25-15" aria-hidden="true" tabindex="-1"></a>             <span class="kw">then</span> testsC config gen prop xs&#39; cov&#39; rnd1 (ntest<span class="op">+</span><span class="dv">1</span>) nfail stamps&#39;</span>
+<span id="cb25-16"><a href="#cb25-16" aria-hidden="true" tabindex="-1"></a>             <span class="kw">else</span> testsC config gen prop xs  cov  rnd1 (ntest<span class="op">+</span><span class="dv">1</span>) nfail stamps&#39;</span>
+<span id="cb25-17"><a href="#cb25-17" aria-hidden="true" tabindex="-1"></a>           <span class="dt">Just</span> <span class="dt">False</span> <span class="ot">-&gt;</span></span>
+<span id="cb25-18"><a href="#cb25-18" aria-hidden="true" tabindex="-1"></a>             <span class="fu">putStrLn</span> ( <span class="st">&quot;Falsifiable, after &quot;</span></span>
+<span id="cb25-19"><a href="#cb25-19" aria-hidden="true" tabindex="-1"></a>                   <span class="op">++</span> <span class="fu">show</span> ntest</span>
+<span id="cb25-20"><a href="#cb25-20" aria-hidden="true" tabindex="-1"></a>                   <span class="op">++</span> <span class="st">&quot; tests:\n&quot;</span></span>
+<span id="cb25-21"><a href="#cb25-21" aria-hidden="true" tabindex="-1"></a>                   <span class="op">++</span> <span class="fu">head</span> (arguments result)</span>
+<span id="cb25-22"><a href="#cb25-22" aria-hidden="true" tabindex="-1"></a>                    )</span>
+<span id="cb25-23"><a href="#cb25-23" aria-hidden="true" tabindex="-1"></a>     <span class="kw">where</span></span>
+<span id="cb25-24"><a href="#cb25-24" aria-hidden="true" tabindex="-1"></a>       x              <span class="ot">=</span> generate (size config ntest) rnd3 gen</span>
+<span id="cb25-25"><a href="#cb25-25" aria-hidden="true" tabindex="-1"></a>       xs&#39;            <span class="ot">=</span> xs <span class="op">++</span> [x]</span>
+<span id="cb25-26"><a href="#cb25-26" aria-hidden="true" tabindex="-1"></a>       <span class="dt">Prop</span> genResult <span class="ot">=</span> prop xs&#39;</span>
+<span id="cb25-27"><a href="#cb25-27" aria-hidden="true" tabindex="-1"></a>       result_        <span class="ot">=</span> generate (size config ntest) rnd4 genResult</span>
+<span id="cb25-28"><a href="#cb25-28" aria-hidden="true" tabindex="-1"></a>       result         <span class="ot">=</span> result_ {arguments <span class="ot">=</span> <span class="fu">show</span> xs&#39; <span class="op">:</span> arguments result_ }</span>
+<span id="cb25-29"><a href="#cb25-29" aria-hidden="true" tabindex="-1"></a>       (rnd1,rnd2)    <span class="ot">=</span> split rnd0</span>
+<span id="cb25-30"><a href="#cb25-30" aria-hidden="true" tabindex="-1"></a>       (rnd3,rnd4)    <span class="ot">=</span> split rnd2</span></code></pre></div>
+<p>The other important difference is the <code>cov</code>erage
+parameter, which keeps track of how many things have been
+<code>classify</code>ed (the <code>stamps</code> parameter). Notice how
+we only add the newly generated input, <code>x</code>, if the
+<code>cov</code>erage increases.</p>
+</section>
+<section id="example-using-coverage-to-guide-generation" class="level3">
+<h3><a href="#example-using-coverage-to-guide-generation"
+title="Example: using coverage to guide generation">Example: using
+coverage to guide generation</a></h3>
 <p>We now have all the pieces to test the example from the <a
 href="#motivation">motivation</a> section:</p>
 <div class="sourceCode" id="cb26"><pre
@@ -1016,21 +1010,21 @@ role="doc-backlink">↩︎</a></p></li>
 passed explicitly. Not everyone agrees that this is a good idea, as type
 class instances cannot be managed by the module system.<a href="#fnref7"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn8"><p>It might be interesting to note that we can implement
-this signature using the original combinators:</p>
-<div class="sourceCode" id="cb18"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ot">testsC&#39; ::</span> <span class="dt">Show</span> a <span class="ot">=&gt;</span> <span class="dt">Config</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a <span class="ot">-&gt;</span> ([a] <span class="ot">-&gt;</span> <span class="dt">Property</span>)</span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>        <span class="ot">-&gt;</span> <span class="dt">StdGen</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [[<span class="dt">String</span>]] <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>testsC&#39; config gen prop <span class="ot">=</span> tests config genResult</span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Prop</span> genResult <span class="ot">=</span> forAll (genList gen) prop</span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    genList gen <span class="ot">=</span> sized <span class="op">$</span> \len <span class="ot">-&gt;</span> replicateM len gen</span></code></pre></div>
-<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></li>
-<li id="fn9"><p>The standard workaround here is to introduce a wrapper
+<li id="fn8"><p>The standard workaround here is to introduce a wrapper
 type for which we write a custom generator which generates a random list
 and then sorts it before returning. That way no pre-condition is needed,
-as the input will be sorted by construction so to say.<a href="#fnref9"
+as the input will be sorted by construction so to say.<a href="#fnref8"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9"><p>It might be interesting to note that we can implement
+this signature using the original combinators:</p>
+<div class="sourceCode" id="cb23"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="ot">testsC&#39; ::</span> <span class="dt">Show</span> a <span class="ot">=&gt;</span> <span class="dt">Config</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a <span class="ot">-&gt;</span> ([a] <span class="ot">-&gt;</span> <span class="dt">Property</span>)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>        <span class="ot">-&gt;</span> <span class="dt">StdGen</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [[<span class="dt">String</span>]] <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>testsC&#39; config gen prop <span class="ot">=</span> tests config genResult</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Prop</span> genResult <span class="ot">=</span> forAll (genList gen) prop</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    genList gen <span class="ot">=</span> sized <span class="op">$</span> \len <span class="ot">-&gt;</span> replicateM len gen</span></code></pre></div>
+<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></li>
 </ol>
 </section>
 </main>
