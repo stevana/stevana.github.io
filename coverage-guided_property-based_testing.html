@@ -802,97 +802,32 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb29-1"><a
 <span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>      }</span></code></pre></div>
 <p>We find the bad string pretty quickly. I’m using verbose output here
 so you can see how it first find the <code>"b"</code>, then
-<code>"ba"</code>, etc:</p>
+<code>"ba"</code>, etc<a href="#fn10" class="footnote-ref" id="fnref10"
+role="doc-noteref"><sup>10</sup></a>:</p>
 <pre><code>&gt;&gt;&gt; testBad&#39;
-0: &quot;n&quot;
-1: &quot;T&quot;
-2: &quot;L&quot;
-3: &quot;|&quot;
-4: &quot;X&quot;
-5: &quot;\&quot;&quot;
-6: &quot;e&quot;
-7: &quot;G&quot;
-8: &quot;R&quot;
-9: &quot;}&quot;
-10: &quot;C&quot;
-11: &quot;3&quot;
-12: &quot;&gt;&quot;
-13: &quot;C&quot;
-14: &quot;J&quot;
-15: &quot;9&quot;
-16: &quot;=&quot;
-17: &quot;9&quot;
-18: &quot;L&quot;
-19: &quot;)&quot;
-20: &quot;5&quot;
-21: &quot;6&quot;
-22: &quot;x&quot;
-23: &quot;#&quot;
-24: &quot;T&quot;
-25: &quot;T&quot;
-26: &quot;_&quot;
-27: &quot;@&quot;
-28: &quot;}&quot;
-29: &quot;y&quot;
-30: &quot;-&quot;
-31: &quot;s&quot;
-32: &quot;b&quot;
-33: &quot;bx&quot;
-34: &quot;b9&quot;
-35: &quot;bf&quot;
-36: &quot;bl&quot;
-37: &quot;ba&quot;
-38: &quot;baC&quot;
-39: &quot;baX&quot;
-40: &quot;baA&quot;
-41: &quot;baE&quot;
-42: &quot;bay&quot;
-43: &quot;baX&quot;
-44: &quot;ba6&quot;
-45: &quot;ba@&quot;
-46: &quot;bai&quot;
-47: &quot;ba}&quot;
-48: &quot;bay&quot;
-49: &quot;bac&quot;
-50: &quot;bak&quot;
-51: &quot;ba`&quot;
-52: &quot;bad&quot;
-53: &quot;bad8&quot;
-54: &quot;bade&quot;
-55: &quot;bad0&quot;
-56: &quot;badA&quot;
-57: &quot;badP&quot;
-58: &quot;badQ&quot;
-59: &quot;bad0&quot;
-60: &quot;bade&quot;
-61: &quot;bad)&quot;
-62: &quot;bado&quot;
-63: &quot;badE&quot;
-64: &quot;bad\&quot;&quot;
-65: &quot;bad@&quot;
-66: &quot;bad{&quot;
-67: &quot;badX&quot;
-68: &quot;bado&quot;
-69: &quot;badb&quot;
-70: &quot;bad~&quot;
-71: &quot;bada&quot;
-72: &quot;bad%&quot;
-73: &quot;bad9&quot;
-74: &quot;badE&quot;
-75: &quot;bad8&quot;
-76: &quot;bad{&quot;
-77: &quot;badS&quot;
-78: &quot;badn&quot;
-79: &quot;bad?&quot;
-80: &quot;badn&quot;
-81: &quot;badq&quot;
-82: &quot;bady&quot;
-83: &quot;badA&quot;
-84: &quot;bad4&quot;
-85: &quot;bad;&quot;
-86: &quot;bad9&quot;
-87: &quot;badU&quot;
-88: &quot;bad!&quot;
+0: &quot;n&quot;          23: &quot;#&quot;         46: &quot;bai&quot;       69: &quot;badb&quot;
+1: &quot;T&quot;          24: &quot;T&quot;         47: &quot;ba}&quot;       70: &quot;bad~&quot;
+2: &quot;L&quot;          25: &quot;T&quot;         48: &quot;bay&quot;       71: &quot;bada&quot;
+3: &quot;|&quot;          26: &quot;_&quot;         49: &quot;bac&quot;       72: &quot;bad%&quot;
+4: &quot;X&quot;          27: &quot;@&quot;         50: &quot;bak&quot;       73: &quot;bad9&quot;
+5: &quot;\&quot;&quot;         28: &quot;}&quot;         51: &quot;ba`&quot;       74: &quot;badE&quot;
+6: &quot;e&quot;          29: &quot;y&quot;         52: &quot;bad&quot;       75: &quot;bad8&quot;
+7: &quot;G&quot;          30: &quot;-&quot;         53: &quot;bad8&quot;      76: &quot;bad{&quot;
+8: &quot;R&quot;          31: &quot;s&quot;         54: &quot;bade&quot;      77: &quot;badS&quot;
+9: &quot;}&quot;          32: &quot;b&quot;         55: &quot;bad0&quot;      78: &quot;badn&quot;
+10: &quot;C&quot;         33: &quot;bx&quot;        56: &quot;badA&quot;      79: &quot;bad?&quot;
+11: &quot;3&quot;         34: &quot;b9&quot;        57: &quot;badP&quot;      80: &quot;badn&quot;
+12: &quot;&gt;&quot;         35: &quot;bf&quot;        58: &quot;badQ&quot;      81: &quot;badq&quot;
+13: &quot;C&quot;         36: &quot;bl&quot;        59: &quot;bad0&quot;      82: &quot;bady&quot;
+14: &quot;J&quot;         37: &quot;ba&quot;        60: &quot;bade&quot;      83: &quot;badA&quot;
+15: &quot;9&quot;         38: &quot;baC&quot;       61: &quot;bad)&quot;      84: &quot;bad4&quot;
+16: &quot;=&quot;         39: &quot;baX&quot;       62: &quot;bado&quot;      85: &quot;bad;&quot;
+17: &quot;9&quot;         40: &quot;baA&quot;       63: &quot;badE&quot;      86: &quot;bad9&quot;
+18: &quot;L&quot;         41: &quot;baE&quot;       64: &quot;bad\&quot;&quot;     87: &quot;badU&quot;
+19: &quot;)&quot;         42: &quot;bay&quot;       65: &quot;bad@&quot;      88: &quot;bad!&quot;
+20: &quot;5&quot;         43: &quot;baX&quot;       66: &quot;bad{&quot;
+21: &quot;6&quot;         44: &quot;ba6&quot;       67: &quot;badX&quot;
+22: &quot;x&quot;         45: &quot;ba@&quot;       68: &quot;bado&quot;
 Falsifiable, after 88 tests:
 &quot;bad!&quot;</code></pre>
 <p>The full source code is available <a
@@ -1025,6 +960,9 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb23-1"><a
 <span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Prop</span> genResult <span class="ot">=</span> forAll (genList gen) prop</span>
 <span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    genList gen <span class="ot">=</span> sized <span class="op">$</span> \len <span class="ot">-&gt;</span> replicateM len gen</span></code></pre></div>
 <a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></li>
+<li id="fn10"><p>To save vertical space I’ve also arranged the output in
+columns rather than one per line.<a href="#fnref10"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
 </main>
