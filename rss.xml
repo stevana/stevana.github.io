@@ -78,7 +78,7 @@ CPUs/cores are available.</p>
 <h2><a href="#inspiration-and-prior-work"
 title="Inspiration and prior work">Inspiration and prior work</a></h2>
 <p>While there are examples of pipelining in manufacturing that pre-date
-Henry Ford, it seems that’s when it took off and become a common place.
+Henry Ford, it seems that’s when it took off and became commonplace.
 Wikipedia <a
 href="https://en.wikipedia.org/wiki/Assembly_line#20th_century">says</a>:</p>
 <blockquote>
@@ -96,7 +96,7 @@ fetch the instruction, fetch the operands, do the instruction, and
 finally write the results.</p>
 <p>Given this tremendous success in both manufacturing and hardware one
 could expect that perhaps it’s worth doing in software as well? For
-reasons not entirely clear to me, it hasn’t seem to have taken off yet,
+reasons not entirely clear to me, it doesn’t seem to have taken off yet,
 but there are proponents of this idea.</p>
 <p>Jim Gray talked about software pipeline parallelism and partitioning
 in his Turing award <a
@@ -111,7 +111,7 @@ supports, what Jim calls, partition parallelism. One of the sources that
 the Disruptor paper mentions is <a
 href="https://people.eecs.berkeley.edu/~brewer/papers/SEDA-sosp.pdf"><em>SEDA:
 An Architecture for Well-Conditioned, Scalable Internet
-Services</em></a> (2001), which also talk about pipelines and
+Services</em></a> (2001), which also talks about pipelines and
 dynamically allocating threads to the stages. More recently, as I was
 digging into more of Jim’s <a
 href="https://jimgray.azurewebsites.net/papers/CacmParallelDB.pdf">work</a>,
@@ -152,7 +152,7 @@ scheduler:</p>
 <p><img src="https://raw.githubusercontent.com/stevana/scheduled-pipelines/main/images/system-context.png"></p>
 <p>The scheduler monitors the pipeline, looking at how long the input
 queues for each stage is and what the average service time per input of
-that stage is. By doing so it calculate where to schedule the available
+that stage is. By doing so it calculates where to schedule the available
 workers.</p>
 <p>The algorithm to allocate the available workers works as follows:</p>
 <ol type="1">
