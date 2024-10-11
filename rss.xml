@@ -151,7 +151,7 @@ but here we’ll take a more global approach.</p>
 scheduler:</p>
 <p><img src="https://raw.githubusercontent.com/stevana/scheduled-pipelines/main/images/system-context.png"></p>
 <p>The scheduler monitors the pipeline, looking at how long the input
-queues for each stage is and what the average service time per input of
+queue for each stage is and what the average service time per input of
 that stage is. By doing so it calculates where to schedule the available
 workers.</p>
 <p>The algorithm to allocate the available workers works as follows:</p>
@@ -177,7 +177,7 @@ of inputs.</p>
 <p>If we zoom in on the pipeline, we see that it consists of a source, N
 stages and a sink:</p>
 <p><img src="https://raw.githubusercontent.com/stevana/scheduled-pipelines/main/images/container-pipeline.png"></p>
-<p>The source can be a file, network socket, a user provided lists of
+<p>The source can be a file, network socket, a user provided list of
 items, etc, from which the inputs to the queue of the first stage are
 created. The inputs can be length-prefixed raw bytes, or
 newline-separated bytes, etc. Similarly the sink can also be a file, or
