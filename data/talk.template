@@ -40,7 +40,7 @@ $endif$
 <hr />
 <main>
 <h1>$title$</h1>
-<div class="date">Presented on $date$ at $place$</div>
+<span class="date">Presented on $date$ at <a href="https://$url$">$place$</a></span>
 $body$
 </main>
 </body>
