@@ -1,8 +1,10 @@
 SRC_FILES := $(wildcard data/talk/*.md)
 
-all: $(patsubst data/talk/%.md, dist/talk/%.html, $(SRC_FILES))
-	mkdir -p dist/talk/
+all: mkdirs $(patsubst data/talk/%.md, dist/talk/%.html, $(SRC_FILES))
 	cabal run exe -- data/content.yaml dist
+
+mkdirs:
+	mkdir -p dist/talk/
 
 dist/talk/%.html: data/talk/%.md
 	title="$(shell awk -F ': ' '/title:/ { print $$2 }' $<)" \
@@ -19,5 +21,6 @@ nodl:
 
 clean:
 	rm -f dist/*.html
+	rm -f dist/talk/*.html
 
-.PHONY: all clean
+.PHONY: all mkdirs clean
