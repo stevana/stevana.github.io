@@ -1,7 +1,7 @@
 SRC_FILES := $(wildcard data/talk/*.md)
 
 all: $(patsubst data/talk/%.md, dist/talk/%.html, $(SRC_FILES))
-	@mkdir -p dist
+	@mkdir -p dist/talk
 	@cabal run exe -- data/content.yaml dist
 
 dist/talk/%.html: data/talk/%.md
