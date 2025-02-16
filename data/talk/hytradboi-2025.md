@@ -13,4 +13,4 @@ Blog series:
 2. [Using Maelstrom to test distributed
    systems](https://github.com/pragma-org/simulation-testing/blob/main/blog/src/02-maelstrom-testing-echo-example.md)
 3. [Sketching how to simulation test distributed
-   systems]https://github.com/pragma-org/simulation-testing/blob/main/blog/src/03-simulation-testing-echo-example.md
+   systems](https://github.com/pragma-org/simulation-testing/blob/main/blog/src/03-simulation-testing-echo-example.md)
