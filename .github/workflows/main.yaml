@@ -27,6 +27,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install pandoc
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install pandoc
+
       - name: Set up GHC ${{ matrix.ghc-version }}
         uses: haskell-actions/setup@v2
         id: setup
@@ -71,20 +76,8 @@ jobs:
           path: ${{ steps.setup.outputs.cabal-store }}
           key: ${{ steps.cache.outputs.cache-primary-key }}
 
-      - name: Build
-        run: cabal build all
-
-      - name: Run tests
-        run: cabal test all
-
-      - name: Check cabal file
-        run: cabal check
-
-      # - name: Build documentation
-      #   run: cabal haddock all
-
-      - name: Run executable
-        run: cabal run exe -- data/content.yaml dist/
+      - name: Generate pages
+        run: make
 
       - name: Deploy GitHub pages
         uses: JamesIves/github-pages-deploy-action@v4

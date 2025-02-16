@@ -10,6 +10,7 @@ pkgs.mkShell rec {
     stylish-haskell
     zlib.dev
     zlib
+    pandoc
   ];
 
   LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath packages;

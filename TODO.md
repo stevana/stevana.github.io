@@ -7,3 +7,4 @@
 - [ ] Provide word count (for text and code)
 - [ ] Tags?
 - [ ] Add relations between posts, e.g. superseeds, extends, etc.
+  + draw arrows for the relations? https://anseki.github.io/leader-line/
