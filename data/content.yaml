@@ -96,6 +96,21 @@ topics:
       content: https://raw.githubusercontent.com/stevana/coverage-guided-pbt/main/README.md
       status: FirstDraft
 
+    - title: Introduction to simulation testing
+      date: 2025-01-21T00:00:00Z
+      content: https://raw.githubusercontent.com/pragma-org/simulation-testing/refs/heads/main/blog/src/00-introduction.md
+      status: FirstDraft
+
+    - title: Using Maelstrom to test distributed systems
+      date: 2025-02-06T00:00:00Z
+      content: https://raw.githubusercontent.com/pragma-org/simulation-testing/refs/heads/main/blog/src/02-maelstrom-testing-echo-example.md
+      status: FirstDraft
+
+    - title: Sketching how to simulation test distributed systems
+      date: 2025-02-12T00:00:00Z
+      content: https://raw.githubusercontent.com/pragma-org/simulation-testing/refs/heads/main/blog/src/03-simulation-testing-echo-example.md
+      status: FirstDraft
+
 # ----------------------------------------------------------------------
 - topic: Deployment
   posts:
