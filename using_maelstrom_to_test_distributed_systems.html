@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Stevan A" />
+  <meta name="dcterms.date" content="2025-02-06" />
+  <title>Using Maelstrom to test distributed systems</title>
+  <link rel="stylesheet" href="style.css?modified=2025-02-23" />
+  <link rel="alternate" type="application/rss+xml"
+        title="RSS feed"
+        href="rss.xml" />
+  <script src="script.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+  <noscript>
+    <img src="https://stevana-github-io.goatcounter.com/count?p=/using_maelstrom_to_test_distributed_systems.html&t=Using Maelstrom to test distributed systems">
+  </noscript>
+</head>
+<body>
+<header id="title-block-header">
+  <nav id="nav">
+    <span class="title"><a href="/">Stevan's notes...</a></span>
+    <a href="about.html">About / <span class="work-with-me">Work with me</span></a>
+    <a href="rss.xml">Feed <img height="10px" src="rss.svg" /></a>
+  </nav>
+</header>
+<hr />
+<main>
+<h1>Using Maelstrom to test distributed systems</h1>
+<nav id="TOC" class="sidenote" role="doc-toc">
+<h2 id="toc-title">Table of contents</h2>
+<ul>
+<li><a href="#first-example-echo" id="toc-first-example-echo">First
+example: echo</a></li>
+<li><a href="#sketching-how-to-test-echo"
+id="toc-sketching-how-to-test-echo">Sketching how to test echo</a></li>
+<li><a href="#echo-example-in-maelstrom"
+id="toc-echo-example-in-maelstrom">Echo example in Maelstrom</a></li>
+<li><a href="#testing-the-echo-example-using-maelstrom"
+id="toc-testing-the-echo-example-using-maelstrom">Testing the echo
+example using Maelstrom</a></li>
+<li><a href="#maelstrom-workloads"
+id="toc-maelstrom-workloads">Maelstrom workloads</a></li>
+<li><a href="#conclusion-and-whats-next"
+id="toc-conclusion-and-whats-next">Conclusion and what’s next</a></li>
+</ul>
+</nav>
+<div class="date">Posted on Feb  6, 2025</div>
+<p>In the <a
+href="introduction_to_simulation_testing.html">previous
+post</a> we introduced simulation testing.</p>
+<p>Before we start developing the pieces we need to do simulation
+testing, let’s first have a look at how more “traditional” testing of
+distributed systems looks like.</p>
+<p>In order to get started with any testing we first need to have some
+distributed system to test.</p>
+<section id="first-example-echo" class="level2">
+<h2><a href="#first-example-echo" title="First example: echo">First
+example: echo</a></h2>
+<p>Let’s consider a simple distributed system: a node which echos back
+whatever message one sends to it.</p>
+<p>In pseudo code we can define our echo node like this:</p>
+<pre><code>node (Echo text) = reply (Echo_ok text)</code></pre>
+<p>Where <code>Echo</code> and <code>Echo_ok</code> are tags which let’s
+us distinguish messages and <code>text</code> is some arbitrary string.
+The <code>reply</code> construct can be used to respond to the sender of
+the message.</p>
+<p>Notice how we’ve abstracted away any kind of networking. There’s no
+IP addresses, sockets, or anything like that. The pseudo code captures
+the essence of what the node is supposed to do, echo back the message it
+gets, and nothing else.</p>
+</section>
+<section id="sketching-how-to-test-echo" class="level2">
+<h2><a href="#sketching-how-to-test-echo"
+title="Sketching how to test echo">Sketching how to test echo</a></h2>
+<p>How can we ensure that our echo node works as intended?</p>
+<p>Given how trivial the example is, it might almost seem unnecessary,
+but since the testing setup is the same as for more complicated examples
+it’s still worthwhile stepping stone.</p>
+<p>Here’s an idea: imagine if we could spawn nodes as processes and then
+use <code>stdin</code> to send messages to them and have them reply to
+<code>stdout</code>.</p>
+<p>In pseudo code:</p>
+<pre><code>main = stdio node</code></pre>
+<p>Where <code>stdio</code> does the reading on <code>stdin</code>,
+decodes the bytes into the echo message type, applies the message to
+<code>node</code>, encodes the reply back to bytes, and finally writes
+the response back to <code>stdout</code>.</p>
+<p>If we compiled the above main function to a binary, called
+<code>echo-example</code>, we could run it as follows in a terminal:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> echo <span class="st">&#39;{&quot;type&quot;: &quot;echo&quot;, &quot;text&quot;: &quot;hi&quot;}&#39;</span> <span class="kw">|</span> <span class="ex">echo-example</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">{</span><span class="st">&quot;type&quot;</span><span class="ex">:</span> <span class="st">&quot;echo_ok&quot;</span>, <span class="st">&quot;text&quot;</span>: <span class="st">&quot;hi&quot;</span>}</span></code></pre></div>
+<p>(Here we are using a JSON codec for our messages, but any
+serialisation format will do.)</p>
+<p>Using this principle one could create more elaborate tests by
+generating many random requests to the nodes and record all replies,
+then afterwards we could check that for each <code>Echo</code> message
+there’s a corresponding <code>Echo_ok</code> reply.</p>
+<p>This testing idea happens to be exactly what Jepsen’s sister project,
+<a href="https://github.com/jepsen-io/maelstrom">Maelstrom</a>,
+implements.</p>
+</section>
+<section id="echo-example-in-maelstrom" class="level2">
+<h2><a href="#echo-example-in-maelstrom"
+title="Echo example in Maelstrom">Echo example in Maelstrom</a></h2>
+<p>We’ve already explained the main idea behind the testing strategy of
+Maelstrom above.</p>
+<p>To get a better feel for how it works, let’s just download and run
+it.</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> https://github.com/jepsen-io/maelstrom/releases/download/v0.2.4/maelstrom.tar.bz2</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">tar</span> xf maelstrom.tar.bz2</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> maelstrom</span></code></pre></div>
+<p>In the release that we just downloaded and unpacked, there’s a demo
+directory which also happens to contain a concrete implementation of the
+echo example which we’ve sketched the pseudo code of above.</p>
+<p>Let’s have a look at how echo is implemented in Ruby.</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode ruby"><code class="sourceCode ruby"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="cf">class</span> <span class="dt">EchoServer</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">def</span> main!</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="cn">STDERR</span><span class="at">.puts</span> <span class="st">&quot;Online&quot;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> line <span class="kw">=</span> <span class="cn">STDIN</span><span class="at">.gets</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>      req <span class="kw">=</span> <span class="cn">JSON</span><span class="at">.parse</span> line, <span class="wa">symbolize_names: </span><span class="dv">true</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>      <span class="cn">STDERR</span><span class="at">.puts</span> <span class="st">&quot;Received </span><span class="sc">#{</span>req<span class="at">.inspect</span><span class="sc">}</span><span class="st">&quot;</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>      body <span class="kw">=</span> req<span class="kw">[</span><span class="wa">:body</span><span class="kw">]</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>      <span class="cf">case</span> body<span class="kw">[</span><span class="wa">:type</span><span class="kw">]</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Essence of echo.</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        <span class="cf">when</span> <span class="st">&quot;echo&quot;</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>          <span class="cn">STDERR</span><span class="at">.puts</span> <span class="st">&quot;Echoing </span><span class="sc">#{</span>body<span class="sc">}</span><span class="st">&quot;</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>          reply! req, <span class="kw">{</span><span class="wa">type: </span><span class="st">&quot;echo_ok&quot;</span>, <span class="wa">echo: </span>body<span class="kw">[</span><span class="wa">:echo</span><span class="kw">]}</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>      <span class="cf">end</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>  <span class="cf">end</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>  <span class="cf">def</span> reply!(request, body)</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>    msg <span class="kw">=</span> <span class="kw">{</span><span class="wa">body: </span>body<span class="kw">}</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>    <span class="cn">JSON</span><span class="at">.dump</span> msg, <span class="cn">STDOUT</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>    <span class="cn">STDOUT</span> <span class="kw">&lt;&lt;</span> <span class="st">&quot;\n&quot;</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>    <span class="cn">STDOUT</span><span class="at">.flush</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>  <span class="cf">end</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a><span class="dt">EchoServer</span><span class="at">.new.main!</span></span></code></pre></div>
+<p>I hope the above is relatively easy to follow and corresponds almost
+one-to-one with the pseudo code we sketched before.</p>
+<p>One thing to note is that the structure of the main function will be
+the same for other examples, so Maelstrom provides a node abstraction
+which let’s us merely write the block that below the comment “essence of
+echo”. Here’s the echo example using the node abstraction:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode ruby"><code class="sourceCode ruby"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="cf">class</span> <span class="dt">EchoNode</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">def</span> initialize</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    <span class="ot">@node</span> <span class="kw">=</span> <span class="dt">Node</span><span class="at">.new</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="ot">@node</span><span class="at">.on</span> <span class="st">&quot;echo&quot;</span> <span class="cf">do</span> <span class="kw">|</span>msg<span class="kw">|</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>      <span class="ot">@node</span><span class="at">.reply!</span> msg, msg<span class="kw">[</span><span class="wa">:body</span><span class="kw">]</span><span class="at">.merge</span>(<span class="wa">type: </span><span class="st">&quot;echo_ok&quot;</span>)</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">end</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">def</span> main!</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    <span class="ot">@node</span><span class="at">.main!</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>  <span class="cf">end</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a><span class="dt">EchoNode</span><span class="at">.new.main!</span></span></code></pre></div>
+<p>Basically the node abstraction does what <code>stdio</code> did in
+our pseudo code, i.e. takes care of the reading and writing to
+<code>stdin</code> and <code>stdout</code> as well as the encoding and
+decoding to JSON.</p>
+</section>
+<section id="testing-the-echo-example-using-maelstrom" class="level2">
+<h2><a href="#testing-the-echo-example-using-maelstrom"
+title="Testing the echo example using Maelstrom">Testing the echo
+example using Maelstrom</a></h2>
+<p>Now that we have a concrete version of our echo node, let’s look at
+how we can use Maelstrom to test it.</p>
+<p>First we need to install the run-time dependencies of Maelstrom. If
+you’re using Nix, the following will do the trick:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span> <span class="op">&lt;&lt; EOF</span> <span class="op">&gt;</span> shell.nix</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="st">let</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="st">  nixpkgs = fetchTarball &quot;https://github.com/NixOS/nixpkgs/archive/refs/tags/24.05.tar.gz&quot;;</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="st">  pkgs = import nixpkgs { config = {}; overlays = []; };</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="st">in</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="st"># https://github.com/jepsen-io/maelstrom/blob/main/doc/01-getting-ready/index.md#prerequisites</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="st">pkgs.mkShell {</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="st">  packages = with pkgs; [</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="st">    openjdk</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="st">    graphviz</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="st">    gnuplot</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="st">    ruby</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="st">  ];</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a><span class="st">}</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a><span class="op">EOF</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a><span class="ex">nix-shell</span></span></code></pre></div>
+<p>Otherwise see the following <a
+href="https://github.com/jepsen-io/maelstrom/blob/main/doc/01-getting-ready/index.md#prerequisites">instructions</a>.</p>
+<p>With the dependencies installed, we can test the echo example as
+follows.</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> time ./maelstrom test <span class="at">--workload</span> echo <span class="at">--bin</span> demo/ruby/echo.rb <span class="at">--time-limit</span> 5 <span class="at">--log-stderr</span> <span class="at">--rate</span> 10 <span class="at">--nodes</span> n1</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="ex">[...]</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,802{GMT}	INFO	[jepsen node n1] maelstrom.net: Starting Maelstrom network</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,803{GMT}	INFO	[jepsen test runner] jepsen.db: Tearing down DB</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,804{GMT}	INFO	[jepsen test runner] jepsen.db: Setting up DB</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,806{GMT}	INFO	[jepsen node n1] maelstrom.service: Starting services: <span class="er">(</span><span class="ex">lin-kv</span> lin-tso lww-kv seq-kv<span class="kw">)</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,807{GMT}	INFO	[jepsen node n1] maelstrom.db: Setting up n1</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,808{GMT}	INFO	[jepsen node n1] maelstrom.process: launching ./demo/ruby/echo.rb []</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,833{GMT}	INFO	[n1 stderr] maelstrom.process: Initalising: n1</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,839{GMT}	INFO	[jepsen test runner] jepsen.core: Relative time begins now</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,850{GMT}	INFO	[jepsen worker 0] jepsen.util: 0	:invoke	:echo	<span class="st">&quot;Please echo 125&quot;</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,852{GMT}	INFO	[n1 stderr] maelstrom.process: Got: Please echo 125</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,854{GMT}	INFO	[jepsen worker 0] jepsen.util: 0	:ok	:echo	{:echo <span class="st">&quot;Please echo 125&quot;</span>, :in_reply_to 1, :msg_id 1, :type <span class="st">&quot;echo_ok&quot;</span>}</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:04,047{GMT}	INFO	[jepsen worker 0] jepsen.util: 0	:invoke	:echo	<span class="st">&quot;Please echo 110&quot;</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:04,048{GMT}	INFO	[n1 stderr] maelstrom.process: Got: Please echo 110</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:04,048{GMT}	INFO	[jepsen worker 0] jepsen.util: 0	:ok	:echo	{:echo <span class="st">&quot;Please echo 110&quot;</span>, :in_reply_to 2, :msg_id 2, :type <span class="st">&quot;echo_ok&quot;</span>}</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a><span class="ex">[...]</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,798{GMT}	INFO	[jepsen worker 0] jepsen.util: 0	:invoke	:echo	<span class="st">&quot;Please echo 58&quot;</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,798{GMT}	INFO	[n1 stderr] maelstrom.process: Got: Please echo 58</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,799{GMT}	INFO	[jepsen worker 0] jepsen.util: 0	:ok	:echo	{:echo <span class="st">&quot;Please echo 58&quot;</span>, :in_reply_to 50, :msg_id 50, :type <span class="st">&quot;echo_ok&quot;</span>}</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,815{GMT}	INFO	[jepsen test runner] jepsen.core: Run complete, writing</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,840{GMT}	INFO	[jepsen node n1] maelstrom.db: Tearing down n1</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,809{GMT}	INFO	[jepsen node n1] maelstrom.net: Shutting down Maelstrom network</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,809{GMT}	INFO	[jepsen test runner] jepsen.core: Analyzing...</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,961{GMT}	INFO	[jepsen test runner] jepsen.core: Analysis complete</span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,966{GMT}	INFO	[jepsen results] jepsen.store: Wrote ./store/latest/results.edn</span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,986{GMT}	INFO	[jepsen test runner] jepsen.core: {:perf {:latency-graph {:valid<span class="pp">?</span> true},</span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>        <span class="ex">:rate-graph</span> {:valid<span class="pp">?</span> true},</span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>        <span class="ex">:valid?</span> true},</span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a> <span class="ex">:timeline</span> {:valid<span class="pp">?</span> true},</span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a> <span class="ex">:exceptions</span> {:valid<span class="pp">?</span> true},</span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a> <span class="ex">:stats</span> {:valid<span class="pp">?</span> true,</span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>         <span class="ex">:count</span> 50,</span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>         <span class="ex">:ok-count</span> 50,</span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>         <span class="ex">:fail-count</span> 0,</span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a>         <span class="ex">:info-count</span> 0,</span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a>         <span class="ex">:by-f</span> {:echo {:valid<span class="pp">?</span> true,</span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a>                       <span class="ex">:count</span> 50,</span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a>                       <span class="ex">:ok-count</span> 50,</span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a>                       <span class="ex">:fail-count</span> 0,</span>
+<span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a>                       <span class="ex">:info-count</span> 0}}},</span>
+<span id="cb8-42"><a href="#cb8-42" aria-hidden="true" tabindex="-1"></a> <span class="ex">:availability</span> {:valid<span class="pp">?</span> true, :ok-fraction 1.0},</span>
+<span id="cb8-43"><a href="#cb8-43" aria-hidden="true" tabindex="-1"></a> <span class="ex">:net</span> {:all {:send-count 102,</span>
+<span id="cb8-44"><a href="#cb8-44" aria-hidden="true" tabindex="-1"></a>             <span class="ex">:recv-count</span> 102,</span>
+<span id="cb8-45"><a href="#cb8-45" aria-hidden="true" tabindex="-1"></a>             <span class="ex">:msg-count</span> 102,</span>
+<span id="cb8-46"><a href="#cb8-46" aria-hidden="true" tabindex="-1"></a>             <span class="ex">:msgs-per-op</span> 2.04},</span>
+<span id="cb8-47"><a href="#cb8-47" aria-hidden="true" tabindex="-1"></a>       <span class="ex">:clients</span> {:send-count 102, :recv-count 102, :msg-count 102},</span>
+<span id="cb8-48"><a href="#cb8-48" aria-hidden="true" tabindex="-1"></a>       <span class="ex">:servers</span> {:send-count 0,</span>
+<span id="cb8-49"><a href="#cb8-49" aria-hidden="true" tabindex="-1"></a>                 <span class="ex">:recv-count</span> 0,</span>
+<span id="cb8-50"><a href="#cb8-50" aria-hidden="true" tabindex="-1"></a>                 <span class="ex">:msg-count</span> 0,</span>
+<span id="cb8-51"><a href="#cb8-51" aria-hidden="true" tabindex="-1"></a>                 <span class="ex">:msgs-per-op</span> 0.0},</span>
+<span id="cb8-52"><a href="#cb8-52" aria-hidden="true" tabindex="-1"></a>       <span class="ex">:valid?</span> true},</span>
+<span id="cb8-53"><a href="#cb8-53" aria-hidden="true" tabindex="-1"></a> <span class="ex">:workload</span> {:valid<span class="pp">?</span> true, :errors <span class="er">(</span><span class="kw">)</span><span class="er">}</span><span class="ex">,</span></span>
+<span id="cb8-54"><a href="#cb8-54" aria-hidden="true" tabindex="-1"></a> <span class="ex">:valid?</span> true}</span>
+<span id="cb8-55"><a href="#cb8-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-56"><a href="#cb8-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-57"><a href="#cb8-57" aria-hidden="true" tabindex="-1"></a><span class="ex">Everything</span> looks good! ヽ<span class="er">(</span><span class="ex">‘ー</span><span class="kw">`</span><span class="er">)</span><span class="ex">ノ</span></span>
+<span id="cb8-58"><a href="#cb8-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-59"><a href="#cb8-59" aria-hidden="true" tabindex="-1"></a><span class="ex">real</span>    0m12.901s</span>
+<span id="cb8-60"><a href="#cb8-60" aria-hidden="true" tabindex="-1"></a><span class="ex">user</span>    0m13.264s</span>
+<span id="cb8-61"><a href="#cb8-61" aria-hidden="true" tabindex="-1"></a><span class="ex">sys</span>     0m0.606s</span></code></pre></div>
+<p>I’ve edited the output to keep it brief. From the <code>:stats</code>
+we can see that there were actually 50 echo requests generated by the
+tests.</p>
+<p>Maelstrom finishes by saying that everything looks good, and the
+whole test takes about 10 seconds.</p>
+<p>What exactly is it that’s being tested though? In order to answer
+this question we need to understand what the
+<code>--workload echo</code> flag does.</p>
+</section>
+<section id="maelstrom-workloads" class="level2">
+<h2><a href="#maelstrom-workloads" title="Maelstrom workloads">Maelstrom
+workloads</a></h2>
+<p>A workload is essentially two things. First a way to generate
+messages, see <code>:generator</code> below.</p>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode clojure"><code class="sourceCode clojure"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>(<span class="bu">defn</span><span class="fu"> workload</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Constructs a workload for linearizable registers, given option from the CLI</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="st">  test constructor:</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="st">      {:net     A Maelstrom network}&quot;</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  [opts]</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  {<span class="at">:client</span>    (client (<span class="at">:net</span> opts))</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>   <span class="at">:generator</span> (<span class="kw">-&gt;&gt;</span> (<span class="kw">fn</span> []</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>                     {<span class="at">:f</span>      <span class="at">:echo</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>                      <span class="at">:value</span>  (<span class="kw">str</span> <span class="st">&quot;Please echo &quot;</span> (<span class="kw">rand-int</span> <span class="dv">128</span>))})</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>                   (gen/each-thread))</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>   <span class="at">:checker</span>   (checker)})</span></code></pre></div>
+<p>We see that in this case we generate “Please echo” followed by a
+random integer between 0 and 128. If we scroll back up to the test
+output we see that this is indeed the format.</p>
+<p>The second part of a workload is a so called checker. In the echo
+case the checker essentially pairs up requests and responses (using
+<code>history/pair-index</code>), and then ensures that the echoed
+message (the random integer) is the same in the request and the
+response.</p>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode clojure"><code class="sourceCode clojure"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>(<span class="bu">defn</span><span class="fu"> checker</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Expects responses to every echo operation to match the invocation&#39;s value.&quot;</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  []</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  (<span class="kw">reify</span> checker/Checker</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    (check [this <span class="kw">test</span> history opts]</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>      (<span class="kw">let</span> [pairs (history/pair-index history)</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>            errs  (keep (<span class="kw">fn</span> [[invoke complete]]</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>                          (<span class="kw">cond</span> <span class="co">; Only take invoke/complete pairs</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>                                (<span class="kw">not=</span> (<span class="at">:type</span> invoke) <span class="at">:invoke</span>)</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>                                <span class="va">nil</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>                                (<span class="kw">not=</span> (<span class="at">:value</span> invoke)</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>                                      (<span class="at">:echo</span> (<span class="at">:value</span> complete)))</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>                                [<span class="st">&quot;Expected a message with :echo&quot;</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>                                 (<span class="at">:value</span> invoke)</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>                                 <span class="st">&quot;But received&quot;</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>                                 (<span class="at">:value</span> complete)]))</span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>                          pairs)]</span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>        {<span class="at">:valid</span>? (<span class="kw">empty?</span> errs)</span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>         <span class="at">:errors</span> errs}))))</span></code></pre></div>
+<p>In the test output at the end we can see
+<code>:workload {:valid? true, :errors ()}</code>, which is the result
+of running the above checker.</p>
+<p>As a final remark, it should be pointed out that generators and
+checkers are part of Jepsen and in fact Maelstrom is using Jepsen under
+the hood. In a sense Maelstrom can be seen as a platform for developing
+distributed systems which makes it particularly convenient to run Jepsen
+tests on the system being developed.</p>
+</section>
+<section id="conclusion-and-whats-next" class="level2">
+<h2><a href="#conclusion-and-whats-next"
+title="Conclusion and what’s next">Conclusion and what’s next</a></h2>
+<p>We’ve seen how to represent simple distributed programs and how to
+deploy them and do actual I/O, in particular how to do messaging via
+<code>stdin</code> and <code>stdout</code>, as well as how this
+functionality can be used to test our programs via Maelstrom.</p>
+<p>The Maelstrom tests made 50 echo calls and they took around 10s. Also
+worth noting is that the Maelstrom tests are non-deterministic and
+cannot shrink the input in case it finds an error<a href="#fn1"
+class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>.
+This means that if we manage to find an error, it might not be easy to
+reproduce it. This is annoying because it makes it difficult to share a
+failing test with someone or to test if a patch actually fixes an error
+that we found.</p>
+<p>One cool thing about Maelstrom is that it’s language agnostic. The
+Maelstrom protocol can easily be ported to any language that supports
+stdio. At the time of writing, the Maelstrom repository contains ports
+to eight languages, and one can find even more unofficial ports
+elsewhere.</p>
+<p>For more on Maelstrom see the official <a
+href="https://github.com/jepsen-io/maelstrom?tab=readme-ov-file#documentation">documentation</a>
+as well as <a href="https://fly.io/dist-sys/">Fly.io’s</a> distributed
+systems challenges.</p>
+<p>Next up in our series of posts we shall begin our journey towards
+simulation testing, by taking the Maelstrom protocol and implementing it
+in a completely deterministic way. We’ll then re-implement the message
+generation part of workloads to be completely deterministic as well.
+Since execution of the tests will be deterministic, we can also
+implement shrinking and present small counterexamples.</p>
+</section>
+<section id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>It can still show small counterexamples using the <a
+href="https://github.com/jepsen-io/elle">Elle checker</a>. These are not
+counterexamples are not found by shrinking the inputs like in
+property-based testing, but rather by trying to find cycles in the
+transactions. (Personally I find these cycle counterexamples less
+intuitive than shrunk inputs.)<a href="#fnref1" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+</main>
+</body>
+</html>

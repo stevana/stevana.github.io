@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Stevan A" />
+  <meta name="dcterms.date" content="2025-02-12" />
+  <title>Sketching how to simulation test distributed systems</title>
+  <link rel="stylesheet" href="style.css?modified=2025-02-23" />
+  <link rel="alternate" type="application/rss+xml"
+        title="RSS feed"
+        href="rss.xml" />
+  <script src="script.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script data-goatcounter="https://stevana-github-io.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+  <noscript>
+    <img src="https://stevana-github-io.goatcounter.com/count?p=/sketching_how_to_simulation_test_distributed_systems.html&t=Sketching how to simulation test distributed systems">
+  </noscript>
+</head>
+<body>
+<header id="title-block-header">
+  <nav id="nav">
+    <span class="title"><a href="/">Stevan's notes...</a></span>
+    <a href="about.html">About / <span class="work-with-me">Work with me</span></a>
+    <a href="rss.xml">Feed <img height="10px" src="rss.svg" /></a>
+  </nav>
+</header>
+<hr />
+<main>
+<h1>Sketching how to simulation test distributed systems</h1>
+<nav id="TOC" class="sidenote" role="doc-toc">
+<h2 id="toc-title">Table of contents</h2>
+<ul>
+<li><a href="#maelstrom-the-language"
+id="toc-maelstrom-the-language">Maelstrom the language</a></li>
+<li><a href="#maelstroms-non-deterministic-runtimes"
+id="toc-maelstroms-non-deterministic-runtimes">Maelstrom’s
+non-deterministic runtimes</a></li>
+<li><a href="#the-non-determinism-of-jepsen-and-by-extension-maelstrom"
+id="toc-the-non-determinism-of-jepsen-and-by-extension-maelstrom">The
+non-determinism of Jepsen and, by extension, Maelstrom</a></li>
+<li><a href="#conclusion-and-whats-next"
+id="toc-conclusion-and-whats-next">Conclusion and what’s next</a></li>
+</ul>
+</nav>
+<div class="date">Posted on Feb 12, 2025</div>
+<p>In the <a
+href="using_maelstrom_to_test_distributed_systems.html">last
+post</a> we saw how to test a simple distributed system, a node that
+echos back the requests it gets, using Jepsen via Maelstrom.</p>
+<p>We concluded by listing the pros and cons with the Maelstrom
+approach: it’s language agnostic which is good, but the tests are
+non-determinstic (rerunning might give different results) and there’s no
+shrinking.</p>
+<p>In this post we’ll highlight the sources of the non-determinism in
+the Maelstrom approach, and then sketch how we can make it deterministic
+and thus closer to simulation testing proper.</p>
+<section id="maelstrom-the-language" class="level2">
+<h2><a href="#maelstrom-the-language"
+title="Maelstrom the language">Maelstrom the language</a></h2>
+<p>I’m a programming language person, so I like to see every problem
+through the lens of programming languages<a href="#fn1"
+class="footnote-ref" id="fnref1"
+role="doc-noteref"><sup>1</sup></a>.</p>
+<p>When I look at Maelstrom what I see is a programming language (or
+domain-specific language) for distributed systems. We’ve seen it already
+in our simple echo example:</p>
+<pre><code>node (Echo text) = reply (Echo_ok text)</code></pre>
+<p>This language hides the fact from where (what IP address, socket,
+etc) the messages are coming and where to send the reply back to. It
+doesn’t specify how the messages are encoded on the wire (codec), not
+does it talk about what the wire is (what communication channel is used
+between nodes).</p>
+<p>It’s good that the language hides all these details, because it lets
+us focus on the essence of the node we are writing, in this case an echo
+node.</p>
+<p>For more complicated distributed systems this language will need to
+be extended, as we shall see later in the series.</p>
+<p>However already this simple language is enough to illustrate the
+non-determinism in Maelstrom.</p>
+</section>
+<section id="maelstroms-non-deterministic-runtimes" class="level2">
+<h2><a href="#maelstroms-non-deterministic-runtimes"
+title="Maelstrom’s non-deterministic runtimes">Maelstrom’s
+non-deterministic runtimes</a></h2>
+<p>The way Maelstrom achieves language agnosticism is by:</p>
+<ol type="1">
+<li>Making the Maelstrom language easy to implement in any other
+language, and;</li>
+<li>By specifying a <a
+href="https://github.com/jepsen-io/maelstrom/blob/main/doc/protocol.md">protocol</a>
+for what the format and codec for messages are.</li>
+</ol>
+<p>One source of non-determinism is the implementations of the Maelstrom
+language.</p>
+<p>Through the lens of programming languages, we can think of the
+Maelstrom language as a purely syntactic construct, while the
+implementations of the language as an interpreter or a runtime.</p>
+<p>At the time of writing there are <a
+href="https://github.com/jepsen-io/maelstrom/tree/main/demo">eight</a>
+runtimes written in different languages.</p>
+<p>I’ve not looked at all of them in detail, but the Ruby one (which is
+used in the official Maelstrom documentation) and the Go one (which is
+used in Fly.io’s popular <a href="https://fly.io/dist-sys/">Gossip
+Glomers</a>) are both non-determinstic.</p>
+<p>To see where the non-determinism comes we need to have a look at how
+this node runtime is implemented. In the previous post we hinted at how
+the Ruby version worked, so let’s switch to Go and have a look at how
+our echo example can be implemented:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode go"><code class="sourceCode go"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">func</span> main<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    n <span class="op">:=</span> maelstrom<span class="op">.</span>NewNode<span class="op">()</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Register a handler for the &quot;echo&quot; message that responds with an &quot;echo_ok&quot;.</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    n<span class="op">.</span>Handle<span class="op">(</span><span class="st">&quot;echo&quot;</span><span class="op">,</span> <span class="kw">func</span><span class="op">(</span>msg maelstrom<span class="op">.</span>Message<span class="op">)</span> <span class="dt">error</span> <span class="op">{</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Unmarshal the message body as an loosely-typed map.</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="kw">var</span> body <span class="kw">map</span><span class="op">[</span><span class="dt">string</span><span class="op">]</span><span class="dt">any</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> err <span class="op">:=</span> json<span class="op">.</span>Unmarshal<span class="op">(</span>msg<span class="op">.</span>Body<span class="op">,</span> <span class="op">&amp;</span>body<span class="op">);</span> err <span class="op">!=</span> <span class="ot">nil</span> <span class="op">{</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> err</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Update the message type.</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        body<span class="op">[</span><span class="st">&quot;type&quot;</span><span class="op">]</span> <span class="op">=</span> <span class="st">&quot;echo_ok&quot;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Echo the original message back with the updated message type.</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> n<span class="op">.</span>Reply<span class="op">(</span>msg<span class="op">,</span> body<span class="op">)</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">})</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Execute the node&#39;s message loop. This will run until STDIN is closed.</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> err <span class="op">:=</span> n<span class="op">.</span>Run<span class="op">();</span> err <span class="op">!=</span> <span class="ot">nil</span> <span class="op">{</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>        log<span class="op">.</span>Printf<span class="op">(</span><span class="st">&quot;ERROR: %s&quot;</span><span class="op">,</span> err<span class="op">)</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>        os<span class="op">.</span>Exit<span class="op">(</span><span class="dv">1</span><span class="op">)</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>As you can see, all interesting bits (<code>Handle</code>,
+<code>Reply</code>, and <code>Run</code>) all use <code>Node</code>
+which comes from the <code>maelstrom</code> library, this is what I’ve
+been calling the runtime. Also note that in this example, without
+digging into the implementation of the runtime, there’s no
+non-determinism.</p>
+<p>So let’s dig a layer deeper and have a look at how this node runtime
+is implemented.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode go"><code class="sourceCode go"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Node represents a single node in the network.</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> Node <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    wg sync<span class="op">.</span>WaitGroup</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    handlers  <span class="kw">map</span><span class="op">[</span><span class="dt">string</span><span class="op">]</span>HandlerFunc</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Stdin is for reading messages in from the Maelstrom network.</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    Stdin io<span class="op">.</span>Reader</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Stdout is for writing messages out to the Maelstrom network.</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    Stdout io<span class="op">.</span>Writer</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="co">// NewNode returns a new instance of Node connected to STDIN/STDOUT.</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="kw">func</span> NewNode<span class="op">()</span> <span class="op">*</span>Node <span class="op">{</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">&amp;</span>Node<span class="op">{</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>        handlers<span class="op">:</span>  <span class="bu">make</span><span class="op">(</span><span class="kw">map</span><span class="op">[</span><span class="dt">string</span><span class="op">]</span>HandlerFunc<span class="op">),</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>        Stdin<span class="op">:</span>  os<span class="op">.</span>Stdin<span class="op">,</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>        Stdout<span class="op">:</span> os<span class="op">.</span>Stdout<span class="op">,</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Given the above, we can implement <code>Handle</code> by simply
+adding a new handler function:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode go"><code class="sourceCode go"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Handle registers a message handler for a given message type. Will panic if</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co">// registering multiple handlers for the same message type.</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">func</span> <span class="op">(</span>n <span class="op">*</span>Node<span class="op">)</span> Handle<span class="op">(</span>typ <span class="dt">string</span><span class="op">,</span> fn HandlerFunc<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> _<span class="op">,</span> ok <span class="op">:=</span> n<span class="op">.</span>handlers<span class="op">[</span>typ<span class="op">];</span> ok <span class="op">{</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>        <span class="bu">panic</span><span class="op">(</span>fmt<span class="op">.</span>Sprintf<span class="op">(</span><span class="st">&quot;duplicate message handler for %q message type&quot;</span><span class="op">,</span> typ<span class="op">))</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    n<span class="op">.</span>handlers<span class="op">[</span>typ<span class="op">]</span> <span class="op">=</span> fn</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Again, all still deterministic. It’s only in the <code>Run</code>
+function where the non-determinism creeps in:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode go"><code class="sourceCode go"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Run executes the main event handling loop. It reads in messages from STDIN</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co">// and delegates them to the appropriate registered handler. This should be</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">// the last function executed by main().</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">func</span> <span class="op">(</span>n <span class="op">*</span>Node<span class="op">)</span> Run<span class="op">()</span> <span class="dt">error</span> <span class="op">{</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    scanner <span class="op">:=</span> bufio<span class="op">.</span>NewScanner<span class="op">(</span>n<span class="op">.</span>Stdin<span class="op">)</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> scanner<span class="op">.</span>Scan<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        line <span class="op">:=</span> scanner<span class="op">.</span>Bytes<span class="op">()</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Parse next line from STDIN as a JSON-formatted message.</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>        <span class="kw">var</span> msg Message</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> err <span class="op">:=</span> json<span class="op">.</span>Unmarshal<span class="op">(</span>line<span class="op">,</span> <span class="op">&amp;</span>msg<span class="op">);</span> err <span class="op">!=</span> <span class="ot">nil</span> <span class="op">{</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> fmt<span class="op">.</span>Errorf<span class="op">(</span><span class="st">&quot;unmarshal message: %w&quot;</span><span class="op">,</span> err<span class="op">)</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>        <span class="kw">var</span> body MessageBody</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> err <span class="op">:=</span> json<span class="op">.</span>Unmarshal<span class="op">(</span>msg<span class="op">.</span>Body<span class="op">,</span> <span class="op">&amp;</span>body<span class="op">);</span> err <span class="op">!=</span> <span class="ot">nil</span> <span class="op">{</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> fmt<span class="op">.</span>Errorf<span class="op">(</span><span class="st">&quot;unmarshal message body: %w&quot;</span><span class="op">,</span> err<span class="op">)</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>        log<span class="op">.</span>Printf<span class="op">(</span><span class="st">&quot;Received %s&quot;</span><span class="op">,</span> msg<span class="op">)</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Handle message in a separate goroutine.</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>        n<span class="op">.</span>wg<span class="op">.</span>Add<span class="op">(</span><span class="dv">1</span><span class="op">)</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>        <span class="cf">go</span> <span class="kw">func</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>            <span class="cf">defer</span> n<span class="op">.</span>wg<span class="op">.</span>Done<span class="op">()</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>            n<span class="op">.</span>handleMessage<span class="op">(</span>h<span class="op">,</span> msg<span class="op">)</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>        <span class="op">}()</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> err <span class="op">:=</span> scanner<span class="op">.</span>Err<span class="op">();</span> err <span class="op">!=</span> <span class="ot">nil</span> <span class="op">{</span></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> err</span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Wait for all in-flight handlers to complete.</span></span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>    n<span class="op">.</span>wg<span class="op">.</span>Wait<span class="op">()</span></span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="ot">nil</span></span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Can you spot the problem?</p>
+<p>It’s in the block of code which has the comment “Handle message in a
+separate goroutine”. To test this, let’s introduce some jitter to
+simulate that the execution of handlers could take different amount of
+time (perhaps due to some messages requiring more computation than
+others, or because of being unlucky with the garbage collection,
+etc):</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode diff"><code class="sourceCode diff"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>  // Handle message in a separate goroutine.</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  n.wg.Add(1)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  go func() {</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>          defer n.wg.Done()</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="va">+         rand.Seed(time.Now().UnixNano())</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="va">+         // Sleep for 0 to 10 ms</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="va">+         randomSleepTime := time.Duration(rand.Intn(11)) * time.Millisecond</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="va">+         time.Sleep(randomSleepTime)</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>          n.handleMessage(h, msg)</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  }()</span></code></pre></div>
+<p>If we run the echo example with the above modification and send it
+two massages concurrently to <code>stdin</code>:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a> <span class="ex">maelstrom-echo</span> <span class="op">&lt;</span> <span class="op">&lt;(</span><span class="bu">echo</span> <span class="st">&#39;{&quot;body&quot;:{&quot;type&quot;:&quot;echo&quot;, &quot;echo&quot;: &quot;hi_1&quot;}}&#39;</span> <span class="kw">&amp;</span> <span class="dt">\</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>                    <span class="bu">echo</span> <span class="st">&#39;{&quot;body&quot;:{&quot;type&quot;:&quot;echo&quot;, &quot;echo&quot;: &quot;hi_2&quot;}}&#39;</span><span class="op">)</span></span></code></pre></div>
+<p>We see that sometimes we get the messages echoed back in the same
+order as they were received:</p>
+<pre><code>2025/02/07 12:21:01 Received {  {&quot;type&quot;:&quot;echo&quot;, &quot;echo&quot;: &quot;hi_2&quot;}}
+2025/02/07 12:21:01 Received {  {&quot;type&quot;:&quot;echo&quot;, &quot;echo&quot;: &quot;hi_1&quot;}}
+2025/02/07 12:21:01 Sent {&quot;body&quot;:{&quot;echo&quot;:&quot;hi_2&quot;,&quot;in_reply_to&quot;:0,&quot;type&quot;:&quot;echo_ok&quot;}}
+{&quot;body&quot;:{&quot;echo&quot;:&quot;hi_2&quot;,&quot;in_reply_to&quot;:0,&quot;type&quot;:&quot;echo_ok&quot;}}
+2025/02/07 12:21:01 Sent {&quot;body&quot;:{&quot;echo&quot;:&quot;hi_1&quot;,&quot;in_reply_to&quot;:0,&quot;type&quot;:&quot;echo_ok&quot;}}
+{&quot;body&quot;:{&quot;echo&quot;:&quot;hi_1&quot;,&quot;in_reply_to&quot;:0,&quot;type&quot;:&quot;echo_ok&quot;}}</code></pre>
+<p>But sometimes not:</p>
+<pre><code>2025/02/07 12:20:03 Received {  {&quot;type&quot;:&quot;echo&quot;, &quot;echo&quot;: &quot;hi_2&quot;}}
+2025/02/07 12:20:03 Received {  {&quot;type&quot;:&quot;echo&quot;, &quot;echo&quot;: &quot;hi_1&quot;}}
+2025/02/07 12:20:03 Sent {&quot;body&quot;:{&quot;echo&quot;:&quot;hi_1&quot;,&quot;in_reply_to&quot;:0,&quot;type&quot;:&quot;echo_ok&quot;}}
+{&quot;body&quot;:{&quot;echo&quot;:&quot;hi_1&quot;,&quot;in_reply_to&quot;:0,&quot;type&quot;:&quot;echo_ok&quot;}}
+2025/02/07 12:20:03 Sent {&quot;body&quot;:{&quot;echo&quot;:&quot;hi_2&quot;,&quot;in_reply_to&quot;:0,&quot;type&quot;:&quot;echo_ok&quot;}}
+{&quot;body&quot;:{&quot;echo&quot;:&quot;hi_2&quot;,&quot;in_reply_to&quot;:0,&quot;type&quot;:&quot;echo_ok&quot;}</code></pre>
+<p>Clearly we’ve exaggerated the non-determinism with the random sleep,
+but I hope you agree that it’s there even without the sleep and it can
+happen.</p>
+<p>At this point you might be wondering: why do we handle messages in
+separate goroutines to being with? Can’t we just handle it in the main
+thread? For the simple echo example we can, but in order to be able to
+express more complicated examples we need some kind of concurrency<a
+href="#fn2" class="footnote-ref" id="fnref2"
+role="doc-noteref"><sup>2</sup></a>.</p>
+<p>Now there are other ways to achieve concurrency than with threads (or
+goroutines).</p>
+<p>Kyle Kingsbury, the main author of Jepsen and Maelstrom, writes in
+the Maelstrom docs:</p>
+<blockquote>
+<p>“We could write this as a single-threaded event loop, using fibers or
+co-routines, or via threads, but for our purposes, threads will simplify
+a good deal. Multi-threaded access means we need a lock–preferably
+re-entrant–to protect our IO operations, assigning messages, and so on.
+We’ll want one for logging to STDERR too, so that our log messages don’t
+get mixed up.”</p>
+</blockquote>
+<p>With “good deal”, my guess what Kyle means is: it’s the least amount
+of effort, and since Jepsen and Maelstrom are non-deterministic anyway
+it doesn’t matter that we are introducing non-determinism in the node
+runtime.</p>
+<p>What if we tried to use some of the other ways of achieving
+concurrency that Kyle lists. For example, a single-threaded event loop
+can be made deterministic!</p>
+</section>
+<section id="the-non-determinism-of-jepsen-and-by-extension-maelstrom"
+class="level2">
+<h2><a href="#the-non-determinism-of-jepsen-and-by-extension-maelstrom"
+title="The non-determinism of Jepsen and, by extension, Maelstrom">The
+non-determinism of Jepsen and, by extension, Maelstrom</a></h2>
+<p>We’ve seen how the existing Maelstrom Go and Ruby runtimes are
+non-deterministic, and we’ve got an idea of how to fix this using a
+single-thread event loop.</p>
+<p>However even if we did so, we still wouldn’t get deterministic tests.
+The reason for this that Jepsen itself isn’t deterministic.</p>
+<p>We saw an example of this in our previous post, when we defined the
+generator for the requests for the echo example:</p>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode clojure"><code class="sourceCode clojure"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>   <span class="at">:generator</span> (<span class="kw">-&gt;&gt;</span> (<span class="kw">fn</span> []</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>                     {<span class="at">:f</span>      <span class="at">:echo</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>                      <span class="at">:value</span>  (<span class="kw">str</span> <span class="st">&quot;Please echo &quot;</span> (<span class="kw">rand-int</span> <span class="dv">128</span>))})</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>                   (gen/each-thread))</span></code></pre></div>
+<p>That <code>rand-int</code> will produce random integers every time
+it’s run, thus breaking determinism. We could fix this by making the
+seed for the pseudo-random number generator a parameter and thus get the
+same random integers given the same seed, but there are many more places
+Jepsen uses <a
+href="https://github.com/jepsen-io/jepsen/issues/578">non-determinism</a>.</p>
+<p>So rather than trying to patch Jepsen, and introducing Jepsen and
+Clojure as a dependencies, let’s just re-implement the test case
+generation, message scheduling and checking machinery from scratch.</p>
+<p>This might seem like a lot of work, but recall that property-based
+testing essentially provides all we need, and I’ve written about how we
+can implement property-based testing from scratch in the <a
+href="https://stevana.github.io/the_sad_state_of_property-based_testing_libraries.html">past</a>.</p>
+<p>By staying closer to property-based testing we get shrinking
+(minimised counterexamples) for cheap as well, thereby fixing all the
+cons we identified with the Maelstrom approach. In fact good shrinking
+depends on determinism, so the two go are related.</p>
+</section>
+<section id="conclusion-and-whats-next" class="level2">
+<h2><a href="#conclusion-and-whats-next"
+title="Conclusion and what’s next">Conclusion and what’s next</a></h2>
+<p>We’ve located the sources of non-determinism in the Maelstrom tests
+from the last post and sketched how we can swap out these components for
+deterministic ones.</p>
+<p>Next we’ll start on the actual implementation for the deterministic
+simulation testing.</p>
+</section>
+<section id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>Could be a blessing but more likely it’s a curse.<a
+href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>For example, imagine we got some periodic tasks that
+need to be performed at some time interval, these need to be done
+concurrently and not be forced to wait became the node is busy
+processing messages from <code>stdin</code>. We’ll come back to timers
+and other concurrent constructs in more detail later.<a href="#fnref2"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+</main>
+</body>
+</html>
