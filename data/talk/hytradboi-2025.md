@@ -19,7 +19,7 @@ I've documented the progress, so far, in a series of posts:
 2. [Using Maelstrom to test distributed
    systems](https://stevana.github.io/using_maelstrom_to_test_distributed_systems.html)
 3. [Sketching how to simulation test distributed
-   systems](https://stevan.github.io/sketching_how_to_simulation_test_distributed_systems.html)
+   systems](https://stevana.github.io/sketching_how_to_simulation_test_distributed_systems.html)
 
 Feel free to get in [touch](https://stevana.github.io/about.html) in case you
 got any questions, comments or feedback!
