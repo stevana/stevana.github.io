@@ -1,7 +1,7 @@
 ---
 title: Language agnostic simulation testing on a budget
 date: 2025-02-28
-place: HYTRADBOI 2025
+place: HYTRADBOI
 url: hytradboi.com/2025
 author: Stevan A
 ...
