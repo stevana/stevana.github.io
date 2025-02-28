@@ -98,17 +98,22 @@ topics:
 
     - title: Introduction to simulation testing
       date: 2025-01-21T00:00:00Z
-      content: https://raw.githubusercontent.com/pragma-org/simulation-testing/refs/heads/main/blog/src/00-introduction.md
+      content: https://raw.githubusercontent.com/stevana/simulation-testing/refs/heads/main/blog/dist/00-introduction.md
       status: FirstDraft
 
     - title: Using Maelstrom to test distributed systems
       date: 2025-02-06T00:00:00Z
-      content: https://raw.githubusercontent.com/pragma-org/simulation-testing/refs/heads/main/blog/src/02-maelstrom-testing-echo-example.md
+      content: https://raw.githubusercontent.com/stevana/simulation-testing/refs/heads/main/blog/dist/02-maelstrom-testing-echo-example.md
       status: FirstDraft
 
     - title: Sketching how to simulation test distributed systems
       date: 2025-02-12T00:00:00Z
-      content: https://raw.githubusercontent.com/pragma-org/simulation-testing/refs/heads/main/blog/src/03-simulation-testing-echo-example.md
+      content: https://raw.githubusercontent.com/stevana/simulation-testing/refs/heads/main/blog/dist/03-simulation-testing-echo-example.md
+      status: FirstDraft
+
+    - title: The main test loop of simulation testing
+      date: 2025-02-27T00:00:00Z
+      content: https://raw.githubusercontent.com/stevana/simulation-testing/refs/heads/main/blog/dist/04-simulation-testing-main-loop.md
       status: FirstDraft
 
 # ----------------------------------------------------------------------
