@@ -5,9 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Stevan A" />
-  <meta name="dcterms.date" content="2025-02-06" />
   <title>Using Maelstrom to test distributed systems</title>
-  <link rel="stylesheet" href="style.css?modified=2025-02-23" />
+  <link rel="stylesheet" href="style.css?modified=2025-02-28" />
   <link rel="alternate" type="application/rss+xml"
         title="RSS feed"
         href="rss.xml" />
@@ -49,9 +48,8 @@ id="toc-conclusion-and-whats-next">Conclusion and what’s next</a></li>
 </ul>
 </nav>
 <div class="date">Posted on Feb  6, 2025</div>
-<p>In the <a
-href="introduction_to_simulation_testing.html">previous
-post</a> we introduced simulation testing.</p>
+<p>In the <a href="introduction_to_simulation_testing.html">previous post</a> we introduced
+simulation testing.</p>
 <p>Before we start developing the pieces we need to do simulation
 testing, let’s first have a look at how more “traditional” testing of
 distributed systems looks like.</p>
@@ -170,7 +168,7 @@ class="sourceCode ruby"><code class="sourceCode ruby"><span id="cb6-1"><a href="
 <span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a><span class="dt">EchoNode</span><span class="at">.new.main!</span></span></code></pre></div>
 <p>Basically the node abstraction does what <code>stdio</code> did in
-our pseudo code, i.e. takes care of the reading and writing to
+our pseudo code, i.e. takes care of the reading and writing to
 <code>stdin</code> and <code>stdout</code> as well as the encoding and
 decoding to JSON.</p>
 </section>
@@ -208,31 +206,31 @@ follows.</p>
 <div class="sourceCode" id="cb8"><pre
 class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> time ./maelstrom test <span class="at">--workload</span> echo <span class="at">--bin</span> demo/ruby/echo.rb <span class="at">--time-limit</span> 5 <span class="at">--log-stderr</span> <span class="at">--rate</span> 10 <span class="at">--nodes</span> n1</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="ex">[...]</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,802{GMT}	INFO	[jepsen node n1] maelstrom.net: Starting Maelstrom network</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,803{GMT}	INFO	[jepsen test runner] jepsen.db: Tearing down DB</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,804{GMT}	INFO	[jepsen test runner] jepsen.db: Setting up DB</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,806{GMT}	INFO	[jepsen node n1] maelstrom.service: Starting services: <span class="er">(</span><span class="ex">lin-kv</span> lin-tso lww-kv seq-kv<span class="kw">)</span></span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,807{GMT}	INFO	[jepsen node n1] maelstrom.db: Setting up n1</span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,808{GMT}	INFO	[jepsen node n1] maelstrom.process: launching ./demo/ruby/echo.rb []</span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,833{GMT}	INFO	[n1 stderr] maelstrom.process: Initalising: n1</span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,839{GMT}	INFO	[jepsen test runner] jepsen.core: Relative time begins now</span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,850{GMT}	INFO	[jepsen worker 0] jepsen.util: 0	:invoke	:echo	<span class="st">&quot;Please echo 125&quot;</span></span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,852{GMT}	INFO	[n1 stderr] maelstrom.process: Got: Please echo 125</span>
-<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,854{GMT}	INFO	[jepsen worker 0] jepsen.util: 0	:ok	:echo	{:echo <span class="st">&quot;Please echo 125&quot;</span>, :in_reply_to 1, :msg_id 1, :type <span class="st">&quot;echo_ok&quot;</span>}</span>
-<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:04,047{GMT}	INFO	[jepsen worker 0] jepsen.util: 0	:invoke	:echo	<span class="st">&quot;Please echo 110&quot;</span></span>
-<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:04,048{GMT}	INFO	[n1 stderr] maelstrom.process: Got: Please echo 110</span>
-<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:04,048{GMT}	INFO	[jepsen worker 0] jepsen.util: 0	:ok	:echo	{:echo <span class="st">&quot;Please echo 110&quot;</span>, :in_reply_to 2, :msg_id 2, :type <span class="st">&quot;echo_ok&quot;</span>}</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,802{GMT}    INFO    [jepsen node n1] maelstrom.net: Starting Maelstrom network</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,803{GMT}    INFO    [jepsen test runner] jepsen.db: Tearing down DB</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,804{GMT}    INFO    [jepsen test runner] jepsen.db: Setting up DB</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,806{GMT}    INFO    [jepsen node n1] maelstrom.service: Starting services: <span class="er">(</span><span class="ex">lin-kv</span> lin-tso lww-kv seq-kv<span class="kw">)</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,807{GMT}    INFO    [jepsen node n1] maelstrom.db: Setting up n1</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,808{GMT}    INFO    [jepsen node n1] maelstrom.process: launching ./demo/ruby/echo.rb []</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,833{GMT}    INFO    [n1 stderr] maelstrom.process: Initalising: n1</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,839{GMT}    INFO    [jepsen test runner] jepsen.core: Relative time begins now</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,850{GMT}    INFO    [jepsen worker 0] jepsen.util: 0    :invoke :echo   <span class="st">&quot;Please echo 125&quot;</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,852{GMT}    INFO    [n1 stderr] maelstrom.process: Got: Please echo 125</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:03,854{GMT}    INFO    [jepsen worker 0] jepsen.util: 0    :ok :echo   {:echo <span class="st">&quot;Please echo 125&quot;</span>, :in_reply_to 1, :msg_id 1, :type <span class="st">&quot;echo_ok&quot;</span>}</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:04,047{GMT}    INFO    [jepsen worker 0] jepsen.util: 0    :invoke :echo   <span class="st">&quot;Please echo 110&quot;</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:04,048{GMT}    INFO    [n1 stderr] maelstrom.process: Got: Please echo 110</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:04,048{GMT}    INFO    [jepsen worker 0] jepsen.util: 0    :ok :echo   {:echo <span class="st">&quot;Please echo 110&quot;</span>, :in_reply_to 2, :msg_id 2, :type <span class="st">&quot;echo_ok&quot;</span>}</span>
 <span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a><span class="ex">[...]</span></span>
-<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,798{GMT}	INFO	[jepsen worker 0] jepsen.util: 0	:invoke	:echo	<span class="st">&quot;Please echo 58&quot;</span></span>
-<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,798{GMT}	INFO	[n1 stderr] maelstrom.process: Got: Please echo 58</span>
-<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,799{GMT}	INFO	[jepsen worker 0] jepsen.util: 0	:ok	:echo	{:echo <span class="st">&quot;Please echo 58&quot;</span>, :in_reply_to 50, :msg_id 50, :type <span class="st">&quot;echo_ok&quot;</span>}</span>
-<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,815{GMT}	INFO	[jepsen test runner] jepsen.core: Run complete, writing</span>
-<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,840{GMT}	INFO	[jepsen node n1] maelstrom.db: Tearing down n1</span>
-<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,809{GMT}	INFO	[jepsen node n1] maelstrom.net: Shutting down Maelstrom network</span>
-<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,809{GMT}	INFO	[jepsen test runner] jepsen.core: Analyzing...</span>
-<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,961{GMT}	INFO	[jepsen test runner] jepsen.core: Analysis complete</span>
-<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,966{GMT}	INFO	[jepsen results] jepsen.store: Wrote ./store/latest/results.edn</span>
-<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,986{GMT}	INFO	[jepsen test runner] jepsen.core: {:perf {:latency-graph {:valid<span class="pp">?</span> true},</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,798{GMT}    INFO    [jepsen worker 0] jepsen.util: 0    :invoke :echo   <span class="st">&quot;Please echo 58&quot;</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,798{GMT}    INFO    [n1 stderr] maelstrom.process: Got: Please echo 58</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,799{GMT}    INFO    [jepsen worker 0] jepsen.util: 0    :ok :echo   {:echo <span class="st">&quot;Please echo 58&quot;</span>, :in_reply_to 50, :msg_id 50, :type <span class="st">&quot;echo_ok&quot;</span>}</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,815{GMT}    INFO    [jepsen test runner] jepsen.core: Run complete, writing</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:08,840{GMT}    INFO    [jepsen node n1] maelstrom.db: Tearing down n1</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,809{GMT}    INFO    [jepsen node n1] maelstrom.net: Shutting down Maelstrom network</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,809{GMT}    INFO    [jepsen test runner] jepsen.core: Analyzing...</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,961{GMT}    INFO    [jepsen test runner] jepsen.core: Analysis complete</span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,966{GMT}    INFO    [jepsen results] jepsen.store: Wrote ./store/latest/results.edn</span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a><span class="ex">2025-01-20</span> 12:08:09,986{GMT}    INFO    [jepsen test runner] jepsen.core: {:perf {:latency-graph {:valid<span class="pp">?</span> true},</span>
 <span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>        <span class="ex">:rate-graph</span> {:valid<span class="pp">?</span> true},</span>
 <span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>        <span class="ex">:valid?</span> true},</span>
 <span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a> <span class="ex">:timeline</span> {:valid<span class="pp">?</span> true},</span>
@@ -356,12 +354,13 @@ elsewhere.</p>
 href="https://github.com/jepsen-io/maelstrom?tab=readme-ov-file#documentation">documentation</a>
 as well as <a href="https://fly.io/dist-sys/">Fly.io’s</a> distributed
 systems challenges.</p>
-<p>Next up in our series of posts we shall begin our journey towards
-simulation testing, by taking the Maelstrom protocol and implementing it
-in a completely deterministic way. We’ll then re-implement the message
-generation part of workloads to be completely deterministic as well.
-Since execution of the tests will be deterministic, we can also
-implement shrinking and present small counterexamples.</p>
+<p><a href="sketching_how_to_simulation_test_distributed_systems.html">Next up</a> in our
+series of posts we shall begin our journey towards simulation testing,
+by taking the Maelstrom protocol and implementing it in a completely
+deterministic way. We’ll then re-implement the message generation part
+of workloads to be completely deterministic as well. Since execution of
+the tests will be deterministic, we can also implement shrinking and
+present small counterexamples.</p>
 </section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">

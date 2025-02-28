@@ -5,9 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Stevan A" />
-  <meta name="dcterms.date" content="2025-02-12" />
   <title>Sketching how to simulation test distributed systems</title>
-  <link rel="stylesheet" href="style.css?modified=2025-02-23" />
+  <link rel="stylesheet" href="style.css?modified=2025-02-28" />
   <link rel="alternate" type="application/rss+xml"
         title="RSS feed"
         href="rss.xml" />
@@ -46,10 +45,9 @@ id="toc-conclusion-and-whats-next">Conclusion and what’s next</a></li>
 </ul>
 </nav>
 <div class="date">Posted on Feb 12, 2025</div>
-<p>In the <a
-href="using_maelstrom_to_test_distributed_systems.html">last
-post</a> we saw how to test a simple distributed system, a node that
-echos back the requests it gets, using Jepsen via Maelstrom.</p>
+<p>In the <a href="using_maelstrom_to_test_distributed_systems.html">last post</a>
+we saw how to test a simple distributed system, a node that echos back
+the requests it gets, using Jepsen via Maelstrom.</p>
 <p>We concluded by listing the pros and cons with the Maelstrom
 approach: it’s language agnostic which is good, but the tests are
 non-determinstic (rerunning might give different results) and there’s no
@@ -319,8 +317,8 @@ title="Conclusion and what’s next">Conclusion and what’s next</a></h2>
 <p>We’ve located the sources of non-determinism in the Maelstrom tests
 from the last post and sketched how we can swap out these components for
 deterministic ones.</p>
-<p>Next we’ll start on the actual implementation for the deterministic
-simulation testing.</p>
+<p><a href="the_main_test_loop_of_simulation_testing.html">Next</a> we’ll start on
+the actual implementation for the deterministic simulation testing.</p>
 </section>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
