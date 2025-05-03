@@ -92,7 +92,7 @@ topics:
       status: Done
 
     - title: Coverage-guided property-based testing
-      date: 2024-09-25T00:00:00Z
+      date: 2025-05-03T00:00:00Z
       content: https://raw.githubusercontent.com/stevana/coverage-guided-pbt/main/README.md
       status: FirstDraft
 
