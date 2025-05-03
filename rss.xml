@@ -6904,9 +6904,10 @@ href="https://graphviz.org/doc/info/lang.html">dot</a> language, the <a
 href="https://graphviz.org/doc/info/shapes.html#record">record-based</a>
 node shapes turned out to be useful for visualing data structures.</p>
 <p>It’s quite annoying to populate the <code>imgs</code> array by hand,
-so I wrote a small bash <a href="src/svg-viewer-in-svg">script</a> which
-takes a bunch of SVGs and outputs a single SVG which can be used to view
-the original images.</p>
+so I wrote a small bash <a
+href="https://github.com/stevana/svg-viewer-in-svg/tree/main/src">script</a>
+which takes a bunch of SVGs and outputs a single SVG which can be used
+to view the original images.</p>
 </section>
 <section id="usage" class="level2">
 <h2><a href="#usage" title="Usage">Usage</a></h2>
