@@ -115,11 +115,11 @@ character consists of seven bits, so it has <span
 class="math inline">\(2^7\)</span> possible values.</p>
 <p>That means that the probability is <span
 class="math inline">\(\frac{1}{2^7} \cdot \frac{1}{2^7} \cdot
-\frac{1}{2^7} \cdot \frac{1}{2^7} = 3.72529 \cdot 10^{-7}\\%\)</span>.
-For comparison, the probability of winning the lottery (the Powerball
+\frac{1}{2^7} \cdot \frac{1}{2^7} = 3.72529 \cdot 10^{-9}\)</span>. For
+comparison, the probability of winning the lottery (the Powerball
 jackpot) is <span class="math inline">\(1\)</span> in <span
 class="math inline">\(292.2\)</span> million <span
-class="math inline">\(= 3.42231 \cdot 10^{-7}\\%\)</span>.</p>
+class="math inline">\(= 3.42231 \cdot 10^{-9}\)</span>.</p>
 <p>With coverage-guidance we keep track of inputs that resulted in
 increased coverage. So, for example, if we generate the array
 <code>[]byte{'b'}</code> we get further into the nested ifs, and so we
@@ -127,7 +127,7 @@ take note of that and start generating longer arrays that start with
 <code>'b'</code> and see if we get even further, etc. By building on
 previous successes in getting more coverage, we can effectively reduce
 the problem to only need <span class="math inline">\(\frac{1}{2^7} +
-\frac{1}{2^7} + \frac{1}{2^7} + \frac{1}{2^7} = 3.125\\%\)</span>.</p>
+\frac{1}{2^7} + \frac{1}{2^7} + \frac{1}{2^7} = 0.03125\)</span>.</p>
 <p>In other words coverage-guidance turns an exponential problem into a
 polynomial problem!</p>
 </section>
